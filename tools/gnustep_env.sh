@@ -30,8 +30,10 @@ eval "$(cd "$FL_GS_TOOLS" && bash -c '
         "$LINK" "$LIBFLAGS" "$GS_SYS_HEADERS" "$GS_SYS_LIBS" "$OUT/objc4_public_headers"
 ' _ "${FL_GS_OWNERS[@]}")"
 
-# compiler flags for the Objective-C files and the C files that include cairo
-FL_GS_CFLAGS="-DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNU_GUI_LIBRARY=1 -I$FL_GS_HEADERS -I$FL_GS_OBJC4 -I$X11INC/cairo -I$X11INC -I$X11INC/freetype2"
+# compiler flags for the Objective-C files and the C files that include cairo.
+# -DNeXT_RUNTIME (+ exceptions, blocks) is what the port's own objc4 probes use
+# (build_gnustep_config_probes.sh): without it GNUstep's headers want libobjc2's <objc/encoding.h>.
+FL_GS_CFLAGS="-DNeXT_RUNTIME -fobjc-exceptions -fblocks -DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNU_GUI_LIBRARY=1 -I$FL_GS_HEADERS -I$FL_GS_OBJC4 -I$X11INC/cairo -I$X11INC -I$X11INC/freetype2"
 
 # fl_link_gs_exe <out> <objdir> [libs...]: the recipe the port uses for its GNUstep apps
 # (gs_build_app): -nostdlib against owner dylibs, no Csu start files (ld gives LC_MAIN),
