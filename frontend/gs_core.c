@@ -103,7 +103,13 @@ static nserror set_defaults(struct nsoption_s *defaults)
 /* applied after the user's Choices file, so they cannot turn the unaffordable on */
 static void apply_overrides(void)
 {
+#ifdef FLO_WITH_JS
+	/* a JavaScript build: off until the user turns it on (View menu, FLORENCE_JS=1 or Choices) */
+	if (getenv("FLORENCE_JS") != NULL)
+		nsoption_set_bool(enable_javascript, true);
+#else
 	nsoption_set_bool(enable_javascript, false);
+#endif
 	nsoption_set_bool(core_select_menu, true);      /* we have no native <select> popup */
 	if (getenv("FLORENCE_FULL") == NULL) {
 		nsoption_set_bool(animate_images, false);
@@ -257,6 +263,30 @@ void flo_open_url(const char *url)
 	nsurl_unref(u);
 	if (getenv("FLORENCE_TRACE") != NULL)
 		fprintf(stderr, "florence: open_url: browser_window_create returned %d, bw=%p\n", (int)err, (void *)bw);
+}
+
+bool flo_js_available(void)
+{
+#ifdef FLO_WITH_JS
+	return true;
+#else
+	return false;
+#endif
+}
+
+bool flo_js_enabled(void)
+{
+	return flo_js_available() && nsoption_bool(enable_javascript);
+}
+
+void flo_js_set(bool on)
+{
+	char path[PATH_MAX];
+
+	if (!flo_js_available())
+		return;
+	nsoption_set_bool(enable_javascript, on);
+	nsoption_write(home_path(path, sizeof(path), "Choices"), nsoptions, nsoptions_default);
 }
 
 const char *flo_resource_dir(void)

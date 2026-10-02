@@ -320,6 +320,14 @@ static void refreshHistoryMenu(void) { fillStoreMenu(historyMenu, [FloStore hist
 	fillStoreMenu(bookmarksMenu, [FloStore bookmarks], 2, 60);
 }
 
+- (void)toggleJS:(id)s
+{
+	FloBrowser *b = [FloBrowser key];
+	flo_js_set(!flo_js_enabled());
+	if (b != nil && b->current != nil && b->current->gw != NULL)
+		flo_win_reload(b->current->gw);         /* the page must be loaded again to run (or not run) scripts */
+}
+
 - (void)nextTab:(id)s { [[FloBrowser key] nextTab:1]; }
 - (void)previousTab:(id)s { [[FloBrowser key] nextTab:-1]; }
 
@@ -328,6 +336,11 @@ static void refreshHistoryMenu(void) { fillStoreMenu(historyMenu, [FloStore hist
 	FloBrowser *b = [FloBrowser key];
 	FloTab *t = b != nil ? b->current : nil;
 	SEL a = [item action];
+	if (a == @selector(toggleJS:)) {
+		[item setTitle:flo_js_available() ? @"Enable JavaScript" : @"JavaScript (not in this build)"];
+		[item setState:flo_js_enabled() ? NSOnState : NSOffState];
+		return flo_js_available() && b != nil;
+	}
 	if (a == @selector(newWindow:) || a == @selector(terminate:) || a == @selector(openStored:) ||
 	    a == @selector(clearHistory:))
 		return YES;
@@ -389,6 +402,9 @@ static void buildMenus(FloApp *app)
 	addItem(m, @"Stop", @selector(stopLoading:), @".", app);
 	addItem(m, @"Next Tab", @selector(nextTab:), @"}", app);
 	addItem(m, @"Previous Tab", @selector(previousTab:), @"{", app);
+
+	m = addSubmenu(bar, @"View");
+	addItem(m, @"Enable JavaScript", @selector(toggleJS:), @"", app);
 
 	m = addSubmenu(bar, @"Bookmarks");
 	bookmarksMenu = m;

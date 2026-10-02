@@ -16,8 +16,20 @@ NetSurf 3.11 (no JavaScript) with a GNUstep UI, for small machines (Raspberry Pi
 | `gs_window.c` | `gui_window_table`, clipboard table, and the `flo_win_*` bridge: the only place NetSurf types meet UI input |
 | `gs_plot.c`, `gs_layout.c`, `gs_bitmap.c` | cairo plotters, text measuring, bitmaps |
 | `gs_schedule.c`, `gs_fetch.c`, `gs_filetype.c` | from the monkey frontend |
+| `gs_download.c` | downloads: saved to `~/Downloads` (safe unique names, progress on the status line) |
 | `FloPage.m` | page view: paints only the dirty rect into one reusable buffer |
-| `FloUI.m` | windows, toolbar, scheduler pump, menus, `main()` |
+| `FloTab.m` / `FloBrowser.m` | a tab (one NetSurf window) / a browser window: toolbar, tab strip, status line |
+| `FloStore.m` | bookmark and history lists (`~/.netsurf/Bookmarks`, `History`) |
+| `FloUI.m` | scheduler pump, the `flo_ui_*` bridge, menus, `main()` |
+| `assets/` | the Florentine giglio icon (SVG; `tools/make_icon.sh` renders the PNG/TIFF) |
+
+## Features
+
+Tabs (strip shown with two or more; Cmd-T / Cmd-W, Cmd-{ / Cmd-}), bookmarks (Cmd-D toggles) and history menus,
+downloads, an app icon. Bad certificates are handled by the core (`about:query/ssl`: Proceed / Back to safety).
+Optional JavaScript: `scripts/build_nsgenbind.sh` once (host tool; needs bison >= 3 and flex, `brew install bison flex`
+on a Mac), then `FLO_JS=1 scripts/build_netsurf.sh gnustep`. It stays off until **View > Enable JavaScript** (remembered
+in `~/.netsurf/Choices`, or `FLORENCE_JS=1`); expect it to be slow on a Pi 3 and sites that need a modern engine to still fail.
 
 ## Low-power design
 
@@ -36,4 +48,6 @@ NetSurf 3.11 (no JavaScript) with a GNUstep UI, for small machines (Raspberry Pi
   fault address, pc/lr and a frame-pointer walk plus `flo_core_init`'s run-time address (slide = that minus
   `nm` of `_flo_core_init`; look addresses up with `nm -n` / `atos`).
 * On a GNUstep whose AppKit draws bitmaps upright in flipped views, run with `FLORENCE_NOMIRROR=1`.
-* Not done: tabs, bookmarks, downloads, certificate prompts, a download table, favicon, caret blink.
+* Not done: favicons, caret blink, a download manager window, a bookmarks manager (the menu lists them; Cmd-D removes).
+* The JavaScript build was verified up to the compile of NetSurf's JS glue and generated bindings against the real 3.11
+  headers on Linux; it has not been cross-built or run on the Pi.

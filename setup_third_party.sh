@@ -20,6 +20,7 @@ libnslog|git://git.netsurf-browser.org/libnslog.git|release/0.1.3
 libnsbmp|git://git.netsurf-browser.org/libnsbmp.git|release/0.1.7
 libnsgif|git://git.netsurf-browser.org/libnsgif.git|release/1.0.0
 netsurf|git://git.netsurf-browser.org/netsurf.git|release/3.11
+nsgenbind|git://git.netsurf-browser.org/nsgenbind.git|release/0.9
 '
 echo "$REPOS" | while IFS='|' read -r name url ref; do
     [ -z "$name" ] && continue

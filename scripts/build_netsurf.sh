@@ -4,11 +4,12 @@
 # and zlib, and the static NetSurf libraries from build_netsurf_libs.sh.
 #   scripts/build_netsurf.sh monkey      # headless test frontend (default)
 #   scripts/build_netsurf.sh gnustep     # Florence: the GNUstep UI (frontend/ in this repo)
+#       FLO_JS=1 scripts/build_netsurf.sh gnustep   # adds JavaScript (Duktape), needs scripts/build_nsgenbind.sh
 #       cross-built like the iokit port's own GNUstep apps (see tools/gnustep_env.sh and
 #       CLAUDE.md); needs the iokit repo's GNUstep + cairo built (IOKIT_DIR, default ../iokit).
 # The tree is copied to build/netsurf-src first (the build writes in-tree).
 #
-# Configuration (Makefile.config, below): no JavaScript (Duktape off: it is a large
+# Configuration (Makefile.config, below): no JavaScript unless FLO_JS=1 (Duktape is a large
 # engine and Florence's first goal is a light renderer), no OpenSSL (TLS is mbedTLS
 # inside libcurl; curl.c's OpenSSL certificate-chain code is the WITH_OPENSSL
 # option), no libnslog, no utf8proc (IDN only), no webp/jpegxl/psl/video.
@@ -41,6 +42,14 @@ sed -i '' "s#-L$SYS #-L$LL #; s#-L$LIB #-L$LL #" "$PC"/*.pc
 W="$BUILD/netsurf-src"
 rsync -a --delete --exclude .git "$TP/netsurf/" "$W/"
 EXTRA_CFLAGS=""
+DUK=NO
+if [ "$TARGET_FE" = gnustep ] && [ "${FLO_JS:-0}" = 1 ]; then
+    # Optional JavaScript: NetSurf's bundled Duktape plus DOM bindings that nsgenbind (a HOST tool,
+    # scripts/build_nsgenbind.sh) generates from WebIDL while NetSurf's make runs.
+    fl_require "$BUILD/hosttools/bin/nsgenbind" "run scripts/build_nsgenbind.sh"
+    export PATH="$BUILD/hosttools/bin:$PATH"
+    DUK=YES
+fi
 if [ "$TARGET_FE" = gnustep ]; then
     . tools/gnustep_env.sh
     rsync -a --delete "$FL_DIR/frontend/" "$W/frontends/gnustep/"
@@ -51,11 +60,12 @@ if [ "$TARGET_FE" = gnustep ]; then
     # resources come from the monkey frontend's res/ (Messages, CSS, icons); the UI draws its own chrome
     mkdir -p "$W/frontends/gnustep/res"; cp -R "$W/frontends/monkey/res/." "$W/frontends/gnustep/res/"   # links stay links: Messages points at a file make generates
     EXTRA_CFLAGS="$FL_GS_CFLAGS"
+    if [ "$DUK" = YES ]; then EXTRA_CFLAGS="$EXTRA_CFLAGS -DFLO_WITH_JS"; fi
 fi
 cat > "$W/Makefile.config" <<MK
 override NETSURF_USE_CURL := YES
 override NETSURF_USE_OPENSSL := NO
-override NETSURF_USE_DUKTAPE := NO
+override NETSURF_USE_DUKTAPE := $DUK
 override NETSURF_USE_NSLOG := NO
 override NETSURF_USE_UTF8PROC := NO
 override NETSURF_USE_WEBP := NO
