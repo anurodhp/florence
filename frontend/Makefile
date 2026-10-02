@@ -14,10 +14,10 @@ LDFLAGS += -lm
 MESSAGES_FILTER=gtk
 MESSAGES_TARGET=$(FRONTEND_RESOURCES_DIR)
 
-# Plain C glue, then the Objective-C user interface.
+# Plain C glue. FloUI.m and FloPage.m (the Objective-C UI) are compiled and linked by
+# scripts/build_netsurf.sh, against the iokit port's GNUstep (tools/gnustep_env.sh).
 S_FRONTEND := gs_core.c gs_schedule.c gs_filetype.c gs_fetch.c gs_bitmap.c \
-	gs_layout.c gs_plot.c gs_window.c \
-	FloUI.m FloPage.m
+	gs_layout.c gs_plot.c gs_window.c
 
 SOURCES = $(S_COMMON) $(S_IMAGE) $(S_BROWSER) $(S_PDF) $(S_FRONTEND)
 EXETARGET := florence

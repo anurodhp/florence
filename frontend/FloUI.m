@@ -497,6 +497,11 @@ int main(int argc, char **argv)
 			break;
 		}
 	}
+#ifdef GNUSTEP
+	/* no NSApplicationMain here: tell gnustep-base the arguments and environment ourselves
+	 * (Darwin has no /proc/self to find them from) */
+	{ extern char **environ; GSInitializeProcess(argc, argv, environ); }
+#endif
 	windows = [[NSMutableArray alloc] init];
 	[NSApplication sharedApplication];
 	if (flo_core_init(argc, argv) != 0)

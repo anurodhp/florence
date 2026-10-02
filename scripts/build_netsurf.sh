@@ -4,8 +4,8 @@
 # and zlib, and the static NetSurf libraries from build_netsurf_libs.sh.
 #   scripts/build_netsurf.sh monkey      # headless test frontend (default)
 #   scripts/build_netsurf.sh gnustep     # Florence: the GNUstep UI (frontend/ in this repo)
-#       needs GNUSTEP_ROOT (prefix with include/ and lib/ of the custom GNUstep and cairo);
-#       optional GNUSTEP_OBJCFLAGS, GNUSTEP_LIBS (dylibs, overrides the lib/ search below).
+#       cross-built like the iokit port's own GNUstep apps (see tools/gnustep_env.sh and
+#       CLAUDE.md); needs the iokit repo's GNUstep + cairo built (IOKIT_DIR, default ../iokit).
 # The tree is copied to build/netsurf-src first (the build writes in-tree).
 #
 # Configuration (Makefile.config, below): no JavaScript (Duktape off: it is a large
@@ -40,22 +40,13 @@ sed -i '' "s#-L$SYS #-L$LL #; s#-L$LIB #-L$LL #" "$PC"/*.pc
 
 W="$BUILD/netsurf-src"
 rsync -a --delete --exclude .git "$TP/netsurf/" "$W/"
-EXTRA_CFLAGS=""; EXTRA_LIBS=()
+EXTRA_CFLAGS=""
 if [ "$TARGET_FE" = gnustep ]; then
-    : "${GNUSTEP_ROOT:?set GNUSTEP_ROOT to the GNUstep/cairo prefix}"
+    . tools/gnustep_env.sh
     rsync -a --delete "$FL_DIR/frontend/" "$W/frontends/gnustep/"
     # resources come from the monkey frontend's res/ (Messages, CSS, icons); the UI draws its own chrome
     mkdir -p "$W/frontends/gnustep/res"; cp -RL "$W/frontends/monkey/res/." "$W/frontends/gnustep/res/"
-    OBJCF="${GNUSTEP_OBJCFLAGS:--fobjc-runtime=gnustep-2.0 -fno-objc-arc -fconstant-string-class=NSConstantString -DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNU_GUI_LIBRARY=1}"
-    CAIROINC="$GNUSTEP_ROOT/include/cairo"; [ -d "$CAIROINC" ] || CAIROINC="$X11INC/cairo"
-    EXTRA_CFLAGS="$OBJCF -I$GNUSTEP_ROOT/include -I$CAIROINC -I$X11INC"
-    if [ -n "${GNUSTEP_LIBS:-}" ]; then read -r -a EXTRA_LIBS <<< "$GNUSTEP_LIBS"; else
-        for l in gnustep-gui gnustep-base objc cairo pixman-1 fontconfig freetype; do
-            f=$(ls "$GNUSTEP_ROOT"/lib/lib$l*.dylib 2>/dev/null | head -1 || true)
-            [ -n "$f" ] || { echo "error: lib$l*.dylib not under $GNUSTEP_ROOT/lib (set GNUSTEP_LIBS)" >&2; exit 1; }
-            EXTRA_LIBS+=("$f")
-        done
-    fi
+    EXTRA_CFLAGS="$FL_GS_CFLAGS"
 fi
 cat > "$W/Makefile.config" <<MK
 override NETSURF_USE_CURL := YES
@@ -88,9 +79,24 @@ if grep -E "\.[chm]:[0-9]+:[0-9]*:? *(fatal )?error:|\*\*\* .*\.o\]" "$BUILD/net
 fi
 NSA=("$NSROOT"/lib/libcss.a "$NSROOT"/lib/libdom.a "$NSROOT"/lib/libhubbub.a "$NSROOT"/lib/libparserutils.a
      "$NSROOT"/lib/libwapcaplet.a "$NSROOT"/lib/libnsutils.a "$NSROOT"/lib/libnsbmp.a "$NSROOT"/lib/libnsgif.a)
-fl_link_exe "$ROOT$PREFIX/bin/ns$TARGET_FE" "$OBJDIR" "${NSA[@]}" \
-    "$LIB/libcurl.dylib" "$LIB/libjpeg.dylib" "$SYS/libpng16.dylib" "$SYS/libz.dylib" \
-    "${EXTRA_LIBS[@]}" "$SYS/libexpat.dylib" "$SYS/libiconv.dylib" "$SYS/libsystem_m.dylib" "${FL_NET_DYLIBS[@]}" "$SYS/libcopyfile.dylib"
+if [ "$TARGET_FE" = gnustep ]; then
+    # The Objective-C files are compiled here, not by NetSurf's Makefile (which may not know .m).
+    for m in FloUI.m FloPage.m; do
+        # shellcheck disable=SC2086
+        fl_compile "$OBJDIR" "$W/frontends/gnustep/$m" -I"$W/frontends" $FL_GS_CFLAGS
+    done
+    fl_compile_report "gnustep UI"
+    fl_link_gs_exe "$ROOT$PREFIX/bin/nsgnustep" "$OBJDIR" "${NSA[@]}"
+    # a GNUstep application bundle in the Mac layout the image uses (/Applications/X.app)
+    APP="$ROOT/Applications/Florence.app"; rm -rf "$APP"; mkdir -p "$APP/Resources"
+    cp "$ROOT$PREFIX/bin/nsgnustep" "$APP/Florence"
+    printf '{\n    ApplicationName = Florence;\n    ApplicationDescription = "NetSurf with a GNUstep UI";\n    NSExecutable = Florence;\n    NSPrincipalClass = NSApplication;\n    CFBundleIdentifier = "org.florence.browser";\n}\n' > "$APP/Resources/Info-gnustep.plist"
+    echo "bundle $APP (run: openapp Florence, under an X server)"
+else
+    fl_link_exe "$ROOT$PREFIX/bin/ns$TARGET_FE" "$OBJDIR" "${NSA[@]}" \
+        "$LIB/libcurl.dylib" "$LIB/libjpeg.dylib" "$SYS/libpng16.dylib" "$SYS/libz.dylib" \
+        "$SYS/libexpat.dylib" "$SYS/libiconv.dylib" "$SYS/libsystem_m.dylib" "${FL_NET_DYLIBS[@]}" "$SYS/libcopyfile.dylib"
+fi
 
 # Frontend resources (CSS, messages, icons) where the search path looks:
 # ${HOME}/.netsurf/ : ${NETSURFRES} : /usr/local/share/netsurf/ (frontends/monkey/main.c).
