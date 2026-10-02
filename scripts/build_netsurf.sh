@@ -45,7 +45,7 @@ if [ "$TARGET_FE" = gnustep ]; then
     . tools/gnustep_env.sh
     rsync -a --delete "$FL_DIR/frontend/" "$W/frontends/gnustep/"
     # resources come from the monkey frontend's res/ (Messages, CSS, icons); the UI draws its own chrome
-    mkdir -p "$W/frontends/gnustep/res"; cp -RL "$W/frontends/monkey/res/." "$W/frontends/gnustep/res/"
+    mkdir -p "$W/frontends/gnustep/res"; cp -R "$W/frontends/monkey/res/." "$W/frontends/gnustep/res/"   # links stay links: Messages points at a file make generates
     EXTRA_CFLAGS="$FL_GS_CFLAGS"
 fi
 cat > "$W/Makefile.config" <<MK
