@@ -44,6 +44,10 @@ EXTRA_CFLAGS=""
 if [ "$TARGET_FE" = gnustep ]; then
     . tools/gnustep_env.sh
     rsync -a --delete "$FL_DIR/frontend/" "$W/frontends/gnustep/"
+    # NetSurf only builds the frontends listed in VLDTARGET (frontends/Makefile.hts); register ours
+    # in the build copy (this tree is rsynced fresh from third_party/ on every run).
+    sed -i '' 's/^VLDTARGET := /VLDTARGET := gnustep /' "$W/frontends/Makefile.hts"
+    grep -q '^VLDTARGET := gnustep ' "$W/frontends/Makefile.hts" || { echo "error: could not register gnustep in $W/frontends/Makefile.hts" >&2; exit 1; }
     # resources come from the monkey frontend's res/ (Messages, CSS, icons); the UI draws its own chrome
     mkdir -p "$W/frontends/gnustep/res"; cp -R "$W/frontends/monkey/res/." "$W/frontends/gnustep/res/"   # links stay links: Messages points at a file make generates
     EXTRA_CFLAGS="$FL_GS_CFLAGS"
