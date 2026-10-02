@@ -34,7 +34,18 @@ static struct gui_window *gw_create(struct browser_window *bw, struct gui_window
 		return NULL;
 	gw->bw = bw;
 	flo_trace("window: create");
-	gw->ui = flo_ui_window_new(gw);   /* the UI also stores itself in gw->ui at once */
+	{
+		void *existing_ui = existing != NULL ? existing->ui : NULL;
+		int fl = 0;
+
+		if ((flags & GW_CREATE_TAB) && existing_ui != NULL)
+			fl |= FLO_NEW_TAB;
+		if (flags & GW_CREATE_FOREGROUND)
+			fl |= FLO_NEW_FOREGROUND;
+		if (flags & GW_CREATE_FOCUS_LOCATION)
+			fl |= FLO_NEW_FOCUS_LOCATION;
+		gw->ui = flo_ui_window_new(gw, existing_ui, fl);   /* the UI also stores itself in gw->ui at once */
+	}
 	if (gw->ui == NULL) {
 		free(gw);
 		return NULL;
@@ -184,6 +195,19 @@ void flo_win_navigate(struct gui_window *gw, const char *url)
 		return;
 	browser_window_navigate(gw->bw, u, NULL, BW_NAVIGATE_HISTORY, NULL, NULL, NULL);
 	nsurl_unref(u);
+}
+
+void flo_win_new_tab(struct gui_window *gw, const char *url)
+{
+	nsurl *u = NULL;
+	struct browser_window *bw = NULL;
+
+	if (url != NULL && nsurl_create(url, &u) != NSERROR_OK)
+		return;
+	browser_window_create(BW_CREATE_HISTORY | BW_CREATE_TAB | BW_CREATE_FOREGROUND | BW_CREATE_FOCUS_LOCATION,
+			      u, NULL, gw->bw, &bw);
+	if (u != NULL)
+		nsurl_unref(u);
 }
 
 void flo_win_reload(struct gui_window *gw) { browser_window_reload(gw->bw, true); }

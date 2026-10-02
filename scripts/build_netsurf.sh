@@ -91,9 +91,9 @@ if [ "$TARGET_FE" = gnustep ]; then
             grep -n -m15 -E "\*\*\*|error|No rule|No such" "$BUILD/netsurf-gnustep.log" >&2 || true; exit 1; }
     done
     # The Objective-C files are compiled here, not by NetSurf's Makefile (which may not know .m).
-    for m in FloUI.m FloPage.m; do
+    for m in "$W"/frontends/gnustep/*.m; do
         # shellcheck disable=SC2086
-        fl_compile "$OBJDIR" "$W/frontends/gnustep/$m" -I"$W/frontends" $FL_GS_OBJCFLAGS
+        fl_compile "$OBJDIR" "$m" -I"$W/frontends" $FL_GS_OBJCFLAGS
     done
     fl_compile_report "gnustep UI"
     fl_link_gs_exe "$ROOT$PREFIX/bin/nsgnustep" "$OBJDIR" "${NSA[@]}"

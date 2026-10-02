@@ -1,26 +1,23 @@
 /*
- * Florence: the GNUstep user interface. One FloWindow per NetSurf window (toolbar
- * of plain buttons and a URL field, the scrolling page view, a status line), the
- * pump that runs NetSurf's scheduler, the menus and main().
+ * Florence: the GNUstep user interface shell: the pump that runs NetSurf's scheduler, the
+ * flo_ui_* bridge from the C glue onto tabs, the clipboard, the menus and main(). The windows
+ * and tabs themselves are FloBrowser.m and FloTab.m, the page view FloPage.m.
  *
- * Built for little machines: the pump is a one-shot timer that sleeps exactly
- * until the next scheduled NetSurf callback (nothing runs while the page is
- * idle), resizes are debounced so a window drag reflows the page once, and the
- * scroll view blits already-painted pixels instead of repainting them.
+ * Built for little machines: the pump is a one-shot timer that sleeps exactly until the next
+ * scheduled NetSurf callback (nothing runs while the page is idle), resizes are debounced so a
+ * window drag reflows the page once, and the scroll view blits already-painted pixels.
  * GPL-2.0-only (see gs.h).
  */
 #import <AppKit/AppKit.h>
 #include <string.h>
 #include <stdlib.h>
-#import "FloPage.h"
+#import "FloBrowser.h"
 #include "gnustep/gs.h"
 
-#define BAR_H 30.0
-#define STATUS_H 18.0
-#define RESIZE_DELAY 0.08
-
-static NSMutableArray *windows;         /* every live FloWindow */
+static NSString *startURL;
 static NSImage *appIcon;                /* the Florentine giglio, from the bundle's Resources */
+
+NSImage *FloAppIcon(void) { return appIcon; }
 
 static void loadIcon(void)
 {
@@ -32,7 +29,6 @@ static void loadIcon(void)
 	if (appIcon != nil)
 		[NSApp setApplicationIconImage:appIcon];
 }
-static NSString *startURL;
 
 /* ---- the scheduler pump -------------------------------------------------- */
 
@@ -89,303 +85,105 @@ static NSString *startURL;
 void flo_ui_wake(void) { [[FloPump shared] wake]; }
 void flo_ui_quit(void) { [NSApp terminate:nil]; }
 
-/* ---- URL bar input -------------------------------------------------------- */
-
-static NSString *urlFromInput(NSString *in)
-{
-	NSString *s = [in stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-	if ([s length] == 0)
-		return nil;
-	if ([s rangeOfString:@"://"].location != NSNotFound || [s hasPrefix:@"about:"] ||
-	    [s hasPrefix:@"file:"] || [s hasPrefix:@"data:"])
-		return s;
-	if ([s rangeOfString:@" "].location == NSNotFound &&
-	    ([s rangeOfString:@"."].location != NSNotFound || [s hasPrefix:@"localhost"]))
-		return [@"http://" stringByAppendingString:s];
-	/* not an address: search (DuckDuckGo's HTML page is the light one) */
-	NSMutableCharacterSet *ok = [[[NSCharacterSet alphanumericCharacterSet] mutableCopy] autorelease];
-	[ok addCharactersInString:@"-._~"];
-	return [@"https://html.duckduckgo.com/html/?q=" stringByAppendingString:
-		[s stringByAddingPercentEncodingWithAllowedCharacters:ok]];
-}
-
-/* ---- one browser window --------------------------------------------------- */
-
-@interface FloWindow : NSObject <NSWindowDelegate> {
-@public
-	struct gui_window *gw;
-	NSWindow *win;
-	NSScrollView *scroll;
-	FloPage *page;
-	NSTextField *urlField, *status;
-	NSButton *backBtn, *fwdBtn, *reloadBtn;
-	BOOL loading, userClosed;
-}
-- (id)initWithGuiWindow:(struct gui_window *)g;
-- (void)teardown;
-- (void)updateExtent;
-- (void)updateButtons;
-- (void)focusLocation;
-@end
-
-@implementation FloWindow
-
-static NSButton *makeButton(NSString *title, CGFloat x, CGFloat w, id target, SEL action, NSView *in, CGFloat top)
-{
-	NSButton *b = [[[NSButton alloc] initWithFrame:NSMakeRect(x, top - BAR_H + 3, w, BAR_H - 6)] autorelease];
-	[b setTitle:title];
-	[b setTarget:target];
-	[b setAction:action];
-	[b setBezelStyle:NSRoundedBezelStyle];
-	[b setAutoresizingMask:NSViewMinYMargin];
-	[in addSubview:b];
-	return b;
-}
-
-- (id)initWithGuiWindow:(struct gui_window *)g
-{
-	if ((self = [super init]) == nil)
-		return nil;
-	gw = g;
-	g->ui = self;           /* callbacks arrive while the core is still creating the window */
-	CGFloat n = (CGFloat)[windows count];
-	NSRect frame = NSMakeRect(60 + 24 * fmod(n, 8), 60 + 24 * fmod(n, 8), 960, 640);
-	win = [[NSWindow alloc] initWithContentRect:frame
-		styleMask:NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask | NSResizableWindowMask
-		backing:NSBackingStoreBuffered defer:NO];
-	[win setReleasedWhenClosed:NO];
-	[win setDelegate:self];
-	[win setTitle:@"Florence"];
-	[win setAcceptsMouseMovedEvents:YES];
-	if (appIcon != nil)
-		[win setMiniwindowImage:appIcon];
-	[win setMinSize:NSMakeSize(320, 200)];
-
-	NSView *cv = [win contentView];
-	NSRect b = [cv bounds];
-	CGFloat top = NSMaxY(b);
-	backBtn = makeButton(@"Back", 4, 52, self, @selector(goBack:), cv, top);
-	fwdBtn = makeButton(@"Fwd", 58, 46, self, @selector(goForward:), cv, top);
-	reloadBtn = makeButton(@"Reload", 106, 64, self, @selector(reloadOrStop:), cv, top);
-
-	urlField = [[[NSTextField alloc] initWithFrame:NSMakeRect(176, top - BAR_H + 4, b.size.width - 182, BAR_H - 8)] autorelease];
-	[urlField setTarget:self];
-	[urlField setAction:@selector(go:)];
-	[urlField setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
-	[cv addSubview:urlField];
-
-	status = [[[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, b.size.width, STATUS_H)] autorelease];
-	[status setEditable:NO];
-	[status setSelectable:NO];
-	[status setBezeled:NO];
-	[status setDrawsBackground:NO];
-	[status setFont:[NSFont systemFontOfSize:11]];
-	[status setAutoresizingMask:NSViewWidthSizable | NSViewMaxYMargin];
-	[cv addSubview:status];
-
-	scroll = [[[NSScrollView alloc] initWithFrame:NSMakeRect(0, STATUS_H, b.size.width, b.size.height - BAR_H - STATUS_H)] autorelease];
-	[scroll setHasVerticalScroller:YES];
-	[scroll setHasHorizontalScroller:YES];
-	[scroll setBorderType:NSNoBorder];
-	[scroll setDrawsBackground:YES];
-	[scroll setBackgroundColor:[NSColor whiteColor]];
-	[scroll setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-	[[scroll contentView] setCopiesOnScroll:YES];           /* scrolling moves pixels, repaints the strip */
-	[[scroll contentView] setPostsFrameChangedNotifications:YES];
-	page = [[FloPage alloc] initWithGuiWindow:g];
-	[scroll setDocumentView:page];
-	[cv addSubview:scroll];
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(viewportChanged:)
-		name:NSViewFrameDidChangeNotification object:[scroll contentView]];
-
-	[windows addObject:self];
-	/* Not shown yet: showing it runs delegate callbacks that ask the core about history, and the
-	 * core has not finished building this browser window while it is calling us. Next loop pass. */
-	[self performSelector:@selector(showWindow) withObject:nil afterDelay:0];
-	return self;
-}
-
-- (void)showWindow
-{
-	if (gw == NULL)
-		return;
-	flo_trace("ui: show window");
-	[self updateButtons];
-	[win makeKeyAndOrderFront:nil];
-	[win makeFirstResponder:page];
-}
-
-- (void)dealloc
-{
-	[[NSNotificationCenter defaultCenter] removeObserver:self];
-	[NSObject cancelPreviousPerformRequestsWithTarget:self];
-	[page release];
-	[win release];
-	[super dealloc];
-}
-
-- (void)teardown        /* the core has destroyed the window */
-{
-	[NSObject cancelPreviousPerformRequestsWithTarget:self];
-	[page detach];
-	gw = NULL;
-	[win setDelegate:nil];
-	if (!userClosed)
-		[win close];
-	[[self retain] autorelease];
-	[windows removeObject:self];
-	if ([windows count] == 0)
-		[NSApp terminate:nil];
-}
-
-- (void)windowWillClose:(NSNotification *)n
-{
-	struct gui_window *g = gw;
-	if (g == NULL)
-		return;
-	userClosed = YES;
-	[[self retain] autorelease];
-	flo_win_close(g);       /* the core calls back flo_ui_window_free -> teardown */
-}
-
-- (void)windowDidBecomeKey:(NSNotification *)n { [self updateButtons]; }
-
-/* viewport changes: reflow once, shortly after the last change */
-- (void)viewportChanged:(NSNotification *)n
-{
-	[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(applyResize) object:nil];
-	[self performSelector:@selector(applyResize) withObject:nil afterDelay:RESIZE_DELAY];
-}
-
-- (void)applyResize
-{
-	NSSize s = [scroll contentSize];
-	if (gw == NULL)
-		return;
-	flo_win_resize(gw, (int)s.width, (int)s.height);
-	[self updateExtent];
-}
-
-- (void)updateExtent
-{
-	int w, h;
-	NSSize vs = [scroll contentSize];
-	if (gw == NULL)
-		return;
-	flo_win_extent(gw, &w, &h);
-	NSSize ns = NSMakeSize(w > vs.width ? w : vs.width, h > vs.height ? h : vs.height);
-	if (!NSEqualSizes(ns, [page frame].size))
-		[page setFrameSize:ns];
-}
-
-- (void)updateButtons
-{
-	if (gw == NULL)
-		return;
-	[backBtn setEnabled:flo_win_can_back(gw)];
-	[fwdBtn setEnabled:flo_win_can_forward(gw)];
-	[reloadBtn setTitle:loading ? @"Stop" : @"Reload"];
-}
-
-- (void)focusLocation
-{
-	[win makeFirstResponder:urlField];
-	[urlField selectText:nil];
-}
-
-- (void)go:(id)sender
-{
-	NSString *u = urlFromInput([urlField stringValue]);
-	if (u != nil && gw != NULL) {
-		flo_win_navigate(gw, [u UTF8String]);
-		[win makeFirstResponder:page];
-	}
-}
-- (void)goBack:(id)s { if (gw) flo_win_back(gw); }
-- (void)goForward:(id)s { if (gw) flo_win_forward(gw); }
-- (void)reloadOrStop:(id)s { if (gw) { if (loading) flo_win_stop(gw); else flo_win_reload(gw); } }
-
-@end
-
 /* ---- the flo_ui_* functions the C glue calls ------------------------------- */
 
-#define W(ui) ((FloWindow *)(ui))
+#define T(ui) ((FloTab *)(ui))
 
-void *flo_ui_window_new(struct gui_window *gw)
+void *flo_ui_window_new(struct gui_window *gw, void *existing_ui, int flags)
 {
-	return [[FloWindow alloc] initWithGuiWindow:gw];   /* owned by the gui_window */
+	FloTab *tab = [[FloTab alloc] initWithGuiWindow:gw];    /* owned by the gui_window */
+	FloBrowser *b = nil;
+
+	if ((flags & FLO_NEW_TAB) && existing_ui != NULL)
+		b = T(existing_ui)->browser;
+	if (b == nil)
+		b = [[[FloBrowser alloc] init] autorelease];    /* the browsers list keeps it */
+	/* a first tab always shows; a later one only if the core asked for the foreground */
+	[b addTab:tab select:b->current == nil || (flags & FLO_NEW_FOREGROUND) != 0];
+	if (flags & FLO_NEW_FOCUS_LOCATION)
+		[b performSelector:@selector(focusLocation) withObject:nil afterDelay:0.05];
+	return tab;
 }
 
 void flo_ui_window_free(void *ui)
 {
-	FloWindow *w = W(ui);
-	[w teardown];
-	[w release];
+	FloTab *t = T(ui);
+	[t->browser removeTab:t];
+	[t teardown];
+	[t release];
 }
 
 void flo_ui_invalidate(void *ui, int x0, int y0, int x1, int y1)
 {
 	if (x1 < 0)
-		[W(ui)->page setNeedsDisplay:YES];
+		[T(ui)->page setNeedsDisplay:YES];
 	else
-		[W(ui)->page invalidatePageRect:NSMakeRect(x0, y0, x1 - x0, y1 - y0)];
+		[T(ui)->page invalidatePageRect:NSMakeRect(x0, y0, x1 - x0, y1 - y0)];
 }
 
 void flo_ui_get_scroll(void *ui, int *x, int *y)
 {
-	NSPoint o = [[W(ui)->scroll contentView] bounds].origin;
+	NSPoint o = [[T(ui)->scroll contentView] bounds].origin;
 	*x = (int)o.x;
 	*y = (int)o.y;
 }
 
 void flo_ui_set_scroll(void *ui, int x, int y)
 {
-	NSClipView *clip = [W(ui)->scroll contentView];
+	NSClipView *clip = [T(ui)->scroll contentView];
 	[clip scrollToPoint:[clip constrainScrollPoint:NSMakePoint(x, y)]];
-	[W(ui)->scroll reflectScrolledClipView:clip];
+	[T(ui)->scroll reflectScrolledClipView:clip];
 }
 
 void flo_ui_get_viewport(void *ui, int *w, int *h)
 {
-	NSSize s = [W(ui)->scroll contentSize];
+	NSSize s = [T(ui)->scroll contentSize];
 	*w = (int)s.width;
 	*h = (int)s.height;
 }
 
-void flo_ui_update_extent(void *ui) { [W(ui) updateExtent]; }
+void flo_ui_update_extent(void *ui) { [T(ui) updateExtent]; }
 
 void flo_ui_set_title(void *ui, const char *title)
 {
-	if (title != NULL)
-		[W(ui)->win setTitle:[NSString stringWithUTF8String:title] ?: @"Florence"];
+	FloTab *t = T(ui);
+	if (title == NULL)
+		return;
+	[t setTitle:[NSString stringWithUTF8String:title]];
+	[t->browser setNeedsChrome];
 }
 
 void flo_ui_set_url(void *ui, const char *url)
 {
-	if (url != NULL)
-		[W(ui)->urlField setStringValue:[NSString stringWithUTF8String:url] ?: @""];
-	[W(ui) updateButtons];
+	FloTab *t = T(ui);
+	if (url == NULL)
+		return;
+	[t setUrl:[NSString stringWithUTF8String:url]];
+	[t->browser setNeedsChrome];
 }
 
 void flo_ui_set_status(void *ui, const char *text)
 {
-	[W(ui)->status setStringValue:text != NULL ? ([NSString stringWithUTF8String:text] ?: @"") : @""];
+	FloTab *t = T(ui);
+	[t setStatus:text != NULL ? [NSString stringWithUTF8String:text] : @""];
+	if (t->browser != nil && t->browser->current == t)      /* hover text: update at once */
+		[t->browser->status setStringValue:t->status];
 }
 
-void flo_ui_set_pointer(void *ui, int p) { [W(ui)->page setPointer:p]; }
+void flo_ui_set_pointer(void *ui, int p) { [T(ui)->page setPointer:p]; }
 
 void flo_ui_throbber(void *ui, bool on)
 {
-	W(ui)->loading = on;
-	[W(ui) updateButtons];
+	T(ui)->loading = on;
+	[T(ui)->browser setNeedsChrome];
 }
 
 void flo_ui_place_caret(void *ui, int x, int y, int height)
 {
-	[W(ui)->page placeCaret:NSMakeRect(x, y, 1, height)];
+	[T(ui)->page placeCaret:NSMakeRect(x, y, 1, height)];
 }
 
-void flo_ui_remove_caret(void *ui) { [W(ui)->page removeCaret]; }
+void flo_ui_remove_caret(void *ui) { [T(ui)->page removeCaret]; }
 
 char *flo_ui_clipboard_get(size_t *len)
 {
@@ -418,12 +216,6 @@ void flo_ui_clipboard_set(const char *text, size_t len)
 
 @implementation FloApp
 
-static FloWindow *currentWindow(void)
-{
-	id d = [[NSApp keyWindow] delegate];
-	return [d isKindOfClass:[FloWindow class]] ? d : nil;
-}
-
 - (void)applicationDidFinishLaunching:(NSNotification *)n
 {
 	flo_trace("app: did finish launching");
@@ -433,38 +225,48 @@ static FloWindow *currentWindow(void)
 
 - (void)applicationWillTerminate:(NSNotification *)n
 {
-	NSArray *all = [[windows copy] autorelease];
-	NSUInteger i;
+	NSArray *all = [[[FloBrowser all] copy] autorelease];
+	NSUInteger i, j;
 	for (i = 0; i < [all count]; i++) {
-		FloWindow *w = [all objectAtIndex:i];
-		if (w->gw != NULL) {
-			w->userClosed = YES;
-			flo_win_close(w->gw);
+		FloBrowser *b = [all objectAtIndex:i];
+		NSArray *ts = [[b->tabs copy] autorelease];
+		b->closing = YES;
+		for (j = 0; j < [ts count]; j++) {
+			FloTab *t = [ts objectAtIndex:j];
+			if (t->gw != NULL)
+				flo_win_close(t->gw);
 		}
 	}
 	flo_core_fini();
 }
 
 - (void)newWindow:(id)s { flo_open_url(NULL); }
+- (void)newTab:(id)s { [[FloBrowser key] newTab]; }
+- (void)closeTab:(id)s { [[FloBrowser key] closeCurrentTab]; }
 - (void)closeWindow:(id)s { [[NSApp keyWindow] performClose:nil]; }
-- (void)openLocation:(id)s { [currentWindow() focusLocation]; }
-- (void)reload:(id)s { FloWindow *w = currentWindow(); if (w && w->gw) flo_win_reload(w->gw); }
-- (void)stopLoading:(id)s { FloWindow *w = currentWindow(); if (w && w->gw) flo_win_stop(w->gw); }
-- (void)goBack:(id)s { [currentWindow() goBack:s]; }
-- (void)goForward:(id)s { [currentWindow() goForward:s]; }
+- (void)openLocation:(id)s { [[FloBrowser key] focusLocation]; }
+- (void)reload:(id)s { FloBrowser *b = [FloBrowser key]; if (b && b->current && b->current->gw) flo_win_reload(b->current->gw); }
+- (void)stopLoading:(id)s { FloBrowser *b = [FloBrowser key]; if (b && b->current && b->current->gw) flo_win_stop(b->current->gw); }
+- (void)goBack:(id)s { [[FloBrowser key] goBack:s]; }
+- (void)goForward:(id)s { [[FloBrowser key] goForward:s]; }
+- (void)nextTab:(id)s { [[FloBrowser key] nextTab:1]; }
+- (void)previousTab:(id)s { [[FloBrowser key] nextTab:-1]; }
 
 - (BOOL)validateMenuItem:(NSMenuItem *)item
 {
-	FloWindow *w = currentWindow();
+	FloBrowser *b = [FloBrowser key];
+	FloTab *t = b != nil ? b->current : nil;
 	SEL a = [item action];
 	if (a == @selector(newWindow:) || a == @selector(terminate:))
 		return YES;
-	if (w == nil)
+	if (t == nil || t->gw == NULL)
 		return NO;
 	if (a == @selector(goBack:))
-		return w->gw != NULL && flo_win_can_back(w->gw);
+		return flo_win_can_back(t->gw);
 	if (a == @selector(goForward:))
-		return w->gw != NULL && flo_win_can_forward(w->gw);
+		return flo_win_can_forward(t->gw);
+	if (a == @selector(nextTab:) || a == @selector(previousTab:))
+		return [b->tabs count] > 1;
 	return YES;
 }
 
@@ -493,8 +295,10 @@ static void buildMenus(FloApp *app)
 
 	m = addSubmenu(bar, @"File");
 	addItem(m, @"New Window", @selector(newWindow:), @"n", app);
+	addItem(m, @"New Tab", @selector(newTab:), @"t", app);
 	addItem(m, @"Open Location...", @selector(openLocation:), @"l", app);
-	addItem(m, @"Close Window", @selector(closeWindow:), @"w", app);
+	addItem(m, @"Close Tab", @selector(closeTab:), @"w", app);
+	addItem(m, @"Close Window", @selector(closeWindow:), @"W", app);
 
 	m = addSubmenu(bar, @"Edit");           /* target nil: the first responder (URL field or page) */
 	addItem(m, @"Cut", @selector(cut:), @"x", nil);
@@ -507,6 +311,8 @@ static void buildMenus(FloApp *app)
 	addItem(m, @"Forward", @selector(goForward:), @"]", app);
 	addItem(m, @"Reload", @selector(reload:), @"r", app);
 	addItem(m, @"Stop", @selector(stopLoading:), @".", app);
+	addItem(m, @"Next Tab", @selector(nextTab:), @"}", app);
+	addItem(m, @"Previous Tab", @selector(previousTab:), @"{", app);
 
 	[NSApp setMainMenu:bar];
 }
@@ -519,7 +325,7 @@ int main(int argc, char **argv)
 
 	for (i = 1; i < argc; i++) {
 		if (argv[i][0] != '-') {
-			startURL = [urlFromInput([NSString stringWithUTF8String:argv[i]]) retain];
+			startURL = [FloURLFromInput([NSString stringWithUTF8String:argv[i]]) retain];
 			break;
 		}
 	}
@@ -528,7 +334,6 @@ int main(int argc, char **argv)
 	 * (Darwin has no /proc/self to find them from) */
 	{ extern char **environ; GSInitializeProcess(argc, argv, environ); }
 #endif
-	windows = [[NSMutableArray alloc] init];
 	flo_trace("main: gnustep initialised");
 	[NSApplication sharedApplication];
 	flo_trace("main: NSApplication");

@@ -66,6 +66,7 @@ enum flo_pointer { FLO_PTR_ARROW, FLO_PTR_HAND, FLO_PTR_IBEAM, FLO_PTR_CROSS, FL
 		   FLO_PTR_WAIT, FLO_PTR_NO };
 
 void flo_win_navigate(struct gui_window *gw, const char *url);
+void flo_win_new_tab(struct gui_window *gw, const char *url);   /* url NULL: a blank tab */
 void flo_win_reload(struct gui_window *gw);
 void flo_win_stop(struct gui_window *gw);
 void flo_win_back(struct gui_window *gw);
@@ -83,7 +84,10 @@ bool flo_win_key(struct gui_window *gw, unsigned key, int mods); /* true: the pa
 /* ---- UI, called by the C glue (FloUI.m) --------------------------------- */
 char *flo_ui_clipboard_get(size_t *len);                         /* malloc'd UTF-8, or NULL */
 void  flo_ui_clipboard_set(const char *text, size_t len);
-void *flo_ui_window_new(struct gui_window *gw);
+/* flags for flo_ui_window_new */
+enum { FLO_NEW_TAB = 1, FLO_NEW_FOREGROUND = 2, FLO_NEW_FOCUS_LOCATION = 4 };
+/* existing_ui: the UI of the gui_window this one was created from (a tab goes in its window), or NULL */
+void *flo_ui_window_new(struct gui_window *gw, void *existing_ui, int flo_new_flags);
 void  flo_ui_window_free(void *ui);
 void  flo_ui_invalidate(void *ui, int x0, int y0, int x1, int y1); /* x1 < 0: everything */
 void  flo_ui_get_scroll(void *ui, int *x, int *y);
