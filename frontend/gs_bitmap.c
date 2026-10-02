@@ -5,6 +5,9 @@
  * cairo's CAIRO_FORMAT_ARGB32, so images are plotted without any conversion.
  * GPL-2.0-only (see gs.h).
  */
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <cairo.h>
 

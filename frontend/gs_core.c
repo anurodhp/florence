@@ -42,6 +42,7 @@ extern struct gui_layout_table *flo_layout_table;
 char **respaths;                /* resource search path (gs_fetch.c uses it) */
 
 static char home_dir[PATH_MAX];
+static char urls_path[PATH_MAX];       /* the URL database; 3.11 has no option for it */
 
 static const char *home_path(char *buf, size_t len, const char *name)
 {
@@ -71,15 +72,8 @@ static nserror flo_schedule(int ms, void (*cb)(void *p), void *p)
 	return err;
 }
 
-static nserror flo_warning(const char *warning, const char *detail)
-{
-	fprintf(stderr, "florence: %s%s%s\n", warning, detail ? ": " : "", detail ? detail : "");
-	return NSERROR_OK;
-}
-
 static struct gui_misc_table misc_table = {
 	.schedule = flo_schedule,
-	.warning = flo_warning,
 };
 
 /* ---- options ------------------------------------------------------------ */
@@ -90,7 +84,6 @@ static nserror set_defaults(struct nsoption_s *defaults)
 
 	nsoption_setnull_charp(cookie_file, strdup(home_path(buf, sizeof(buf), "Cookies")));
 	nsoption_setnull_charp(cookie_jar, strdup(home_path(buf, sizeof(buf), "Cookies")));
-	nsoption_setnull_charp(url_file, strdup(home_path(buf, sizeof(buf), "URLs")));
 	if (filepath_sfind(respaths, res, "ca-bundle") != NULL)
 		nsoption_setnull_charp(ca_bundle, strdup(res));
 	return NSERROR_OK;
@@ -154,7 +147,7 @@ int flo_core_init(int argc, char **argv)
 		fprintf(stderr, "florence: netsurf_init failed (%d)\n", (int)err);
 		return -1;
 	}
-	urldb_load(nsoption_charp(url_file));
+	urldb_load(home_path(urls_path, sizeof(urls_path), "URLs"));
 	urldb_load_cookies(nsoption_charp(cookie_file));
 
 	gs_fetch_filetype_init(filepath_sfind(respaths, buf, "mimetypes") != NULL ? buf : "/etc/mime.types");
@@ -163,7 +156,7 @@ int flo_core_init(int argc, char **argv)
 
 void flo_core_fini(void)
 {
-	urldb_save(nsoption_charp(url_file));
+	urldb_save(urls_path);
 	urldb_save_cookies(nsoption_charp(cookie_jar));
 	netsurf_exit();
 	gs_fetch_filetype_fin();

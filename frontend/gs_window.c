@@ -17,6 +17,10 @@
 #include "netsurf/window.h"
 #include "netsurf/clipboard.h"
 
+#if __has_include("desktop/browser_history.h")
+#include "desktop/browser_history.h"     /* browser_window_history_back/forward in some trees */
+#endif
+
 #include "gnustep/gs.h"
 
 /* ---- gui_window_table ---------------------------------------------------- */
