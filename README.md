@@ -16,6 +16,7 @@ NetSurf 3.11 (no JavaScript) with a GNUstep UI, for small machines (Raspberry Pi
 | `gs_window.c` | `gui_window_table`, clipboard table, and the `flo_win_*` bridge: the only place NetSurf types meet UI input |
 | `gs_plot.c`, `gs_layout.c`, `gs_bitmap.c` | cairo plotters, text measuring, bitmaps |
 | `gs_schedule.c`, `gs_fetch.c`, `gs_filetype.c` | from the monkey frontend |
+| `gs_startpage.c` | the start page (bookmark and recent-site tiles; favicons saved as pages load) |
 | `gs_download.c` | downloads: saved to `~/Downloads` (safe unique names, progress on the status line) |
 | `FloPage.m` | page view: paints only the dirty rect into one reusable buffer |
 | `FloTab.m` / `FloBrowser.m` | a tab (one NetSurf window) / a browser window: toolbar, tab strip, hover label |
@@ -32,6 +33,13 @@ downloads, an app icon. Bad certificates are handled by the core (`about:query/s
 Optional JavaScript: `scripts/build_nsgenbind.sh` once (host tool; needs bison >= 3 and flex, `brew install bison flex`
 on a Mac), then `FLO_JS=1 scripts/build_netsurf.sh gnustep`. It stays off until **View > Enable JavaScript** (remembered
 in `~/.netsurf/Choices`, or `FLORENCE_JS=1`); expect it to be slow on a Pi 3 and sites that need a modern engine to still fail.
+
+## Start page
+
+A new tab or window with no address opens a generated local page (`~/.netsurf/start/index.html`): a row of
+bookmark tiles and, below it, recently visited sites (one per site, bookmarked sites left out). Tiles show the
+site's favicon, saved as the core delivers it to `~/.netsurf/favicons/<host>.png`, or a coloured initial until one
+has been seen. The page is regenerated each time one opens. The address bar stays empty on it.
 
 ## Build optimisation
 

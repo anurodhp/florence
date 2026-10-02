@@ -33,6 +33,10 @@ int  flo_schedule_run(void);                    /* ms until the next callback, -
 void flo_open_url(const char *url);             /* new window; NULL: the home page */
 const struct plotter_table *flo_plotters(void); /* cairo plotters; ctx->priv is a cairo_t* */
 const char *flo_resource_dir(void);
+const char *flo_startpage_url(void);            /* writes the start page; its file: URL */
+struct browser_window;
+struct hlcache_handle;
+void flo_favicon_save(struct browser_window *bw, struct hlcache_handle *icon);   /* the core's favicon for bw's page */
 bool flo_js_available(void);                    /* built with FLO_JS=1 */
 bool flo_js_enabled(void);
 void flo_js_set(bool on);                       /* and remembered in ~/.netsurf/Choices */

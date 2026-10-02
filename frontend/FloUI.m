@@ -159,7 +159,11 @@ void flo_ui_set_url(void *ui, const char *url)
 	FloTab *t = T(ui);
 	if (url == NULL)
 		return;
-	[t setUrl:[NSString stringWithUTF8String:url]];
+	NSString *u = [NSString stringWithUTF8String:url];
+	/* the start page is shown with an empty address bar (and is never bookmarked or recorded) */
+	if (u != nil && [u hasPrefix:@"file://"] && [u hasSuffix:@"/.netsurf/start/index.html"])
+		u = @"";
+	[t setUrl:u];
 	[t->browser setNeedsChrome];
 }
 

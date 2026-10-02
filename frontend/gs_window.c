@@ -153,6 +153,12 @@ static void gw_place_caret(struct gui_window *gw, int x, int y, int height, cons
 		flo_ui_place_caret(gw->ui, x, y, height);
 }
 
+static void gw_set_icon(struct gui_window *gw, struct hlcache_handle *icon)
+{
+	if (icon != NULL)
+		flo_favicon_save(gw->bw, icon);       /* kept for the start page's tiles */
+}
+
 static struct gui_window_table window_table = {
 	.create = gw_create,
 	.destroy = gw_destroy,
@@ -164,6 +170,7 @@ static struct gui_window_table window_table = {
 	.set_title = gw_set_title,
 	.set_url = gw_set_url,
 	.set_status = gw_set_status,
+	.set_icon = gw_set_icon,
 	.set_pointer = gw_set_pointer,
 	.place_caret = gw_place_caret,
 };
@@ -203,6 +210,8 @@ void flo_win_new_tab(struct gui_window *gw, const char *url)
 	nsurl *u = NULL;
 	struct browser_window *bw = NULL;
 
+	if (url == NULL)
+		url = flo_startpage_url();        /* a new tab shows the start page (NULL if it cannot be written: blank) */
 	if (url != NULL && nsurl_create(url, &u) != NSERROR_OK)
 		return;
 	browser_window_create(BW_CREATE_HISTORY | BW_CREATE_TAB | BW_CREATE_FOREGROUND | BW_CREATE_FOCUS_LOCATION,

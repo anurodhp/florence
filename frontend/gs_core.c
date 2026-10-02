@@ -252,8 +252,11 @@ void flo_open_url(const char *url)
 	nserror err;
 
 	flo_trace("open_url");
-	if (url == NULL || *url == '\0')
-		url = nsoption_charp(homepage_url) != NULL ? nsoption_charp(homepage_url) : "about:welcome";
+	if (url == NULL || *url == '\0') {
+		url = flo_startpage_url();        /* bookmarks and recent sites, like Safari's start page */
+		if (url == NULL)
+			url = nsoption_charp(homepage_url) != NULL ? nsoption_charp(homepage_url) : "about:welcome";
+	}
 	if (nsurl_create(url, &u) != NSERROR_OK) {
 		flo_trace("open_url: nsurl_create failed");
 		return;
