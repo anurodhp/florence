@@ -135,12 +135,10 @@ static void gw_set_pointer(struct gui_window *gw, enum gui_pointer_shape shape)
 	flo_ui_set_pointer(gw->ui, p);
 }
 
-static nserror gw_place_caret(struct gui_window *gw, int x, int y, int height, const struct rect *clip)
+static void gw_place_caret(struct gui_window *gw, int x, int y, int height, const struct rect *clip)
 {
-	if (NOUI(gw))
-		return NSERROR_OK;
-	flo_ui_place_caret(gw->ui, x, y, height);
-	return NSERROR_OK;
+	if (!NOUI(gw))
+		flo_ui_place_caret(gw->ui, x, y, height);
 }
 
 static struct gui_window_table window_table = {
