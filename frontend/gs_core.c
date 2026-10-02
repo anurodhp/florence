@@ -67,6 +67,11 @@ static char **init_resources(void)
 
 static nserror flo_schedule(int ms, void (*cb)(void *p), void *p)
 {
+	static int seen;
+	if (seen < 4 && getenv("FLORENCE_TRACE") != NULL) {
+		seen++;
+		fprintf(stderr, "florence: schedule(%d ms, %p)\n", ms, (void *)cb);
+	}
 	nserror err = gs_schedule(ms, cb, p);
 	flo_ui_wake();          /* the UI's timer may be sleeping past this new deadline */
 	return err;
@@ -186,15 +191,20 @@ void flo_open_url(const char *url)
 {
 	nsurl *u = NULL;
 	struct browser_window *bw = NULL;
+	nserror err;
 
 	flo_trace("open_url");
 	if (url == NULL || *url == '\0')
 		url = nsoption_charp(homepage_url) != NULL ? nsoption_charp(homepage_url) : "about:welcome";
-	if (nsurl_create(url, &u) != NSERROR_OK)
+	if (nsurl_create(url, &u) != NSERROR_OK) {
+		flo_trace("open_url: nsurl_create failed");
 		return;
-	browser_window_create(BW_CREATE_HISTORY, u, NULL, NULL, &bw);
+	}
+	flo_trace("open_url: url parsed, calling browser_window_create");
+	err = browser_window_create(BW_CREATE_HISTORY, u, NULL, NULL, &bw);
 	nsurl_unref(u);
-	flo_trace("open_url: created");
+	if (getenv("FLORENCE_TRACE") != NULL)
+		fprintf(stderr, "florence: open_url: browser_window_create returned %d, bw=%p\n", (int)err, (void *)bw);
 }
 
 const char *flo_resource_dir(void)

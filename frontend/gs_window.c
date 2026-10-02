@@ -51,6 +51,7 @@ static void gw_destroy(struct gui_window *gw)
 
 static nserror gw_invalidate(struct gui_window *gw, const struct rect *r)
 {
+	flo_trace("window: invalidate");
 	if (NOUI(gw))
 		return NSERROR_OK;
 	if (r == NULL)
