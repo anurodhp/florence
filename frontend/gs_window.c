@@ -4,6 +4,7 @@
  * page coordinates; everything NetSurf-typed stays in this file.
  * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
  */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -16,6 +17,9 @@
 #include "netsurf/plotters.h"
 #include "netsurf/window.h"
 #include "netsurf/clipboard.h"
+#include "netsurf/content.h"
+#include "netsurf/content_type.h"
+#include "desktop/search.h"
 
 #include "desktop/browser_history.h"         /* browser_window_history_back/forward/..._available */
 
@@ -218,6 +222,75 @@ void flo_win_new_tab(struct gui_window *gw, const char *url)
 			      u, NULL, gw->bw, &bw);
 	if (u != NULL)
 		nsurl_unref(u);
+}
+
+void flo_win_features(struct gui_window *gw, int x, int y, struct flo_features *f)
+{
+	struct browser_window_features bf;
+	char *sel;
+
+	memset(f, 0, sizeof(*f));
+	memset(&bf, 0, sizeof(bf));
+	if (browser_window_get_features(gw->bw, x, y, &bf) == NSERROR_OK) {
+		/* both URLs belong to the page: copy them, release nothing */
+		if (bf.link != NULL)
+			f->link = strdup(nsurl_access(bf.link));
+		if (bf.object != NULL && content_get_type(bf.object) == CONTENT_IMAGE) {
+			nsurl *iu = hlcache_handle_get_url(bf.object);
+
+			if (iu != NULL)
+				f->image = strdup(nsurl_access(iu));
+		}
+		f->text_field = bf.form_features == CTX_FORM_TEXT;
+	}
+	sel = browser_window_get_selection(gw->bw);
+	if (sel != NULL) {
+		f->selection = sel[0] != '\0';
+		free(sel);
+	}
+}
+
+void flo_win_open_link_tab(struct gui_window *gw, const char *url, bool foreground)
+{
+	nsurl *u = NULL;
+	struct browser_window *bw = NULL;
+
+	if (url == NULL || nsurl_create(url, &u) != NSERROR_OK)
+		return;
+	browser_window_create(BW_CREATE_HISTORY | BW_CREATE_TAB | (foreground ? BW_CREATE_FOREGROUND : 0),
+			      u, browser_window_access_url(gw->bw), gw->bw, &bw);
+	nsurl_unref(u);
+}
+
+void flo_win_find(struct gui_window *gw, const char *text, bool forwards, bool case_sensitive)
+{
+	if (text == NULL || text[0] == '\0') {
+		browser_window_search_clear(gw->bw);
+		return;
+	}
+	browser_window_search(gw->bw, gw->ui,
+			      (forwards ? SEARCH_FLAG_FORWARDS : SEARCH_FLAG_BACKWARDS) |
+			      (case_sensitive ? SEARCH_FLAG_CASE_SENSITIVE : 0) | SEARCH_FLAG_SHOWALL,
+			      text);
+}
+
+void flo_win_find_clear(struct gui_window *gw) { browser_window_search_clear(gw->bw); }
+
+int flo_win_zoom(struct gui_window *gw, int step)
+{
+	float now = browser_window_get_scale(gw->bw), next;
+	char msg[32];
+
+	if (step == 0)
+		next = 1.0f;
+	else
+		next = now + 0.1f * (float)step;
+	if (next < 0.3f || next > 3.0f)
+		return (int)(now * 100 + 0.5f);
+	browser_window_set_scale(gw->bw, next, true);
+	snprintf(msg, sizeof(msg), "Zoom %d%%", (int)(next * 100 + 0.5f));
+	flo_ui_set_status(gw->ui, msg);
+	return (int)(next * 100 + 0.5f);
 }
 
 void flo_win_reload(struct gui_window *gw) { browser_window_reload(gw->bw, true); }

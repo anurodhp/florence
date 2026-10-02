@@ -9,6 +9,7 @@ NSString *const FloBookmarksChanged = @"FloBookmarksChanged";
 #define BTN_W 28.0
 #define BTN_H 26.0
 #define TAB_H 26.0
+#define FIND_H 34.0
 
 static NSMutableArray *allBrowsers;
 
@@ -95,6 +96,44 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 	[status setHidden:YES];
 	[container addSubview:status];
 
+	/* the find bar: hidden until Cmd-F */
+	findBar = [[[FloToolbarBand alloc] initWithFrame:NSMakeRect(0, 0, 100, FIND_H)] autorelease];
+	[findBar setHidden:YES];
+	[cv addSubview:findBar];
+	{
+		NSTextField *lab = [[[NSTextField alloc] initWithFrame:NSMakeRect(12, 8, 40, 18)] autorelease];
+		[lab setStringValue:@"Find:"];
+		[lab setEditable:NO];
+		[lab setSelectable:NO];
+		[lab setBezeled:NO];
+		[lab setDrawsBackground:NO];
+		[lab setFont:[NSFont systemFontOfSize:12]];
+		[findBar addSubview:lab];
+	}
+	findField = [[[NSTextField alloc] initWithFrame:NSMakeRect(54, 5, 300, 24)] autorelease];
+	[findField setDelegate:(id)self];
+	[findField setTarget:self];
+	[findField setAction:@selector(findNextAction:)];       /* Return: the next match */
+	[findBar addSubview:findField];
+	findPrev = makeButton(FloIconBack, self, @selector(findPrevAction:), findBar);
+	findNext = makeButton(FloIconForward, self, @selector(findNextAction:), findBar);
+	findStatus = [[[NSTextField alloc] initWithFrame:NSMakeRect(0, 8, 80, 18)] autorelease];
+	[findStatus setEditable:NO];
+	[findStatus setSelectable:NO];
+	[findStatus setBezeled:NO];
+	[findStatus setDrawsBackground:NO];
+	[findStatus setTextColor:[NSColor colorWithCalibratedRed:0.75 green:0.15 blue:0.15 alpha:1.0]];
+	[findStatus setFont:[NSFont systemFontOfSize:12]];
+	[findBar addSubview:findStatus];
+	{
+		NSButton *done = [[[NSButton alloc] initWithFrame:NSMakeRect(0, 5, 60, 24)] autorelease];
+		[done setTitle:@"Done"];
+		[done setTarget:self];
+		[done setAction:@selector(hideFindAction:)];
+		[done setTag:77];
+		[findBar addSubview:done];
+	}
+
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(bookmarksChanged:)
 		name:FloBookmarksChanged object:nil];
 	[[FloBrowser all] addObject:self];
@@ -140,7 +179,25 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 	[addr setFrame:NSMakeRect(10 + 2 * BTN_W + 12, y, W - (10 + 2 * BTN_W + 12) - (10 + 2 * BTN_W + 12), BTN_H)];
 	[strip setHidden:stripH == 0];
 	[strip setFrame:NSMakeRect(0, top - stripH, W, stripH)];
-	[container setFrame:NSMakeRect(0, 0, W, top - stripH)];
+	{
+		CGFloat findH = findVisible ? FIND_H : 0, fy = top - stripH - findH;
+		NSView *done = [findBar viewWithTag:77];
+
+		[findBar setFrame:NSMakeRect(0, fy, W, findH)];
+		[findBar setHidden:!findVisible];
+		[findField setFrame:NSMakeRect(54, 5, MAX(120.0, MIN(360.0, W - 54 - 230)), 24)];
+		[findPrev setFrame:NSMakeRect(NSMaxX([findField frame]) + 6, 4, BTN_W, BTN_H)];
+		[findNext setFrame:NSMakeRect(NSMaxX([findField frame]) + 6 + BTN_W, 4, BTN_W, BTN_H)];
+		[findStatus setFrame:NSMakeRect(NSMaxX([findNext frame]) + 8, 8, 80, 18)];
+		[done setFrame:NSMakeRect(W - 72, 5, 60, 24)];
+		[container setFrame:NSMakeRect(0, 0, W, fy)];
+		if (findVisible) {              /* a view resized while hidden is not repainted by itself */
+			[findBar setNeedsDisplay:YES];
+			NSUInteger k;
+			for (k = 0; k < [[findBar subviews] count]; k++)
+				[[[findBar subviews] objectAtIndex:k] setNeedsDisplay:YES];
+		}
+	}
 	if (current != nil)
 		[current->scroll setFrame:[container bounds]];
 	[strip setNeedsDisplay:YES];
@@ -316,6 +373,66 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 
 - (void)bookmarkAction:(id)sender { [self toggleBookmark]; }
 - (void)bookmarksChanged:(NSNotification *)n { [self setNeedsChrome]; }
+
+/* ---- find in page, zoom ---------------------------------------------------------- */
+
+- (void)showFind
+{
+	findVisible = YES;
+	[self relayout];
+	[win makeFirstResponder:findField];
+	[findField selectText:nil];
+	if ([[findField stringValue] length] > 0)
+		[self runFind:YES];
+}
+
+- (void)hideFind
+{
+	if (!findVisible)
+		return;
+	findVisible = NO;
+	if (current != nil && current->gw != NULL)
+		flo_win_find_clear(current->gw);
+	[findStatus setStringValue:@""];
+	[self relayout];
+	if (current != nil)
+		[win makeFirstResponder:current->page];
+}
+
+- (void)runFind:(BOOL)forwards
+{
+	NSString *t = [findField stringValue];
+	if (current == nil || current->gw == NULL)
+		return;
+	if ([t length] == 0)
+		[findStatus setStringValue:@""];
+	flo_win_find(current->gw, [t UTF8String], forwards, NO);
+}
+
+- (void)findNextAction:(id)s { [self runFind:YES]; }
+- (void)findPrevAction:(id)s { [self runFind:NO]; }
+- (void)hideFindAction:(id)s { [self hideFind]; }
+- (void)controlTextDidChange:(NSNotification *)n { if ([n object] == findField) [self runFind:YES]; }
+
+- (BOOL)control:(NSControl *)c textView:(NSTextView *)tv doCommandBySelector:(SEL)sel
+{
+	if (c == findField && sel == @selector(cancelOperation:)) {      /* Escape */
+		[self hideFind];
+		return YES;
+	}
+	return NO;
+}
+
+- (void)setFindFound:(BOOL)found
+{
+	[findStatus setStringValue:(!found && [[findField stringValue] length] > 0) ? @"Not found" : @""];
+}
+
+- (void)zoom:(int)step
+{
+	if (current != nil && current->gw != NULL)
+		flo_win_zoom(current->gw, step);
+}
 
 - (void)focusLocation
 {

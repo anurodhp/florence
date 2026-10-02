@@ -89,6 +89,32 @@ void flo_win_extent(struct gui_window *gw, int *w, int *h);      /* page size */
 void flo_win_mouse(struct gui_window *gw, int kind, int mods, int x, int y);
 bool flo_win_key(struct gui_window *gw, unsigned key, int mods); /* true: the page used it */
 
+/* What is under a point of the page (for the context menu and Cmd-click). The strings are malloc'd:
+ * free() them. */
+struct flo_features {
+	char *link;                     /* the link's address, or NULL */
+	char *image;                    /* the image's address, or NULL */
+	bool text_field;                /* a text input */
+	bool selection;                 /* the page has selected text */
+};
+void flo_win_features(struct gui_window *gw, int x, int y, struct flo_features *f);
+void flo_win_open_link_tab(struct gui_window *gw, const char *url, bool foreground);
+
+/* find in page; results come back through flo_ui_find_status */
+void flo_win_find(struct gui_window *gw, const char *text, bool forwards, bool case_sensitive);
+void flo_win_find_clear(struct gui_window *gw);
+
+/* zoom: step +1/-1 (10 %), 0 resets to 100 %; returns the new percentage */
+int  flo_win_zoom(struct gui_window *gw, int step);
+
+/* settings, remembered in ~/.netsurf/Choices */
+bool flo_opt_hide_ads(void);
+void flo_opt_set_hide_ads(bool on);
+bool flo_opt_dnt(void);
+void flo_opt_set_dnt(bool on);
+int  flo_opt_font_min(void);                    /* tenths of a point: 85 = 8.5 pt */
+void flo_opt_set_font_min(int tenths);
+
 /* ---- UI, called by the C glue (FloUI.m) --------------------------------- */
 char *flo_ui_clipboard_get(size_t *len);                         /* malloc'd UTF-8, or NULL */
 void  flo_ui_clipboard_set(const char *text, size_t len);
@@ -109,6 +135,7 @@ void  flo_ui_set_pointer(void *ui, int flo_pointer);   /* enum flo_pointer */
 void  flo_ui_throbber(void *ui, bool on);
 void  flo_ui_place_caret(void *ui, int x, int y, int height);
 void  flo_ui_remove_caret(void *ui);
+void  flo_ui_find_status(void *ui, bool found);   /* the last find matched / did not */
 void  flo_ui_wake(void);                        /* a callback was scheduled: re-arm the timer */
 void  flo_ui_quit(void);
 

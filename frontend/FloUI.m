@@ -196,6 +196,13 @@ void flo_ui_place_caret(void *ui, int x, int y, int height)
 	[T(ui)->page placeCaret:NSMakeRect(x, y, 1, height)];
 }
 
+void flo_ui_find_status(void *ui, bool found)
+{
+	FloTab *t = T(ui);
+	if (t->browser != nil && t->browser->current == t)
+		[t->browser setFindFound:found];
+}
+
 void flo_ui_remove_caret(void *ui) { [T(ui)->page removeCaret]; }
 
 char *flo_ui_clipboard_get(size_t *len)
@@ -312,6 +319,24 @@ static void refreshHistoryMenu(void) { fillStoreMenu(historyMenu, [FloStore hist
 	fillStoreMenu(bookmarksMenu, [FloStore bookmarks], 2, 60);
 }
 
+- (void)showFind:(id)s { [[FloBrowser key] showFind]; }
+- (void)findNext:(id)s { [[FloBrowser key] runFind:YES]; }
+- (void)findPrevious:(id)s { [[FloBrowser key] runFind:NO]; }
+- (void)zoomIn:(id)s { [[FloBrowser key] zoom:1]; }
+- (void)zoomOut:(id)s { [[FloBrowser key] zoom:-1]; }
+- (void)zoomReset:(id)s { [[FloBrowser key] zoom:0]; }
+
+- (void)reloadCurrent
+{
+	FloBrowser *b = [FloBrowser key];
+	if (b != nil && b->current != nil && b->current->gw != NULL)
+		flo_win_reload(b->current->gw);         /* these settings apply to a page when it is loaded */
+}
+
+- (void)toggleHideAds:(id)s { flo_opt_set_hide_ads(!flo_opt_hide_ads()); [self reloadCurrent]; }
+- (void)toggleDNT:(id)s { flo_opt_set_dnt(!flo_opt_dnt()); }
+- (void)setMinFont:(id)item { flo_opt_set_font_min((int)[item tag]); [self reloadCurrent]; }
+
 - (void)toggleJS:(id)s
 {
 	FloBrowser *b = [FloBrowser key];
@@ -333,6 +358,18 @@ static void refreshHistoryMenu(void) { fillStoreMenu(historyMenu, [FloStore hist
 		[item setState:flo_js_enabled() ? NSOnState : NSOffState];
 		return flo_js_available() && b != nil;
 	}
+	if (a == @selector(toggleHideAds:)) {
+		[item setState:flo_opt_hide_ads() ? NSOnState : NSOffState];
+		return YES;
+	}
+	if (a == @selector(toggleDNT:)) {
+		[item setState:flo_opt_dnt() ? NSOnState : NSOffState];
+		return YES;
+	}
+	if (a == @selector(setMinFont:)) {
+		[item setState:flo_opt_font_min() == [item tag] ? NSOnState : NSOffState];
+		return YES;
+	}
 	if (a == @selector(newWindow:) || a == @selector(terminate:) || a == @selector(openStored:) ||
 	    a == @selector(clearHistory:))
 		return YES;
@@ -344,6 +381,8 @@ static void refreshHistoryMenu(void) { fillStoreMenu(historyMenu, [FloStore hist
 		return flo_win_can_forward(t->gw);
 	if (a == @selector(nextTab:) || a == @selector(previousTab:))
 		return [b->tabs count] > 1;
+	if (a == @selector(findNext:) || a == @selector(findPrevious:))
+		return b->findVisible;
 	if (a == @selector(bookmarkPage:)) {
 		[item setTitle:[[FloStore bookmarks] contains:t->url] ? @"Remove Bookmark" : @"Bookmark This Page"];
 		return [t->url length] > 0;
@@ -386,6 +425,10 @@ static void buildMenus(FloApp *app)
 	addItem(m, @"Copy", @selector(copy:), @"c", nil);
 	addItem(m, @"Paste", @selector(paste:), @"v", nil);
 	addItem(m, @"Select All", @selector(selectAll:), @"a", nil);
+	[m addItem:[NSMenuItem separatorItem]];
+	addItem(m, @"Find...", @selector(showFind:), @"f", app);
+	addItem(m, @"Find Next", @selector(findNext:), @"g", app);
+	addItem(m, @"Find Previous", @selector(findPrevious:), @"G", app);
 
 	m = addSubmenu(bar, @"Go");
 	addItem(m, @"Back", @selector(goBack:), @"[", app);
@@ -397,6 +440,23 @@ static void buildMenus(FloApp *app)
 
 	m = addSubmenu(bar, @"View");
 	addItem(m, @"Enable JavaScript", @selector(toggleJS:), @"", app);
+	[m addItem:[NSMenuItem separatorItem]];
+	addItem(m, @"Zoom In", @selector(zoomIn:), @"+", app);
+	addItem(m, @"Zoom Out", @selector(zoomOut:), @"-", app);
+	addItem(m, @"Actual Size", @selector(zoomReset:), @"0", app);
+	[m addItem:[NSMenuItem separatorItem]];
+	addItem(m, @"Hide Ads", @selector(toggleHideAds:), @"", app);
+	addItem(m, @"Send Do Not Track", @selector(toggleDNT:), @"", app);
+	{
+		NSMenu *sub = addSubmenu(m, @"Minimum Font Size");
+		static const struct { const char *title; int tenths; } sizes[] = {
+			{ "Default (8.5 pt)", 85 }, { "10 pt", 100 }, { "12 pt", 120 }, { "14 pt", 140 }, { "16 pt", 160 } };
+		int i;
+
+		for (i = 0; i < 5; i++)
+			[addItem(sub, [NSString stringWithUTF8String:sizes[i].title], @selector(setMinFont:), @"", app)
+				setTag:sizes[i].tenths];
+	}
 
 	m = addSubmenu(bar, @"Bookmarks");
 	bookmarksMenu = m;

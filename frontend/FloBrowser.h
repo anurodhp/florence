@@ -21,6 +21,10 @@ extern NSString *const FloBookmarksChanged;      /* posted when the bookmark lis
 	FloTabStrip *strip;
 	NSView *container;
 	FloStatusLabel *status;
+	NSView *findBar;                /* Cmd-F */
+	NSTextField *findField, *findStatus;
+	FloToolButton *findPrev, *findNext;
+	BOOL findVisible;
 	NSMutableArray *tabs;
 	FloTab *current;
 	BOOL closing, chromePending;
@@ -42,6 +46,11 @@ extern NSString *const FloBookmarksChanged;      /* posted when the bookmark lis
 - (void)nextTab:(int)delta;
 - (void)newTab;
 - (void)toggleBookmark;
+- (void)showFind;                       /* the find bar under the toolbar */
+- (void)hideFind;
+- (void)runFind:(BOOL)forwards;
+- (void)setFindFound:(BOOL)found;
+- (void)zoom:(int)step;                 /* +1 / -1 / 0 (reset) */
 - (void)goBack:(id)sender;
 - (void)goForward:(id)sender;
 - (void)reloadOrStop:(id)sender;

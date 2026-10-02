@@ -32,6 +32,7 @@
 #include "netsurf/layout.h"
 #include "netsurf/clipboard.h"
 #include "netsurf/download.h"
+#include "netsurf/search.h"
 #include "content/urldb.h"
 
 #include "gnustep/gs.h"
@@ -43,6 +44,7 @@ extern struct gui_window_table *flo_window_table;
 extern struct gui_clipboard_table *flo_clipboard_table;
 extern struct gui_bitmap_table *flo_bitmap_table;
 extern struct gui_download_table *flo_download_table;
+extern struct gui_search_table *flo_search_table;
 extern struct gui_layout_table *flo_layout_table;
 
 char **respaths;                /* resource search path (gs_fetch.c uses it) */
@@ -190,6 +192,7 @@ int flo_core_init(int argc, char **argv)
 	table.window = flo_window_table;
 	table.clipboard = flo_clipboard_table;
 	table.download = flo_download_table;
+	table.search = flo_search_table;
 	table.fetch = gs_fetch_table;
 	table.bitmap = flo_bitmap_table;
 	table.layout = flo_layout_table;
@@ -282,15 +285,44 @@ bool flo_js_enabled(void)
 	return flo_js_available() && nsoption_bool(enable_javascript);
 }
 
-void flo_js_set(bool on)
+/* Write ~/.netsurf/Choices with only what the user chose: the low-power values apply_overrides()
+ * imposes on every start are put back to NetSurf's defaults for the write, then restored. */
+static void save_choices(void)
 {
 	char path[PATH_MAX];
+	int mc = nsoption_int(memory_cache_size), mf = nsoption_int(max_fetchers);
+	int mfh = nsoption_int(max_fetchers_per_host), mch = nsoption_int(max_cached_fetch_handles);
+	bool ai = nsoption_bool(animate_images), csm = nsoption_bool(core_select_menu);
 
+	nsoption_set_int(memory_cache_size, nsoptions_default[NSOPTION_memory_cache_size].value.i);
+	nsoption_set_int(max_fetchers, nsoptions_default[NSOPTION_max_fetchers].value.i);
+	nsoption_set_int(max_fetchers_per_host, nsoptions_default[NSOPTION_max_fetchers_per_host].value.i);
+	nsoption_set_int(max_cached_fetch_handles, nsoptions_default[NSOPTION_max_cached_fetch_handles].value.i);
+	nsoption_set_bool(animate_images, nsoptions_default[NSOPTION_animate_images].value.b);
+	nsoption_set_bool(core_select_menu, nsoptions_default[NSOPTION_core_select_menu].value.b);
+	nsoption_write(home_path(path, sizeof(path), "Choices"), nsoptions, nsoptions_default);
+	nsoption_set_int(memory_cache_size, mc);
+	nsoption_set_int(max_fetchers, mf);
+	nsoption_set_int(max_fetchers_per_host, mfh);
+	nsoption_set_int(max_cached_fetch_handles, mch);
+	nsoption_set_bool(animate_images, ai);
+	nsoption_set_bool(core_select_menu, csm);
+}
+
+void flo_js_set(bool on)
+{
 	if (!flo_js_available())
 		return;
 	nsoption_set_bool(enable_javascript, on);
-	nsoption_write(home_path(path, sizeof(path), "Choices"), nsoptions, nsoptions_default);
+	save_choices();
 }
+
+bool flo_opt_hide_ads(void) { return nsoption_bool(block_advertisements); }
+void flo_opt_set_hide_ads(bool on) { nsoption_set_bool(block_advertisements, on); save_choices(); }
+bool flo_opt_dnt(void) { return nsoption_bool(do_not_track); }
+void flo_opt_set_dnt(bool on) { nsoption_set_bool(do_not_track, on); save_choices(); }
+int flo_opt_font_min(void) { return nsoption_int(font_min_size); }
+void flo_opt_set_font_min(int tenths) { nsoption_set_int(font_min_size, tenths); save_choices(); }
 
 const char *flo_resource_dir(void)
 {

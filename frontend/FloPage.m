@@ -3,6 +3,7 @@
 #include <cairo.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define DRAG_SLOP 5.0
 
@@ -182,13 +183,17 @@ static int mods_of(NSEvent *e)
 	pressed = YES;
 	dragging = NO;
 	pressPoint = p;
+	/* Command (Alt here) + click opens the link in a new tab, decided on release; the page never sees it */
+	cmdClick = ([e modifierFlags] & (NSCommandKeyMask | NSAlternateKeyMask)) != 0;
+	if (cmdClick)
+		return;
 	flo_win_mouse(gw, FLO_MOUSE_PRESS, mods_of(e), (int)p.x, (int)p.y);
 }
 
 - (void)mouseDragged:(NSEvent *)e
 {
 	NSPoint p = [self pageLocation:e];
-	if (gw == NULL || !pressed)
+	if (gw == NULL || !pressed || cmdClick)
 		return;
 	if (!dragging) {
 		if (fabs(p.x - pressPoint.x) < DRAG_SLOP && fabs(p.y - pressPoint.y) < DRAG_SLOP)
@@ -206,6 +211,11 @@ static int mods_of(NSEvent *e)
 	if (gw == NULL || !pressed)
 		return;
 	pressed = NO;
+	if (cmdClick) {
+		cmdClick = NO;
+		[self openLinkAt:pressPoint foreground:([e modifierFlags] & NSShiftKeyMask) != 0];
+		return;
+	}
 	if (dragging) {
 		dragging = NO;
 		flo_win_mouse(gw, FLO_MOUSE_DRAG_END, mods_of(e), (int)p.x, (int)p.y);
@@ -214,6 +224,96 @@ static int mods_of(NSEvent *e)
 			      mods_of(e), (int)p.x, (int)p.y);
 	}
 }
+
+/* open the link under p in a new tab (a background one unless asked) */
+- (void)openLinkAt:(NSPoint)p foreground:(BOOL)fg
+{
+	struct flo_features f;
+	flo_win_features(gw, (int)p.x, (int)p.y, &f);
+	if (f.link != NULL)
+		flo_win_open_link_tab(gw, f.link, fg);
+	free(f.link);
+	free(f.image);
+}
+
+- (void)otherMouseDown:(NSEvent *)e { }
+
+- (void)otherMouseUp:(NSEvent *)e          /* the middle button */
+{
+	if (gw != NULL && [e buttonNumber] == 2)
+		[self openLinkAt:[self pageLocation:e] foreground:NO];
+}
+
+/* ---- the context menu ---------------------------------------------------------------- */
+
+- (void)addItem:(NSString *)title action:(SEL)a object:(NSString *)o to:(NSMenu *)m
+{
+	NSMenuItem *i = [m addItemWithTitle:title action:a keyEquivalent:@""];
+	[i setTarget:self];
+	[i setRepresentedObject:o];
+}
+
+- (void)rightMouseDown:(NSEvent *)e
+{
+	NSPoint p = [self pageLocation:e];
+	struct flo_features f;
+	NSMenu *m = [[[NSMenu alloc] initWithTitle:@""] autorelease];
+
+	if (gw == NULL)
+		return;
+	[[self window] makeFirstResponder:self];
+	flo_win_features(gw, (int)p.x, (int)p.y, &f);
+	if (f.link != NULL) {
+		NSString *l = [NSString stringWithUTF8String:f.link];
+		[self addItem:@"Open Link" action:@selector(openLinkHere:) object:l to:m];
+		[self addItem:@"Open Link in New Tab" action:@selector(openLinkTab:) object:l to:m];
+		[self addItem:@"Copy Link Address" action:@selector(copyAddress:) object:l to:m];
+		[m addItem:[NSMenuItem separatorItem]];
+	}
+	if (f.image != NULL) {
+		NSString *l = [NSString stringWithUTF8String:f.image];
+		[self addItem:@"Open Image in New Tab" action:@selector(openLinkTab:) object:l to:m];
+		[self addItem:@"Copy Image Address" action:@selector(copyAddress:) object:l to:m];
+		[m addItem:[NSMenuItem separatorItem]];
+	}
+	if (f.text_field) {
+		[self addItem:@"Cut" action:@selector(cut:) object:nil to:m];
+		[self addItem:@"Copy" action:@selector(copy:) object:nil to:m];
+		[self addItem:@"Paste" action:@selector(paste:) object:nil to:m];
+		[m addItem:[NSMenuItem separatorItem]];
+	} else if (f.selection) {
+		[self addItem:@"Copy" action:@selector(copy:) object:nil to:m];
+		[m addItem:[NSMenuItem separatorItem]];
+	}
+	[self addItem:@"Back" action:@selector(menuBack:) object:nil to:m];
+	[self addItem:@"Forward" action:@selector(menuForward:) object:nil to:m];
+	[self addItem:@"Reload" action:@selector(menuReload:) object:nil to:m];
+	free(f.link);
+	free(f.image);
+	[NSMenu popUpContextMenu:m withEvent:e forView:self];
+}
+
+- (BOOL)validateMenuItem:(NSMenuItem *)item
+{
+	if (gw == NULL)
+		return NO;
+	if ([item action] == @selector(menuBack:))
+		return flo_win_can_back(gw);
+	if ([item action] == @selector(menuForward:))
+		return flo_win_can_forward(gw);
+	return YES;
+}
+
+- (void)openLinkHere:(id)i { if (gw) flo_win_navigate(gw, [[i representedObject] UTF8String]); }
+- (void)openLinkTab:(id)i { if (gw) flo_win_open_link_tab(gw, [[i representedObject] UTF8String], YES); }
+- (void)copyAddress:(id)i
+{
+	const char *u = [[i representedObject] UTF8String];
+	flo_ui_clipboard_set(u, strlen(u));
+}
+- (void)menuBack:(id)i { if (gw) flo_win_back(gw); }
+- (void)menuForward:(id)i { if (gw) flo_win_forward(gw); }
+- (void)menuReload:(id)i { if (gw) flo_win_reload(gw); }
 
 /* the wheel and the scrollers are the NSScrollView's own */
 

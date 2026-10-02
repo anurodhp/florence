@@ -15,11 +15,12 @@
 	size_t rgbCap;
 	NSRect caret;
 	BOOL hasCaret;
-	BOOL dragging, pressed;
+	BOOL dragging, pressed, cmdClick;
 	NSPoint pressPoint;
 	NSCursor *cursor;
 }
 - (id)initWithGuiWindow:(struct gui_window *)g;
+- (void)openLinkAt:(NSPoint)p foreground:(BOOL)fg;       /* the link under p, in a new tab */
 - (void)detach;                         /* the core is done with the window: stop calling it */
 - (void)invalidatePageRect:(NSRect)r;
 - (void)placeCaret:(NSRect)r;
