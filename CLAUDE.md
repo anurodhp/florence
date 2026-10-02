@@ -56,7 +56,7 @@ Linux/macOS habits; they are wrong here.
     scripts/build_netsurf.sh monkey      # headless smoke test; proven on the Pi
     scripts/build_netsurf.sh gnustep     # the browser -> build/root/Applications/Florence.app
     tools/deploy_to_pi.sh                # PI_HOST/PI_USER/PI_PASS (default password "darwin", test image)
-    # optional JavaScript:  scripts/build_nsgenbind.sh  then  FLO_JS=1 scripts/build_netsurf.sh gnustep
+    # optional JavaScript (does every step, in order):  scripts/enable_js.sh [--check] [--deploy]
 
 `build_netsurf.sh` compiles the C glue through NetSurf's own make (`frontend/` is copied to
 `netsurf/frontends/gnustep/`), compiles the `.m` files itself, skips NetSurf's link step and

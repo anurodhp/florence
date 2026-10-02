@@ -30,8 +30,9 @@ NetSurf 3.11 (no JavaScript) with a GNUstep UI, for small machines (Raspberry Pi
 A Safari-style toolbar (icon buttons, rounded address bar with a padlock for https and reload/stop inside, a
 bookmark star, `+` for a new tab). Tabs (strip shown with two or more; Cmd-T / Cmd-W, Cmd-{ / Cmd-}), bookmarks (Cmd-D toggles) and history menus,
 downloads, an app icon. Bad certificates are handled by the core (`about:query/ssl`: Proceed / Back to safety).
-Optional JavaScript: `scripts/build_nsgenbind.sh` once (host tool; needs bison >= 3 and flex, `brew install bison flex`
-on a Mac), then `FLO_JS=1 scripts/build_netsurf.sh gnustep`. It stays off until **View > Enable JavaScript** (remembered
+Optional JavaScript: run `scripts/enable_js.sh` (add `--deploy` to copy it to the Pi; `--check` lists what is missing).
+It fetches and builds the host tool nsgenbind (needs bison >= 3 and flex: `brew install bison flex` on a Mac), then
+does `FLO_JS=1 scripts/build_netsurf.sh gnustep` and checks the result contains Duktape. It stays off until **View > Enable JavaScript** (remembered
 in `~/.netsurf/Choices`, or `FLORENCE_JS=1`); expect it to be slow on a Pi 3 and sites that need a modern engine to still fail.
 
 ## Start page
