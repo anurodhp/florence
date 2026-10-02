@@ -1,0 +1,3 @@
+# fetched sources and build output; setup_third_party.sh and scripts/ reproduce both
+third_party/
+build/
