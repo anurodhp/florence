@@ -3,6 +3,9 @@
 # against the dylibs from build_curl.sh / build_jpeg.sh, the iokit port's libpng
 # and zlib, and the static NetSurf libraries from build_netsurf_libs.sh.
 #   scripts/build_netsurf.sh monkey      # headless test frontend (default)
+#   scripts/build_netsurf.sh gnustep     # Florence: the GNUstep UI (frontend/ in this repo)
+#       needs GNUSTEP_ROOT (prefix with include/ and lib/ of the custom GNUstep and cairo);
+#       optional GNUSTEP_OBJCFLAGS, GNUSTEP_LIBS (dylibs, overrides the lib/ search below).
 # The tree is copied to build/netsurf-src first (the build writes in-tree).
 #
 # Configuration (Makefile.config, below): no JavaScript (Duktape off: it is a large
@@ -37,6 +40,23 @@ sed -i '' "s#-L$SYS #-L$LL #; s#-L$LIB #-L$LL #" "$PC"/*.pc
 
 W="$BUILD/netsurf-src"
 rsync -a --delete --exclude .git "$TP/netsurf/" "$W/"
+EXTRA_CFLAGS=""; EXTRA_LIBS=()
+if [ "$TARGET_FE" = gnustep ]; then
+    : "${GNUSTEP_ROOT:?set GNUSTEP_ROOT to the GNUstep/cairo prefix}"
+    rsync -a --delete "$FL_DIR/frontend/" "$W/frontends/gnustep/"
+    # resources come from the monkey frontend's res/ (Messages, CSS, icons); the UI draws its own chrome
+    mkdir -p "$W/frontends/gnustep/res"; cp -RL "$W/frontends/monkey/res/." "$W/frontends/gnustep/res/"
+    OBJCF="${GNUSTEP_OBJCFLAGS:--fobjc-runtime=gnustep-2.0 -fno-objc-arc -fconstant-string-class=NSConstantString -DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNU_GUI_LIBRARY=1}"
+    CAIROINC="$GNUSTEP_ROOT/include/cairo"; [ -d "$CAIROINC" ] || CAIROINC="$X11INC/cairo"
+    EXTRA_CFLAGS="$OBJCF -I$GNUSTEP_ROOT/include -I$CAIROINC -I$X11INC"
+    if [ -n "${GNUSTEP_LIBS:-}" ]; then read -r -a EXTRA_LIBS <<< "$GNUSTEP_LIBS"; else
+        for l in gnustep-gui gnustep-base objc cairo pixman-1 fontconfig freetype; do
+            f=$(ls "$GNUSTEP_ROOT"/lib/lib$l*.dylib 2>/dev/null | head -1 || true)
+            [ -n "$f" ] || { echo "error: lib$l*.dylib not under $GNUSTEP_ROOT/lib (set GNUSTEP_LIBS)" >&2; exit 1; }
+            EXTRA_LIBS+=("$f")
+        done
+    fi
+fi
 cat > "$W/Makefile.config" <<MK
 override NETSURF_USE_CURL := YES
 override NETSURF_USE_OPENSSL := NO
@@ -59,8 +79,8 @@ export PKG_CONFIG_PATH="$PC" PKG_CONFIG_LIBDIR="$PC"
 # SDK stubs); the objects it built are linked here with tools/common.sh's recipe.
 ( cd "$W" && env \
     CC="$CLANG -isysroot $SDK -target arm64-apple-ios14.4" \
-    CFLAGS="-O2 -fno-builtin -fno-stack-protector -D_FORTIFY_SOURCE=0 -Wno-error -Wno-nullability-completeness -Wno-deprecated-declarations -D_DARWIN_C_SOURCE -DNDEBUG -I$NSROOT/include" \
-    LDFLAGS="-L$NSROOT/lib -L$LL" \
+    CFLAGS="-O2 -fno-builtin -fno-stack-protector -D_FORTIFY_SOURCE=0 -Wno-error -Wno-nullability-completeness -Wno-deprecated-declarations -D_DARWIN_C_SOURCE -DNDEBUG -I$NSROOT/include $EXTRA_CFLAGS" \
+    FLORENCE_CFLAGS="$EXTRA_CFLAGS" LDFLAGS="-L$NSROOT/lib -L$LL" \
     make -k -j4 TARGET="$TARGET_FE" BUILD_CC=cc HOST_CC=cc ) > "$BUILD/netsurf-$TARGET_FE.log" 2>&1 || true
 OBJDIR="$W/build/Darwin-$TARGET_FE"
 if grep -E "\.[chm]:[0-9]+:[0-9]*:? *(fatal )?error:|\*\*\* .*\.o\]" "$BUILD/netsurf-$TARGET_FE.log" | head -20 | grep .; then
@@ -70,7 +90,7 @@ NSA=("$NSROOT"/lib/libcss.a "$NSROOT"/lib/libdom.a "$NSROOT"/lib/libhubbub.a "$N
      "$NSROOT"/lib/libwapcaplet.a "$NSROOT"/lib/libnsutils.a "$NSROOT"/lib/libnsbmp.a "$NSROOT"/lib/libnsgif.a)
 fl_link_exe "$ROOT$PREFIX/bin/ns$TARGET_FE" "$OBJDIR" "${NSA[@]}" \
     "$LIB/libcurl.dylib" "$LIB/libjpeg.dylib" "$SYS/libpng16.dylib" "$SYS/libz.dylib" \
-    "$SYS/libexpat.dylib" "$SYS/libiconv.dylib" "$SYS/libsystem_m.dylib" "${FL_NET_DYLIBS[@]}" "$SYS/libcopyfile.dylib"
+    "${EXTRA_LIBS[@]}" "$SYS/libexpat.dylib" "$SYS/libiconv.dylib" "$SYS/libsystem_m.dylib" "${FL_NET_DYLIBS[@]}" "$SYS/libcopyfile.dylib"
 
 # Frontend resources (CSS, messages, icons) where the search path looks:
 # ${HOME}/.netsurf/ : ${NETSURFRES} : /usr/local/share/netsurf/ (frontends/monkey/main.c).
