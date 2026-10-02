@@ -1,10 +1,11 @@
 #!/bin/bash
 # Copies build/root to the Pi's / over ssh (tar stream, nothing else is touched).
-#   PI_HOST (default 10.0.0.142), PI_USER (root); auth: an ssh key, or PI_PASS.
+#   PI_HOST (default 10.0.0.142), PI_USER (root); auth: PI_PASS (default "darwin", the test
+#   image's root password -- a test LAN only), or PI_PASS= (empty) to use an ssh key instead.
 #   tools/deploy_to_pi.sh [subpath ...]   # e.g. usr/local/lib (default: everything)
 set -euo pipefail
 FL_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
-PI_HOST="${PI_HOST:-10.0.0.142}"; PI_USER="${PI_USER:-root}"
+PI_HOST="${PI_HOST:-10.0.0.142}"; PI_USER="${PI_USER:-root}"; PI_PASS="${PI_PASS-darwin}"
 SSH=(ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new)
 if [ -n "${PI_PASS:-}" ]; then
     T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
