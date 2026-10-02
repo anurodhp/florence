@@ -17,9 +17,7 @@
 #include "netsurf/window.h"
 #include "netsurf/clipboard.h"
 
-#if __has_include("desktop/browser_history.h")
-#include "desktop/browser_history.h"     /* browser_window_history_back/forward in some trees */
-#endif
+#include "desktop/browser_history.h"         /* browser_window_history_back/forward/..._available */
 
 #include "gnustep/gs.h"
 
@@ -167,8 +165,8 @@ void flo_win_reload(struct gui_window *gw) { browser_window_reload(gw->bw, true)
 void flo_win_stop(struct gui_window *gw) { browser_window_stop(gw->bw); }
 void flo_win_back(struct gui_window *gw) { browser_window_history_back(gw->bw, false); }
 void flo_win_forward(struct gui_window *gw) { browser_window_history_forward(gw->bw, false); }
-bool flo_win_can_back(struct gui_window *gw) { return browser_window_back_available(gw->bw); }
-bool flo_win_can_forward(struct gui_window *gw) { return browser_window_forward_available(gw->bw); }
+bool flo_win_can_back(struct gui_window *gw) { return browser_window_history_back_available(gw->bw); }
+bool flo_win_can_forward(struct gui_window *gw) { return browser_window_history_forward_available(gw->bw); }
 void flo_win_close(struct gui_window *gw) { browser_window_destroy(gw->bw); }
 
 void flo_win_redraw(struct gui_window *gw, void *cr, int x0, int y0, int x1, int y1)
