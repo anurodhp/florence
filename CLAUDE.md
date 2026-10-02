@@ -82,6 +82,12 @@ fails, the problem is below Florence.
   registers `gnustep` there in the build copy.
 * Window-table callbacks can arrive while `gw_create` is still running (`gw->ui` not yet assigned);
   the UI stores itself in `gw->ui` at creation and every callback tolerates no UI.
+* NetSurf 3.11 has no certificate-prompt hook for the frontend (`gui_misc_table` has no `cert_verify`):
+  on a failed check the core itself navigates to its `about:query/ssl` page (Proceed / Back to safety),
+  which works without a certificate chain (libcurl here is mbedTLS, not OpenSSL). Nothing to implement.
+* Real NetSurf 3.11 headers can be had without the (blocked) upstream host: Ubuntu's `netsurf` source
+  package is exactly 3.11 with all its libraries. Compile the C glue against it before every push
+  (`gcc -fsyntax-only` with `-I` for netsurf/, netsurf/include and each lib's include/).
 * A segfault on the Pi has no debugger: use `FLORENCE_TRACE=1` and the built-in crash report.
 
 ## Verifying without the Pi
