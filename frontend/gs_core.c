@@ -12,6 +12,10 @@
 #include <string.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <signal.h>
+#include <stdint.h>
+#include <ucontext.h>
+#include <unistd.h>
 
 #include "utils/errors.h"
 #include "utils/log.h"
@@ -109,6 +113,49 @@ static void apply_overrides(void)
 	}
 }
 
+/* ---- crash report --------------------------------------------------------
+ * There is no debugger on the target. On SIGSEGV/SIGBUS print the fault address, pc, lr and a
+ * frame-pointer walk, plus the run-time address of flo_core_init: subtract the address `nm` shows
+ * for flo_core_init in nsgnustep to get the load slide, then look the addresses up with `atos` or
+ * `nm` on the build host. */
+int flo_core_init(int argc, char **argv);
+
+static void on_crash(int sig, siginfo_t *si, void *ctx)
+{
+	fprintf(stderr, "florence: CRASH signal %d, fault address %p\n", sig, si != NULL ? si->si_addr : NULL);
+	fprintf(stderr, "florence: flo_core_init is at %p (slide = this - nm address)\n", (void *)flo_core_init);
+#if defined(__APPLE__) && defined(__arm64__)
+	{
+		ucontext_t *uc = ctx;
+		uintptr_t pc = (uintptr_t)__darwin_arm_thread_state64_get_pc(uc->uc_mcontext->__ss);
+		uintptr_t lr = (uintptr_t)__darwin_arm_thread_state64_get_lr(uc->uc_mcontext->__ss);
+		uintptr_t *f = (uintptr_t *)__darwin_arm_thread_state64_get_fp(uc->uc_mcontext->__ss);
+		int i;
+
+		fprintf(stderr, "florence: pc %p lr %p\n", (void *)pc, (void *)lr);
+		for (i = 0; i < 24 && f != NULL && ((uintptr_t)f & 7) == 0 && (uintptr_t)f > 0x10000; i++) {
+			fprintf(stderr, "florence:   #%d %p\n", i, (void *)f[1]);
+			if ((uintptr_t *)f[0] <= f)
+				break;
+			f = (uintptr_t *)f[0];
+		}
+	}
+#endif
+	signal(sig, SIG_DFL);    /* returning re-runs the faulting instruction: the usual death */
+}
+
+static void install_crash_report(void)
+{
+	struct sigaction sa;
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_sigaction = on_crash;
+	sa.sa_flags = SA_SIGINFO;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGSEGV, &sa, NULL);
+	sigaction(SIGBUS, &sa, NULL);
+}
+
 /* ---- life cycle --------------------------------------------------------- */
 
 void flo_trace(const char *stage)
@@ -131,6 +178,7 @@ int flo_core_init(int argc, char **argv)
 		.layout = flo_layout_table,
 	};
 
+	install_crash_report();
 	snprintf(home_dir, sizeof(home_dir), "%s", h != NULL ? h : "/tmp");
 	home_path(buf, sizeof(buf), "");
 	mkdir(buf, 0700);
