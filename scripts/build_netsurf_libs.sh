@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
 # Builds NetSurf's own libraries as PRIVATE STATIC archives (linked into the one
 # Florence executable, not shared with anything else on the image) using each
 # library's native buildsystem, cross-compiled. Installed into build/nsroot (not

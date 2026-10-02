@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
 # Builds the on-target smoke tests into build/root/usr/local/bin.
 set -euo pipefail
 cd "$(dirname "$0")/.."

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
 /* curl_get <url>: one GET through libcurl + mbedTLS with the shipped CA bundle;
  * prints the status line, response code, bytes received and the TLS peer's
  * verification result. The first check that DNS, sockets, TLS and the clock

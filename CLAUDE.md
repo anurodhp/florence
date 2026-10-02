@@ -73,10 +73,10 @@ fails, the problem is below Florence.
 * New third-party code: a pinned entry in `setup_third_party.sh` (git tag or sha256), a
   `scripts/build_*.sh` using `tools/common.sh` helpers, dylib not static archive (the iokit port's
   standing rule: nothing ships fully static except its password tool).
-* Licensing: Florence's own files are MIT, but the built browser is GPL-2.0-only because it links NetSurf.
-  Files copied or derived from NetSurf's frontends (`gs_schedule.*`, `gs_filetype.*`, `gs_fetch.*`, `gs_core.c`,
-  `gs_plot.c`, `gs_layout.c`, `gs_bitmap.c`, `frontend/Makefile*`) stay GPL-2.0-only. See `LICENSE`; every file has an
-  SPDX line. New original files get `SPDX-License-Identifier: MIT`; never paste NetSurf code into an MIT file.
+* Licensing: the whole repo is GPL-2.0-only (NetSurf's core is GPL-2.0-only, never "or later", and several
+  files derive from NetSurf's frontends). See `LICENSE`; every file has an SPDX line. New files get
+  `SPDX-License-Identifier: GPL-2.0-only`. Exceptions: `configs/curl/curl_config.h` (curl's licence) and the
+  vendored `tools/bind_audit.sh`.
 
 ## Lessons learned the hard way
 

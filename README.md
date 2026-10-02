@@ -54,6 +54,5 @@ in `~/.netsurf/Choices`, or `FLORENCE_JS=1`); expect it to be slow on a Pi 3 and
 
 ## License
 
-Florence's own source files are MIT licensed; see `LICENSE` and `LICENSES/`. The program you build is
-**GPL-2.0-only**, because it is one executable that links NetSurf (GPL-2.0-only), and a few files here are
-derived from NetSurf's own frontends and keep that licence. `LICENSE` lists exactly which files are which.
+GPL-2.0-only (version 2 only, no "or later"): Florence links NetSurf, whose core has that licence, and some
+files derive from NetSurf's frontends. See `LICENSE` and `LICENSES/GPL-2.0-only.txt`.

@@ -1,4 +1,4 @@
-/* Florence: a browser tab. See FloTab.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
+/* Florence: a browser tab. See FloTab.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only */
 #import "FloTab.h"
 
 #define RESIZE_DELAY 0.08

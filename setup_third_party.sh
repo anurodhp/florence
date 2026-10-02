@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
 # Fetches the pinned third-party sources into third_party/ (gitignored).
 # Re-running skips what exists; --force wipes and re-fetches.
 set -e
