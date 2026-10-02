@@ -168,7 +168,7 @@ void flo_ui_set_status(void *ui, const char *text)
 	FloTab *t = T(ui);
 	[t setStatus:text != NULL ? [NSString stringWithUTF8String:text] : @""];
 	if (t->browser != nil && t->browser->current == t)      /* hover text: update at once */
-		[t->browser->status setStringValue:t->status];
+		[t->browser setStatusText:t->status];
 }
 
 void flo_ui_set_pointer(void *ui, int p) { [T(ui)->page setPointer:p]; }
@@ -287,19 +287,7 @@ static void refreshHistoryMenu(void) { fillStoreMenu(historyMenu, [FloStore hist
 - (void)stopLoading:(id)s { FloBrowser *b = [FloBrowser key]; if (b && b->current && b->current->gw) flo_win_stop(b->current->gw); }
 - (void)goBack:(id)s { [[FloBrowser key] goBack:s]; }
 - (void)goForward:(id)s { [[FloBrowser key] goForward:s]; }
-- (void)bookmarkPage:(id)s
-{
-	FloBrowser *b = [FloBrowser key];
-	FloTab *t = b != nil ? b->current : nil;
-	FloStore *bm = [FloStore bookmarks];
-	if (t == nil || [t->url length] == 0)
-		return;
-	if ([bm contains:t->url])
-		[bm remove:t->url];
-	else
-		[bm add:t->url title:[t displayTitle]];
-	[self refreshStoreMenus];
-}
+- (void)bookmarkPage:(id)s { [[FloBrowser key] toggleBookmark]; }
 
 - (void)openStored:(id)item
 {
@@ -417,6 +405,8 @@ static void buildMenus(FloApp *app)
 	addItem(m, @"Clear History", @selector(clearHistory:), @"", app);
 	[m addItem:[NSMenuItem separatorItem]];
 
+	[[NSNotificationCenter defaultCenter] addObserver:app selector:@selector(refreshStoreMenus)
+		name:FloBookmarksChanged object:nil];
 	[NSApp setMainMenu:bar];
 	[app refreshStoreMenus];
 	refreshHistoryMenu();

@@ -59,7 +59,7 @@ Linux/macOS habits; they are wrong here.
     # optional JavaScript:  scripts/build_nsgenbind.sh  then  FLO_JS=1 scripts/build_netsurf.sh gnustep
 
 `build_netsurf.sh` compiles the C glue through NetSurf's own make (`frontend/` is copied to
-`netsurf/frontends/gnustep/`), compiles the two `.m` files itself, skips NetSurf's link step and
+`netsurf/frontends/gnustep/`), compiles the `.m` files itself, skips NetSurf's link step and
 links with this repo's recipe. Logs: `build/netsurf-<frontend>.log`. Build `monkey` first: if it
 fails, the problem is below Florence.
 

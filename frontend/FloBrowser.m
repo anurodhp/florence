@@ -1,11 +1,14 @@
 /* Florence: a browser window with tabs. See FloBrowser.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only */
 #import "FloBrowser.h"
 #include <math.h>
+#import "FloStore.h"
 
-#define BAR_H 30.0
-#define TAB_H 24.0
-#define STATUS_H 18.0
-#define TAB_MAX_W 190.0
+NSString *const FloBookmarksChanged = @"FloBookmarksChanged";
+
+#define BAR_H 38.0
+#define BTN_W 28.0
+#define BTN_H 26.0
+#define TAB_H 26.0
 
 static NSMutableArray *allBrowsers;
 
@@ -42,13 +45,12 @@ NSString *FloURLFromInput(NSString *in)
 	return [d isKindOfClass:[FloBrowser class]] ? d : nil;
 }
 
-static NSButton *makeButton(NSString *title, id target, SEL action, NSView *in)
+static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in)
 {
-	NSButton *b = [[[NSButton alloc] initWithFrame:NSMakeRect(0, 0, 50, BAR_H - 6)] autorelease];
-	[b setTitle:title];
+	FloToolButton *b = [[[FloToolButton alloc] initWithFrame:NSMakeRect(0, 0, BTN_W, BTN_H)] autorelease];
+	[b setIcon:icon];
 	[b setTarget:target];
 	[b setAction:action];
-	[b setBezelStyle:NSRoundedBezelStyle];
 	[in addSubview:b];
 	return b;
 }
@@ -67,35 +69,34 @@ static NSButton *makeButton(NSString *title, id target, SEL action, NSView *in)
 	[win setDelegate:self];
 	[win setTitle:@"Florence"];
 	[win setAcceptsMouseMovedEvents:YES];
-	[win setMinSize:NSMakeSize(360, 220)];
+	[win setMinSize:NSMakeSize(420, 240)];
 	if (FloAppIcon() != nil)
 		[win setMiniwindowImage:FloAppIcon()];
 
 	NSView *cv = [win contentView];
-	backBtn = makeButton(@"Back", self, @selector(goBack:), cv);
-	fwdBtn = makeButton(@"Fwd", self, @selector(goForward:), cv);
-	reloadBtn = makeButton(@"Reload", self, @selector(reloadOrStop:), cv);
-	newTabBtn = makeButton(@"+", self, @selector(newTabAction:), cv);
-	urlField = [[[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 100, BAR_H - 8)] autorelease];
-	[urlField setTarget:self];
-	[urlField setAction:@selector(go:)];
-	[cv addSubview:urlField];
+	band = [[[FloToolbarBand alloc] initWithFrame:NSMakeRect(0, 0, 100, BAR_H)] autorelease];
+	[cv addSubview:band];
+	backBtn = makeButton(FloIconBack, self, @selector(goBack:), band);
+	fwdBtn = makeButton(FloIconForward, self, @selector(goForward:), band);
+	starBtn = makeButton(FloIconStar, self, @selector(bookmarkAction:), band);
+	newTabBtn = makeButton(FloIconPlus, self, @selector(newTabAction:), band);
+	addr = [[[FloAddressBar alloc] initWithTarget:self goAction:@selector(go:) reloadAction:@selector(reloadOrStop:)] autorelease];
+	[band addSubview:addr];
+	urlField = [addr field];
 
-	strip = [[[NSView alloc] initWithFrame:NSMakeRect(0, 0, 100, TAB_H)] autorelease];
+	strip = [[[FloTabStrip alloc] initWithFrame:NSMakeRect(0, 0, 100, TAB_H)] autorelease];
+	[strip setBrowser:self];
 	[strip setHidden:YES];
 	[cv addSubview:strip];
 
 	container = [[[NSView alloc] initWithFrame:NSMakeRect(0, 0, 100, 100)] autorelease];
 	[cv addSubview:container];
+	status = [[[FloStatusLabel alloc] initWithFrame:NSMakeRect(0, 0, 10, 20)] autorelease];
+	[status setHidden:YES];
+	[container addSubview:status];
 
-	status = [[[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 100, STATUS_H)] autorelease];
-	[status setEditable:NO];
-	[status setSelectable:NO];
-	[status setBezeled:NO];
-	[status setDrawsBackground:NO];
-	[status setFont:[NSFont systemFontOfSize:11]];
-	[cv addSubview:status];
-
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(bookmarksChanged:)
+		name:FloBookmarksChanged object:nil];
 	[[FloBrowser all] addObject:self];
 	[self relayout];
 	/* Not shown yet: showing it runs delegate callbacks that ask the core about history, and the
@@ -106,6 +107,7 @@ static NSButton *makeButton(NSString *title, id target, SEL action, NSView *in)
 
 - (void)dealloc
 {
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
 	[NSObject cancelPreviousPerformRequestsWithTarget:self];
 	[tabs release];
 	[win release];
@@ -128,80 +130,27 @@ static NSButton *makeButton(NSString *title, id target, SEL action, NSView *in)
 	NSRect b = [[win contentView] bounds];
 	CGFloat W = b.size.width, H = b.size.height, top = H - BAR_H;
 	CGFloat stripH = [tabs count] > 1 ? TAB_H : 0;
+	CGFloat y = (BAR_H - BTN_H) / 2;
 
-	[backBtn setFrame:NSMakeRect(4, top + 3, 52, BAR_H - 6)];
-	[fwdBtn setFrame:NSMakeRect(58, top + 3, 46, BAR_H - 6)];
-	[reloadBtn setFrame:NSMakeRect(106, top + 3, 64, BAR_H - 6)];
-	[newTabBtn setFrame:NSMakeRect(W - 34, top + 3, 30, BAR_H - 6)];
-	[urlField setFrame:NSMakeRect(176, top + 4, W - 176 - 40, BAR_H - 8)];
+	[band setFrame:NSMakeRect(0, top, W, BAR_H)];
+	[backBtn setFrame:NSMakeRect(10, y, BTN_W, BTN_H)];
+	[fwdBtn setFrame:NSMakeRect(10 + BTN_W, y, BTN_W, BTN_H)];
+	[newTabBtn setFrame:NSMakeRect(W - 10 - BTN_W, y, BTN_W, BTN_H)];
+	[starBtn setFrame:NSMakeRect(W - 10 - 2 * BTN_W, y, BTN_W, BTN_H)];
+	[addr setFrame:NSMakeRect(10 + 2 * BTN_W + 12, y, W - (10 + 2 * BTN_W + 12) - (10 + 2 * BTN_W + 12), BTN_H)];
 	[strip setHidden:stripH == 0];
 	[strip setFrame:NSMakeRect(0, top - stripH, W, stripH)];
-	[status setFrame:NSMakeRect(0, 0, W, STATUS_H)];
-	[container setFrame:NSMakeRect(0, STATUS_H, W, top - stripH - STATUS_H)];
+	[container setFrame:NSMakeRect(0, 0, W, top - stripH)];
 	if (current != nil)
 		[current->scroll setFrame:[container bounds]];
-	[self layoutStrip];
+	[strip setNeedsDisplay:YES];
 }
 
 - (void)windowDidResize:(NSNotification *)n { [self relayout]; }
 
-/* the tab strip: a button per tab and a small close button beside it */
-- (void)rebuildStrip
-{
-	NSArray *old = [[strip subviews] copy];
-	NSUInteger i;
-	[old makeObjectsPerformSelector:@selector(removeFromSuperview)];
-	[old release];
-	if ([tabs count] < 2)
-		return;
-	for (i = 0; i < [tabs count]; i++) {
-		FloTab *t = [tabs objectAtIndex:i];
-		NSButton *tb = [[[NSButton alloc] initWithFrame:NSMakeRect(0, 0, 100, TAB_H - 2)] autorelease];
-		NSButton *cb = [[[NSButton alloc] initWithFrame:NSMakeRect(0, 0, 18, TAB_H - 2)] autorelease];
-		[tb setTitle:[t displayTitle]];
-		[tb setTag:(NSInteger)i];
-		[tb setTarget:self];
-		[tb setAction:@selector(tabButton:)];
-		[tb setButtonType:NSPushOnPushOffButton];
-		[tb setBezelStyle:NSShadowlessSquareBezelStyle];
-		[tb setFont:[NSFont systemFontOfSize:11]];
-		[tb setState:t == current ? NSOnState : NSOffState];
-		[[tb cell] setLineBreakMode:NSLineBreakByTruncatingTail];
-		[cb setTitle:@"x"];
-		[cb setTag:(NSInteger)i];
-		[cb setTarget:self];
-		[cb setAction:@selector(closeButton:)];
-		[cb setBezelStyle:NSShadowlessSquareBezelStyle];
-		[cb setFont:[NSFont systemFontOfSize:10]];
-		[strip addSubview:tb];
-		[strip addSubview:cb];
-	}
-	[self layoutStrip];
-}
-
-- (void)layoutStrip
-{
-	NSArray *v = [strip subviews];
-	NSUInteger n = [v count] / 2, i;
-	CGFloat avail = [strip bounds].size.width - 8;
-	CGFloat tw = n > 0 ? floor(avail / n) : 0;
-	if (tw > TAB_MAX_W)
-		tw = TAB_MAX_W;
-	for (i = 0; i < n; i++) {
-		CGFloat x = 4 + i * tw;
-		[[v objectAtIndex:2 * i] setFrame:NSMakeRect(x, 1, tw - 18, TAB_H - 2)];
-		[[v objectAtIndex:2 * i + 1] setFrame:NSMakeRect(x + tw - 18, 1, 18, TAB_H - 2)];
-	}
-}
-
-- (void)tabButton:(id)s { [self selectTab:[tabs objectAtIndex:(NSUInteger)[s tag]]]; }
-
-- (void)closeButton:(id)s
-{
-	FloTab *t = [tabs objectAtIndex:(NSUInteger)[s tag]];
-	if (t->gw != NULL)
-		flo_win_close(t->gw);
-}
+/* the strip draws from `tabs`; these only ask it to repaint */
+- (void)rebuildStrip { [strip setNeedsDisplay:YES]; }
+- (void)layoutStrip { [strip setNeedsDisplay:YES]; }
 
 /* ---- tabs ------------------------------------------------------------------- */
 
@@ -212,6 +161,7 @@ static NSButton *makeButton(NSString *title, id target, SEL action, NSView *in)
 	[container addSubview:t->scroll];
 	[t->scroll setFrame:[container bounds]];       /* a valid size before the core first asks for it */
 	[t->scroll setHidden:YES];
+	[container addSubview:status positioned:NSWindowAbove relativeTo:nil];   /* the hover label stays on top */
 	if (current == nil || select)
 		[self selectTab:t];
 	else
@@ -227,6 +177,7 @@ static NSButton *makeButton(NSString *title, id target, SEL action, NSView *in)
 	if (current != nil && current != t)
 		[current->scroll setHidden:YES];
 	current = t;
+	[status setText:nil];
 	[t->scroll setFrame:[container bounds]];
 	[t->scroll setHidden:NO];
 	[t applyResize];
@@ -331,22 +282,40 @@ static NSButton *makeButton(NSString *title, id target, SEL action, NSView *in)
 	[win setTitle:[current displayTitle]];
 	if ([urlField currentEditor] == nil)            /* not while the user is typing */
 		[urlField setStringValue:current->url];
-	[status setStringValue:current->status];
+	[addr setSecure:[current->url hasPrefix:@"https://"]];
 	[backBtn setEnabled:flo_win_can_back(current->gw)];
 	[fwdBtn setEnabled:flo_win_can_forward(current->gw)];
-	[reloadBtn setTitle:current->loading ? @"Stop" : @"Reload"];
-	if ([tabs count] > 1) {
-		NSArray *v = [strip subviews];
-		NSUInteger i;
-		for (i = 0; i < [tabs count] && 2 * i + 1 < [v count]; i++) {
-			FloTab *t = [tabs objectAtIndex:i];
-			NSButton *tb = [v objectAtIndex:2 * i];
-			if (![[tb title] isEqualToString:[t displayTitle]])
-				[tb setTitle:[t displayTitle]];
-			[tb setState:t == current ? NSOnState : NSOffState];
-		}
-	}
+	[[addr reloadButton] setIcon:current->loading ? FloIconStop : FloIconReload];
+	[starBtn setIcon:[[FloStore bookmarks] contains:current->url] ? FloIconStarFilled : FloIconStar];
+	[starBtn setEnabled:[current->url length] > 0];
+	[strip setNeedsDisplay:YES];
 }
+
+/* the hover label: shows what the core reports, then fades after a few seconds */
+- (void)setStatusText:(NSString *)s
+{
+	[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(hideStatus) object:nil];
+	[status setText:s];
+	if ([s length] > 0)
+		[self performSelector:@selector(hideStatus) withObject:nil afterDelay:4.0];
+}
+
+- (void)hideStatus { [status setText:nil]; }
+
+- (void)toggleBookmark
+{
+	FloStore *bm = [FloStore bookmarks];
+	if (current == nil || [current->url length] == 0)
+		return;
+	if ([bm contains:current->url])
+		[bm remove:current->url];
+	else
+		[bm add:current->url title:[current displayTitle]];
+	[[NSNotificationCenter defaultCenter] postNotificationName:FloBookmarksChanged object:nil];
+}
+
+- (void)bookmarkAction:(id)sender { [self toggleBookmark]; }
+- (void)bookmarksChanged:(NSNotification *)n { [self setNeedsChrome]; }
 
 - (void)focusLocation
 {

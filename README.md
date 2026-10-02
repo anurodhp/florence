@@ -18,14 +18,16 @@ NetSurf 3.11 (no JavaScript) with a GNUstep UI, for small machines (Raspberry Pi
 | `gs_schedule.c`, `gs_fetch.c`, `gs_filetype.c` | from the monkey frontend |
 | `gs_download.c` | downloads: saved to `~/Downloads` (safe unique names, progress on the status line) |
 | `FloPage.m` | page view: paints only the dirty rect into one reusable buffer |
-| `FloTab.m` / `FloBrowser.m` | a tab (one NetSurf window) / a browser window: toolbar, tab strip, status line |
+| `FloTab.m` / `FloBrowser.m` | a tab (one NetSurf window) / a browser window: toolbar, tab strip, hover label |
+| `FloToolbar.m` | the Safari-like parts, drawn with vector icons: icon buttons, rounded address bar, tab strip, hover label |
 | `FloStore.m` | bookmark and history lists (`~/.netsurf/Bookmarks`, `History`) |
 | `FloUI.m` | scheduler pump, the `flo_ui_*` bridge, menus, `main()` |
 | `assets/` | the Florentine giglio icon (SVG; `tools/make_icon.sh` renders the PNG/TIFF) |
 
 ## Features
 
-Tabs (strip shown with two or more; Cmd-T / Cmd-W, Cmd-{ / Cmd-}), bookmarks (Cmd-D toggles) and history menus,
+A Safari-style toolbar (icon buttons, rounded address bar with a padlock for https and reload/stop inside, a
+bookmark star, `+` for a new tab). Tabs (strip shown with two or more; Cmd-T / Cmd-W, Cmd-{ / Cmd-}), bookmarks (Cmd-D toggles) and history menus,
 downloads, an app icon. Bad certificates are handled by the core (`about:query/ssl`: Proceed / Back to safety).
 Optional JavaScript: `scripts/build_nsgenbind.sh` once (host tool; needs bison >= 3 and flex, `brew install bison flex`
 on a Mac), then `FLO_JS=1 scripts/build_netsurf.sh gnustep`. It stays off until **View > Enable JavaScript** (remembered
