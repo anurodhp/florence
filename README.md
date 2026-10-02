@@ -28,12 +28,12 @@ NetSurf 3.11 (no JavaScript) with a GNUstep UI, for small machines (Raspberry Pi
 
 ## Status
 
-* `FloPage.m`/`FloUI.m` compile against gnustep-gui 0.30 and were run under Xvfb with a fake core: layout, upright
-  rendering, wheel scrolling, click coordinates, idle CPU verified.
-* `gs_core.c`/`gs_window.c` are written against the NetSurf 3.11 API from memory and have **not** been compiled
-  (the NetSurf tree was unreachable when written). Expect a first-compile pass over: `gui_window_table` member
-  names/signatures (`get_scroll`, `place_caret`, `event`), `netsurf_init()` arguments, option names in
-  `apply_overrides()`, `filepath_generate()`, the `urldb_*` header, and `browser_window_*` signatures. Compare with
-  `frontends/monkey/main.c` and `frontends/gtk/window.c`.
+* Builds with `scripts/build_netsurf.sh gnustep` against the iokit port's GNUstep/cairo, deploys with
+  `tools/deploy_to_pi.sh`, and **runs on the Pi 3** (window opens, first page loads).
+* `FloPage.m`/`FloUI.m` were also run under Xvfb on Linux with a fake core (layout, upright rendering,
+  wheel scrolling, click coordinates, idle CPU 0.3%).
+* Debugging aids: `FLORENCE_TRACE=1` prints start-up stages to stderr; a SIGSEGV/SIGBUS handler prints the
+  fault address, pc/lr and a frame-pointer walk plus `flo_core_init`'s run-time address (slide = that minus
+  `nm` of `_flo_core_init`; look addresses up with `nm -n` / `atos`).
 * On a GNUstep whose AppKit draws bitmaps upright in flipped views, run with `FLORENCE_NOMIRROR=1`.
 * Not done: tabs, bookmarks, downloads, certificate prompts, a download table, favicon, caret blink.

@@ -74,6 +74,16 @@ fails, the problem is below Florence.
   standing rule: nothing ships fully static except its password tool).
 * GPL-2.0-only, like NetSurf (see the header of `frontend/gs.h`).
 
+## Lessons learned the hard way
+
+* `netsurf_register()` keeps the pointer to the `netsurf_table` (global `guit`) for the life of the
+  process: it must be static, never a local of the init function (that was the first-window crash).
+* NetSurf only builds frontends named in `VLDTARGET` (`frontends/Makefile.hts`); the build script
+  registers `gnustep` there in the build copy.
+* Window-table callbacks can arrive while `gw_create` is still running (`gw->ui` not yet assigned);
+  the UI stores itself in `gw->ui` at creation and every callback tolerates no UI.
+* A segfault on the Pi has no debugger: use `FLORENCE_TRACE=1` and the built-in crash report.
+
 ## Verifying without the Pi
 
 * The Objective-C side can be syntax-checked and run on Linux with the `gnustep-*` packages
