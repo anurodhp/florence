@@ -1,4 +1,4 @@
-/* Florence: bookmark and history lists. See FloStore.h. GPL-2.0-only (see gs.h). */
+/* Florence: bookmark and history lists. See FloStore.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloStore.h"
 #include <stdlib.h>
 

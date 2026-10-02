@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only (derived from NetSurf's monkey frontend Makefiles)
 #
 # Makefile for the NetSurf "gnustep" target (Florence). Copied into
 # netsurf/frontends/gnustep/ by scripts/build_netsurf.sh.

@@ -2,7 +2,7 @@
  * Florence: the page view. A flipped NSView, the document view of an
  * NSScrollView, as big as the page; drawRect: paints only the dirty rectangle
  * (the part AppKit says is exposed) through NetSurf's cairo plotters into one
- * small reusable buffer. GPL-2.0-only (see gs.h).
+ * small reusable buffer. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #import <AppKit/AppKit.h>
 #include "gnustep/gs.h"

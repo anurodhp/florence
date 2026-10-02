@@ -1,6 +1,6 @@
 /*
  * Florence: a small persistent list of (address, title): bookmarks and history. One text
- * file per list in ~/.netsurf, a line per entry, "address<TAB>title". GPL-2.0-only (see gs.h).
+ * file per list in ~/.netsurf, a line per entry, "address<TAB>title". Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #import <Foundation/Foundation.h>
 

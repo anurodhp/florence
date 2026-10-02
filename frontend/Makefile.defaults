@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only (derived from NetSurf's monkey frontend Makefiles)
 # -*- mode: makefile-gmake -*-
 # Florence (GNUstep) frontend options. Include paths come from Florence's build
 # script through the environment (see scripts/build_netsurf.sh).

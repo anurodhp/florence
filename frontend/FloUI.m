@@ -6,7 +6,7 @@
  * Built for little machines: the pump is a one-shot timer that sleeps exactly until the next
  * scheduled NetSurf callback (nothing runs while the page is idle), resizes are debounced so a
  * window drag reflows the page once, and the scroll view blits already-painted pixels.
- * GPL-2.0-only (see gs.h).
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #import <AppKit/AppKit.h>
 #include <string.h>

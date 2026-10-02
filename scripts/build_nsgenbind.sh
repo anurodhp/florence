@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Builds nsgenbind for the BUILD HOST (not cross): it turns NetSurf's WebIDL into the C bindings
 # between Duktape and the DOM at build time and never runs on the Pi. Only needed for
 # FLO_JS=1 scripts/build_netsurf.sh gnustep (optional JavaScript).

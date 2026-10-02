@@ -1,0 +1,32 @@
+Florence is MIT-licensed, with the exceptions listed below. Read this before reusing or
+redistributing any part of it.
+
+1. The browser you build is GPL-2.0-only. Florence is a frontend for NetSurf, whose core is
+   GPL-2.0-only, and the program is one executable that links it. A binary (or a source tree
+   combining Florence with NetSurf) must therefore be distributed under the GPL-2.0. The MIT
+   licence below lets you reuse Florence's own source files in other projects; it cannot change
+   the licence of NetSurf, of libraries it links, or of the combined program.
+
+2. MIT (see LICENSES/MIT.txt, Copyright (c) 2026 Anurodh Pokharel) covers everything not named
+   in point 3: the Objective-C user interface (frontend/Flo*.m, frontend/Flo*.h), frontend/gs.h,
+   frontend/gs_window.c, frontend/gs_download.c, scripts/, tools/ (except bind_audit.sh), tests/,
+   setup_third_party.sh, the icon (frontend/assets/) and the documentation.
+
+3. Not MIT:
+   GPL-2.0-only (see LICENSES/GPL-2.0-only.txt), because they are copied or derived from NetSurf's
+   own GPL frontends, whose copyright holders are NetSurf's contributors and cannot be relicensed
+   here:
+     frontend/gs_schedule.c, gs_schedule.h, gs_filetype.c, gs_filetype.h, gs_fetch.c, gs_fetch.h
+         (carry NetSurf copyright notices)
+     frontend/Makefile, Makefile.defaults, Makefile.tools   (from the monkey frontend)
+     frontend/gs_core.c                                     (follows monkey's main.c)
+     frontend/gs_plot.c                                     (modelled on the GTK frontend's plotters)
+     frontend/gs_layout.c, frontend/gs_bitmap.c             (kept GPL until their provenance is confirmed)
+   Other terms:
+     configs/curl/curl_config.h        curl's licence (it is curl's configuration header)
+     tools/bind_audit.sh               vendored from the xnu-iokit-pi3 port; its licence is that repo's
+
+   Third-party sources that setup_third_party.sh fetches (NetSurf and its libraries, mbedTLS, curl,
+   libjpeg, nsgenbind, the CA bundle) keep their own licences.
+
+Each file carries an SPDX-License-Identifier line that is authoritative for that file.

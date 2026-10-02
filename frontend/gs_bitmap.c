@@ -3,7 +3,7 @@
  * core is told to decode into 32-bit ARGB with premultiplied alpha
  * (BITMAP_LAYOUT_ARGB8888 + pma), which on this little-endian target is exactly
  * cairo's CAIRO_FORMAT_ARGB32, so images are plotted without any conversion.
- * GPL-2.0-only (see gs.h).
+ * SPDX-License-Identifier: GPL-2.0-only (derived from NetSurf frontends; see LICENSE).
  */
 #include <stdbool.h>
 #include <stddef.h>

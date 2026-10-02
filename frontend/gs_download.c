@@ -3,7 +3,7 @@
  * $HOME/Downloads under a safe, unused name; progress and the result go to the status line
  * of the tab that started it (if that tab is still open). The core hands over the data in
  * pieces, then calls done or error; after either, the context is ours to destroy.
- * GPL-2.0-only (see gs.h).
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #include <errno.h>
 #include <limits.h>

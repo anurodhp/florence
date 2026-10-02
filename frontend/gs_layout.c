@@ -11,7 +11,7 @@
  * clusters give the byte offset and x of every character boundary, so width,
  * position and split are all O(length) rather than O(length^2) re-measuring
  * of prefixes.
- * GPL-2.0-only (see gs.h).
+ * SPDX-License-Identifier: GPL-2.0-only (derived from NetSurf frontends; see LICENSE).
  */
 #include <stdlib.h>
 #include <string.h>

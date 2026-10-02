@@ -51,3 +51,9 @@ in `~/.netsurf/Choices`, or `FLORENCE_JS=1`); expect it to be slow on a Pi 3 and
 * Not done: favicons, caret blink, a download manager window, a bookmarks manager (the menu lists them; Cmd-D removes).
 * The JavaScript build was verified up to the compile of NetSurf's JS glue and generated bindings against the real 3.11
   headers on Linux; it has not been cross-built or run on the Pi.
+
+## License
+
+Florence's own source files are MIT licensed; see `LICENSE` and `LICENSES/`. The program you build is
+**GPL-2.0-only**, because it is one executable that links NetSurf (GPL-2.0-only), and a few files here are
+derived from NetSurf's own frontends and keep that licence. `LICENSE` lists exactly which files are which.

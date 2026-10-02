@@ -1,4 +1,4 @@
-/* Florence: the page view. See FloPage.h. GPL-2.0-only (see gs.h). */
+/* Florence: the page view. See FloPage.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloPage.h"
 #include <cairo.h>
 #include <math.h>

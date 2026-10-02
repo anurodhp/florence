@@ -1,6 +1,6 @@
 /*
  * Florence: one browser tab = one NetSurf gui_window. Owns the page view and its
- * scroll view and the per-tab title, address and status. GPL-2.0-only (see gs.h).
+ * scroll view and the per-tab title, address and status. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #import <AppKit/AppKit.h>
 #import "FloPage.h"

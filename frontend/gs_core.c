@@ -1,7 +1,7 @@
 /*
  * Florence: start-up, shutdown and the miscellaneous table of the NetSurf core.
  * Follows frontends/monkey/main.c of NetSurf 3.11 (options, resource search path,
- * messages, urldb) with the GNUstep UI on top. GPL-2.0-only (see gs.h).
+ * messages, urldb) with the GNUstep UI on top. SPDX-License-Identifier: GPL-2.0-only (derived from NetSurf frontends; see LICENSE).
  *
  * Tuned for small machines (a Raspberry Pi 3: four slow cores, 1 GB): no
  * JavaScript, a small memory cache, no animated images, few parallel fetches.

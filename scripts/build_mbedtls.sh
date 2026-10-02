@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Builds mbedTLS 3.6.x (third_party/mbedtls, v3.6.7) as the three upstream
 # libraries, real dylibs under /usr/local/lib:
 #   libmbedcrypto.16.dylib   libmbedx509.7.dylib   libmbedtls.21.dylib

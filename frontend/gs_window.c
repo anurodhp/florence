@@ -2,7 +2,7 @@
  * Florence: NetSurf's window and clipboard tables, and the C half of the UI
  * bridge (the flo_win_* functions of gs.h). The UI hands over plain enums and
  * page coordinates; everything NetSurf-typed stays in this file.
- * GPL-2.0-only (see gs.h).
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #include <stdlib.h>
 #include <string.h>

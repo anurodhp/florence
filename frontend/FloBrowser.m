@@ -1,4 +1,4 @@
-/* Florence: a browser window with tabs. See FloBrowser.h. GPL-2.0-only (see gs.h). */
+/* Florence: a browser window with tabs. See FloBrowser.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloBrowser.h"
 #include <math.h>
 

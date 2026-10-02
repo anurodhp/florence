@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Builds the NetSurf 3.11 core (third_party/netsurf) for a chosen frontend, linked
 # against the dylibs from build_curl.sh / build_jpeg.sh, the iokit port's libpng
 # and zlib, and the static NetSurf libraries from build_netsurf_libs.sh.

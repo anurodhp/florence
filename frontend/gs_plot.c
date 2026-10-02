@@ -3,7 +3,7 @@
  * semantics (frontends/gtk/plotters.c). The cairo_t to draw on is
  * ctx->priv, set up by the page view for each redraw: it already has the
  * dirty rectangle's origin translated to (0,0) and its clip set.
- * GPL-2.0-only (see gs.h).
+ * SPDX-License-Identifier: GPL-2.0-only (derived from NetSurf frontends; see LICENSE).
  */
 #include <math.h>
 #include <cairo.h>

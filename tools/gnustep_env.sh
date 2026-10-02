@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # GNUstep side of the cross build. SOURCED by scripts/build_netsurf.sh gnustep
 # after tools/common.sh -- never run.
 #

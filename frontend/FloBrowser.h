@@ -1,6 +1,6 @@
 /*
  * Florence: a browser window: toolbar, tab strip (shown only with two or more tabs),
- * the current tab's page and a status line. GPL-2.0-only (see gs.h).
+ * the current tab's page and a status line. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #import <AppKit/AppKit.h>
 #import "FloTab.h"

@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Regenerates frontend/assets/Florence.{png,tiff} from florence.svg (the Florentine giglio).
 # Needs rsvg-convert (librsvg) and ImageMagick's convert; the outputs are committed, so the
 # cross build on the Mac needs neither.  TIFF because every GNUstep has it; PNG as a fallback.

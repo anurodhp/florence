@@ -1,8 +1,9 @@
 /*
- * Florence: the GNUstep frontend of NetSurf. Shared declarations between the C
- * glue (the NetSurf callback tables) and the Objective-C user interface.
- * GPL-2.0-only, like NetSurf: this links into it and its Makefile fragments and
- * the schedule/filetype/fetch files are derived from the monkey frontend.
+ * Florence: the GNUstep frontend of NetSurf. Shared declarations between the C glue (the NetSurf
+ * callback tables) and the Objective-C user interface: the only place they meet.
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
+ * Note: the program built from this tree links NetSurf's GPL-2.0-only core and so is GPL-2.0-only
+ * as a whole; see LICENSE for which source files are MIT and which are GPL.
  */
 #ifndef FLORENCE_GS_H
 #define FLORENCE_GS_H
