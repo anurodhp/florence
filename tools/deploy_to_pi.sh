@@ -17,4 +17,4 @@ fi
 [ -d "$FL_DIR/build/root" ] || { echo "error: nothing built (build/root missing)" >&2; exit 1; }
 cd "$FL_DIR/build/root"
 paths=("$@"); [ "${#paths[@]}" -gt 0 ] || paths=(.)
-tar cf - "${paths[@]}" | "${SSH[@]}" "$PI_USER@$PI_HOST" 'tar xf - -C / && echo deployed'
+tar cf - "${paths[@]}" | "${SSH[@]}" "$PI_USER@$PI_HOST" 'tar xmf - -C / && echo deployed'
