@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdlib.h>
 #import "FloBrowser.h"
+#import "FloStore.h"
 #include "gnustep/gs.h"
 
 static NSString *startURL;
@@ -172,10 +173,18 @@ void flo_ui_set_status(void *ui, const char *text)
 
 void flo_ui_set_pointer(void *ui, int p) { [T(ui)->page setPointer:p]; }
 
+static void refreshHistoryMenu(void);
+
 void flo_ui_throbber(void *ui, bool on)
 {
-	T(ui)->loading = on;
-	[T(ui)->browser setNeedsChrome];
+	FloTab *t = T(ui);
+	t->loading = on;
+	[t->browser setNeedsChrome];
+	/* the page is done: it belongs in the history (not internal pages, not blanks) */
+	if (!on && [t->url length] > 0 && ![t->url hasPrefix:@"about:"]) {
+		[[FloStore history] add:t->url title:[t displayTitle]];
+		refreshHistoryMenu();
+	}
 }
 
 void flo_ui_place_caret(void *ui, int x, int y, int height)
@@ -209,9 +218,38 @@ void flo_ui_clipboard_set(const char *text, size_t len)
 	[pb setString:s forType:NSStringPboardType];
 }
 
+/* ---- bookmark and history menus ----------------------------------------------- */
+
+static NSMenu *bookmarksMenu, *historyMenu;
+static id menuTarget;                   /* the FloApp */
+
+/* The first `fixed` items of the menu stay; the rest are rebuilt from the store. */
+static void fillStoreMenu(NSMenu *m, FloStore *st, NSUInteger fixed, NSUInteger limit)
+{
+	NSArray *items = [st items];
+	NSUInteger i;
+	if (m == nil)
+		return;
+	while ([m numberOfItems] > (NSInteger)fixed)
+		[m removeItemAtIndex:fixed];
+	for (i = 0; i < [items count] && i < limit; i++) {
+		NSArray *e = [items objectAtIndex:i];
+		NSString *title = [[e objectAtIndex:1] length] > 0 ? [e objectAtIndex:1] : [e objectAtIndex:0];
+		NSMenuItem *mi;
+		if ([title length] > 56)
+			title = [[title substringToIndex:55] stringByAppendingString:@"..."];
+		mi = [m addItemWithTitle:title action:@selector(openStored:) keyEquivalent:@""];
+		[mi setTarget:menuTarget];
+		[mi setRepresentedObject:[e objectAtIndex:0]];
+	}
+}
+
+static void refreshHistoryMenu(void) { fillStoreMenu(historyMenu, [FloStore history], 2, 25); }
+
 /* ---- application ------------------------------------------------------------ */
 
 @interface FloApp : NSObject
+- (void)refreshStoreMenus;
 @end
 
 @implementation FloApp
@@ -249,6 +287,39 @@ void flo_ui_clipboard_set(const char *text, size_t len)
 - (void)stopLoading:(id)s { FloBrowser *b = [FloBrowser key]; if (b && b->current && b->current->gw) flo_win_stop(b->current->gw); }
 - (void)goBack:(id)s { [[FloBrowser key] goBack:s]; }
 - (void)goForward:(id)s { [[FloBrowser key] goForward:s]; }
+- (void)bookmarkPage:(id)s
+{
+	FloBrowser *b = [FloBrowser key];
+	FloTab *t = b != nil ? b->current : nil;
+	FloStore *bm = [FloStore bookmarks];
+	if (t == nil || [t->url length] == 0)
+		return;
+	if ([bm contains:t->url])
+		[bm remove:t->url];
+	else
+		[bm add:t->url title:[t displayTitle]];
+	[self refreshStoreMenus];
+}
+
+- (void)openStored:(id)item
+{
+	FloBrowser *b = [FloBrowser key];
+	NSString *addr = [item representedObject];
+	if (b != nil && b->current != nil && b->current->gw != NULL && addr != nil)
+		flo_win_navigate(b->current->gw, [addr UTF8String]);
+}
+
+- (void)clearHistory:(id)s
+{
+	[[FloStore history] clear];
+	refreshHistoryMenu();
+}
+
+- (void)refreshStoreMenus
+{
+	fillStoreMenu(bookmarksMenu, [FloStore bookmarks], 2, 60);
+}
+
 - (void)nextTab:(id)s { [[FloBrowser key] nextTab:1]; }
 - (void)previousTab:(id)s { [[FloBrowser key] nextTab:-1]; }
 
@@ -257,7 +328,8 @@ void flo_ui_clipboard_set(const char *text, size_t len)
 	FloBrowser *b = [FloBrowser key];
 	FloTab *t = b != nil ? b->current : nil;
 	SEL a = [item action];
-	if (a == @selector(newWindow:) || a == @selector(terminate:))
+	if (a == @selector(newWindow:) || a == @selector(terminate:) || a == @selector(openStored:) ||
+	    a == @selector(clearHistory:))
 		return YES;
 	if (t == nil || t->gw == NULL)
 		return NO;
@@ -267,6 +339,10 @@ void flo_ui_clipboard_set(const char *text, size_t len)
 		return flo_win_can_forward(t->gw);
 	if (a == @selector(nextTab:) || a == @selector(previousTab:))
 		return [b->tabs count] > 1;
+	if (a == @selector(bookmarkPage:)) {
+		[item setTitle:[[FloStore bookmarks] contains:t->url] ? @"Remove Bookmark" : @"Bookmark This Page"];
+		return [t->url length] > 0;
+	}
 	return YES;
 }
 
@@ -314,7 +390,20 @@ static void buildMenus(FloApp *app)
 	addItem(m, @"Next Tab", @selector(nextTab:), @"}", app);
 	addItem(m, @"Previous Tab", @selector(previousTab:), @"{", app);
 
+	m = addSubmenu(bar, @"Bookmarks");
+	bookmarksMenu = m;
+	menuTarget = app;
+	addItem(m, @"Bookmark This Page", @selector(bookmarkPage:), @"d", app);
+	[m addItem:[NSMenuItem separatorItem]];
+
+	m = addSubmenu(bar, @"History");
+	historyMenu = m;
+	addItem(m, @"Clear History", @selector(clearHistory:), @"", app);
+	[m addItem:[NSMenuItem separatorItem]];
+
 	[NSApp setMainMenu:bar];
+	[app refreshStoreMenus];
+	refreshHistoryMenu();
 }
 
 int main(int argc, char **argv)
