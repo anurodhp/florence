@@ -85,10 +85,14 @@ export PKG_CONFIG_PATH="$PC" PKG_CONFIG_LIBDIR="$PC"
 # SDK stubs); the objects it built are linked here with tools/common.sh's recipe.
 ( cd "$W" && env \
     CC="$CLANG -isysroot $SDK -target arm64-apple-ios14.4" \
-    CFLAGS="-O2 -fno-builtin -fno-stack-protector -D_FORTIFY_SOURCE=0 -Wno-error -Wno-nullability-completeness -Wno-deprecated-declarations -D_DARWIN_C_SOURCE -DNDEBUG -I$NSROOT/include $EXTRA_CFLAGS" \
-    FLORENCE_CFLAGS="$EXTRA_CFLAGS" LDFLAGS="-L$NSROOT/lib -L$LL" \
-    make -k -j4 TARGET="$TARGET_FE" BUILD_CC=cc HOST_CC=cc ) > "$BUILD/netsurf-$TARGET_FE.log" 2>&1 || true
+    CFLAGS="$FL_OPT -fno-builtin -fno-stack-protector -D_FORTIFY_SOURCE=0 -Wno-error -Wno-nullability-completeness -Wno-deprecated-declarations -D_DARWIN_C_SOURCE -DNDEBUG -I$NSROOT/include $EXTRA_CFLAGS" \
+    FLORENCE_CFLAGS="$EXTRA_CFLAGS" FLORENCE_OPT="$FL_OPT" LDFLAGS="-L$NSROOT/lib -L$LL" \
+    make -k -j4 V=1 TARGET="$TARGET_FE" BUILD_CC=cc HOST_CC=cc ) > "$BUILD/netsurf-$TARGET_FE.log" 2>&1 || true
 OBJDIR="$W/build/Darwin-$TARGET_FE"
+# V=1 put the real compile commands in the log: show which optimisation levels they carry
+echo "optimisation levels in NetSurf's compile commands ($BUILD/netsurf-$TARGET_FE.log):"
+grep -o -E -- ' -O[0-9sz]( |$)' "$BUILD/netsurf-$TARGET_FE.log" | tr -d ' ' | sort | uniq -c | sed 's/^/  /'
+if grep -q -E -- ' -O0( |$)' "$BUILD/netsurf-$TARGET_FE.log"; then echo "warning: some NetSurf objects were compiled with -O0" >&2; fi
 if grep -E "\.[chm]:[0-9]+:[0-9]*:? *(fatal )?error:|\*\*\* .*\.o\]" "$BUILD/netsurf-$TARGET_FE.log" | head -20 | grep .; then
     echo "error: NetSurf ($TARGET_FE) failed to compile, see $BUILD/netsurf-$TARGET_FE.log" >&2; exit 1
 fi
@@ -104,7 +108,7 @@ if [ "$TARGET_FE" = gnustep ]; then
     # The Objective-C files are compiled here, not by NetSurf's Makefile (which may not know .m).
     for m in "$W"/frontends/gnustep/*.m; do
         # shellcheck disable=SC2086
-        fl_compile "$OBJDIR" "$m" -I"$W/frontends" $FL_GS_OBJCFLAGS
+        fl_compile "$OBJDIR" "$m" -I"$W/frontends" $FL_GS_OBJCFLAGS $FL_OPT
     done
     fl_compile_report "gnustep UI"
     fl_link_gs_exe "$ROOT$PREFIX/bin/nsgnustep" "$OBJDIR" "${NSA[@]}"
@@ -112,6 +116,7 @@ if [ "$TARGET_FE" = gnustep ]; then
     APP="$ROOT/Applications/Florence.app"; rm -rf "$APP"; mkdir -p "$APP/Resources"
     cp "$ROOT$PREFIX/bin/nsgnustep" "$APP/Florence"
     cp "$FL_DIR/frontend/assets/Florence.tiff" "$FL_DIR/frontend/assets/Florence.png" "$APP/Resources/"
+    cp "$FL_DIR"/frontend/assets/icons/tb-*.tiff "$APP/Resources/"        # the toolbar glyphs (Lucide, see assets/icons/README.md)
     printf '{\n    ApplicationName = Florence;\n    ApplicationDescription = "NetSurf with a GNUstep UI";\n    ApplicationRelease = "0.2";\n    NSExecutable = Florence;\n    NSIcon = "Florence.tiff";\n    NSPrincipalClass = NSApplication;\n    CFBundleIdentifier = "org.florence.browser";\n}\n' > "$APP/Resources/Info-gnustep.plist"
     echo "bundle $APP (run: openapp Florence, under an X server)"
 else

@@ -22,7 +22,7 @@ NetSurf 3.11 (no JavaScript) with a GNUstep UI, for small machines (Raspberry Pi
 | `FloToolbar.m` | the Safari-like parts, drawn with vector icons: icon buttons, rounded address bar, tab strip, hover label |
 | `FloStore.m` | bookmark and history lists (`~/.netsurf/Bookmarks`, `History`) |
 | `FloUI.m` | scheduler pump, the `flo_ui_*` bridge, menus, `main()` |
-| `assets/` | the Florentine giglio icon (SVG; `tools/make_icon.sh` renders the PNG/TIFF) |
+| `assets/` | the Florentine giglio icon (SVG; `tools/make_icon.sh` renders the PNG/TIFF); `assets/icons/` the toolbar glyphs (Lucide, ISC/MIT; `tools/make_toolbar_icons.sh`) |
 
 ## Features
 
@@ -32,6 +32,12 @@ downloads, an app icon. Bad certificates are handled by the core (`about:query/s
 Optional JavaScript: `scripts/build_nsgenbind.sh` once (host tool; needs bison >= 3 and flex, `brew install bison flex`
 on a Mac), then `FLO_JS=1 scripts/build_netsurf.sh gnustep`. It stays off until **View > Enable JavaScript** (remembered
 in `~/.netsurf/Choices`, or `FLORENCE_JS=1`); expect it to be slow on a Pi 3 and sites that need a modern engine to still fail.
+
+## Build optimisation
+
+Everything (libraries, NetSurf, the glue, the UI) is built with `-O2`, set once as `FL_OPT` in `tools/common.sh`
+(`FL_OPT=-Os scripts/build_netsurf.sh gnustep` to change it). The build prints which `-O` levels the compile
+commands actually carried, and warns about any `-O0`.
 
 ## Low-power design
 

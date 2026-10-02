@@ -33,7 +33,7 @@ for lib in ${NS_LIBS:-libwapcaplet libparserutils libhubbub libcss libdom libnsu
     ( cd "$d" &&
       env CC="$CLANG -isysroot $SDK -target arm64-apple-ios14.4" AR="$AR" RANLIB="$RANLIB" \
           BUILD_CC="cc" \
-          CFLAGS="-O2 -fno-builtin -fno-stack-protector -D_FORTIFY_SOURCE=0 -Wno-error -Wno-nullability-completeness -I$NSROOT/include" \
+          CFLAGS="$FL_OPT -fno-builtin -fno-stack-protector -D_FORTIFY_SOURCE=0 -Wno-error -Wno-nullability-completeness -I$NSROOT/include" \
           LDFLAGS="-L$NSROOT/lib" \
           make -j4 PREFIX="$NSROOT" COMPONENT_TYPE=lib-static install ) > "$NSROOT/$lib.log" 2>&1 || {
         tail -30 "$NSROOT/$lib.log" >&2; echo "error: $lib build failed (log: $NSROOT/$lib.log)" >&2; exit 1; }

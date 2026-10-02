@@ -31,7 +31,10 @@ SDK="$XCODE12/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
 NEWLD_BINDIR="$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/bin"
 [ -x "$NEWLD_BINDIR/ld" ] || { echo "error: no usable ld under $(xcode-select -p)" >&2; exit 1; }
 
+# The one optimisation level for everything built here (libraries, NetSurf, the glue, the UI):
+# override with FL_OPT=-O3 (or -Os) in the environment; the default is -O2.
 FL_OPT="${FL_OPT:--O2}"
+export FL_OPT
 # Hosted POSIX client flags: -fno-builtin and -D_FORTIFY_SOURCE=0 are load-bearing
 # (x11_common.sh: the SDK's fortify inlines recurse; -fno-builtin keeps memcpy and
 # friends calling libsystem_platform's arm64 routines).

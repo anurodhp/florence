@@ -28,7 +28,7 @@ if [ ! -f "$CFGDIR/curl_config.h" ] || [ "${FL_RECONFIGURE:-0}" = 1 ]; then
     ( cd "$WORK"
       "$SRC/configure" --host=aarch64-apple-darwin --prefix="$PREFIX" \
         CC="$CLANG -isysroot $SDK -target arm64-apple-ios14.4" \
-        CFLAGS="-O2 -D_FORTIFY_SOURCE=0 -Wno-nullability-completeness" \
+        CFLAGS="$FL_OPT -D_FORTIFY_SOURCE=0 -Wno-nullability-completeness" \
         CPPFLAGS="-I$INC" LDFLAGS="-L$LIB" \
         --with-mbedtls="$ROOT$PREFIX" --with-zlib --without-openssl \
         --with-ca-bundle="$PREFIX/share/florence/cacert.pem" \

@@ -5,7 +5,50 @@
 
 static NSColor *grey(CGFloat w) { return [NSColor colorWithCalibratedWhite:w alpha:1.0]; }
 
-/* ---- icons: drawn in a 20x20 box centred on `c`, stroked in `colour` ------------ */
+/* ---- icon images: Lucide glyphs rendered by tools/make_toolbar_icons.sh, found in the app's Resources ---- */
+
+static NSMutableDictionary *iconCache;
+
+static NSImage *toolImage(NSString *name)
+{
+	NSImage *img;
+	NSString *path;
+	if (iconCache == nil)
+		iconCache = [[NSMutableDictionary alloc] init];
+	img = [iconCache objectForKey:name];
+	if (img == nil) {
+		path = [[NSBundle mainBundle] pathForResource:name ofType:@"tiff"];
+		img = path != nil ? [[[NSImage alloc] initWithContentsOfFile:path] autorelease] : nil;
+		[iconCache setObject:img != nil ? (id)img : (id)[NSNull null] forKey:name];
+	}
+	return [img isKindOfClass:[NSImage class]] ? img : nil;
+}
+
+/* draws the image centred on c at its pixel size, on whole pixels; NO if there is none */
+static BOOL drawImageAt(NSString *name, NSPoint c)
+{
+	NSImage *img = toolImage(name);
+	NSImageRep *rep = img != nil ? [[img representations] objectAtIndex:0] : nil;
+	CGFloat w, h;
+	if (rep == nil)
+		return NO;
+	w = [rep pixelsWide];
+	h = [rep pixelsHigh];
+	[img drawInRect:NSMakeRect(floor(c.x - w / 2 + 0.5), floor(c.y - h / 2 + 0.5), w, h)
+		fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:1.0];
+	return YES;
+}
+
+static NSString *iconName(FloIcon icon, int state)      /* state: 0 normal, 1 disabled, 2 pressed */
+{
+	static NSString *const base[] = { @"back", @"forward", @"reload", @"stop", @"plus", @"star", @"star-filled" };
+	static NSString *const suffix[] = { @"normal", @"disabled", @"pressed" };
+	if (icon == FloIconStarFilled)
+		return @"tb-star-filled";
+	return [NSString stringWithFormat:@"tb-%@-%@", base[icon], suffix[state]];
+}
+
+/* ---- icons, vector fallback: drawn in a 20x20 box centred on `c`, stroked in `colour` ------------ */
 
 static void strokeLine(NSPoint a, NSPoint b)
 {
@@ -120,7 +163,8 @@ static void drawIcon(FloIcon icon, NSPoint c, NSColor *colour)
 		[[NSColor colorWithCalibratedWhite:0 alpha:down ? 0.16 : 0.08] set];
 		[[NSBezierPath bezierPathWithRoundedRect:NSInsetRect(b, 1, 1) xRadius:5 yRadius:5] fill];
 	}
-	drawIcon(icon, NSMakePoint(NSMidX(b), NSMidY(b)), en ? grey(down ? 0.08 : 0.30) : grey(0.72));
+	if (!drawImageAt(iconName(icon, !en ? 1 : (down ? 2 : 0)), NSMakePoint(NSMidX(b), NSMidY(b))))
+		drawIcon(icon, NSMakePoint(NSMidX(b), NSMidY(b)), en ? grey(down ? 0.08 : 0.30) : grey(0.72));
 }
 
 /* hover tracking */
@@ -249,7 +293,7 @@ static void drawIcon(FloIcon icon, NSPoint c, NSColor *colour)
 	[(focus ? [NSColor colorWithCalibratedRed:0.30 green:0.58 blue:0.96 alpha:1.0] : grey(0.80)) set];
 	[p setLineWidth:focus ? 2.0 : 1.0];
 	[p stroke];
-	if (secure) {                   /* a small padlock */
+	if (secure && !drawImageAt(@"tb-lock", NSMakePoint(15, NSMidY(b)))) {   /* a small padlock */
 		NSRect body = NSMakeRect(9, NSMidY(b) - 5, 9, 7);
 		NSBezierPath *sh = [NSBezierPath bezierPath];
 		[grey(0.40) set];
@@ -333,11 +377,13 @@ static NSString *fitted(NSString *s, NSDictionary *attrs, CGFloat width)
 		[title drawAtPoint:NSMakePoint(NSMidX(r) - ts.width / 2, NSMidY(r) - ts.height / 2) withAttributes:attrs];
 		/* the close mark */
 		c = NSMakePoint(NSMinX(r) + 14, NSMidY(r));
-		[grey(0.40) set];
-		[NSBezierPath setDefaultLineWidth:1.4];
-		[NSBezierPath setDefaultLineCapStyle:NSRoundLineCapStyle];
-		strokeLine(NSMakePoint(c.x - 3, c.y - 3), NSMakePoint(c.x + 3, c.y + 3));
-		strokeLine(NSMakePoint(c.x - 3, c.y + 3), NSMakePoint(c.x + 3, c.y - 3));
+		if (!drawImageAt(@"tb-close", c)) {
+			[grey(0.40) set];
+			[NSBezierPath setDefaultLineWidth:1.4];
+			[NSBezierPath setDefaultLineCapStyle:NSRoundLineCapStyle];
+			strokeLine(NSMakePoint(c.x - 3, c.y - 3), NSMakePoint(c.x + 3, c.y + 3));
+			strokeLine(NSMakePoint(c.x - 3, c.y + 3), NSMakePoint(c.x + 3, c.y - 3));
+		}
 	}
 }
 

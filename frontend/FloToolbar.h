@@ -1,6 +1,6 @@
 /*
- * Florence: Safari-like toolbar parts, drawn with vector icons (no image files): flat icon
- * buttons, the rounded address field, the toolbar band, the tab strip and the hover-status
+ * Florence: Safari-like toolbar parts: flat icon
+ * buttons (Lucide glyphs from the bundle's Resources, vector fallback), the rounded address field, the toolbar band, the tab strip and the hover-status
  * label. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
  */
 #import <AppKit/AppKit.h>

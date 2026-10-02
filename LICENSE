@@ -9,6 +9,8 @@ copyright holders are NetSurf's contributors.
 Copyright (c) 2026 Anurodh Pokharel for the files that carry no other copyright notice.
 
 Exceptions, which keep their own terms:
+  frontend/assets/icons/        the Lucide icons (ISC; chevrons, x, plus and lock also MIT via Feather):
+                                see frontend/assets/icons/LICENSE-lucide.txt, which must travel with them
   configs/curl/curl_config.h   curl's licence (it is curl's configuration header)
   tools/bind_audit.sh          vendored from the xnu-iokit-pi3 port; its licence is that repo's
 
