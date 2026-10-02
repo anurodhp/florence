@@ -31,6 +31,7 @@
 #include "netsurf/bitmap.h"
 #include "netsurf/layout.h"
 #include "netsurf/clipboard.h"
+#include "netsurf/download.h"
 #include "content/urldb.h"
 
 #include "gnustep/gs.h"
@@ -41,6 +42,7 @@
 extern struct gui_window_table *flo_window_table;
 extern struct gui_clipboard_table *flo_clipboard_table;
 extern struct gui_bitmap_table *flo_bitmap_table;
+extern struct gui_download_table *flo_download_table;
 extern struct gui_layout_table *flo_layout_table;
 
 char **respaths;                /* resource search path (gs_fetch.c uses it) */
@@ -181,6 +183,7 @@ int flo_core_init(int argc, char **argv)
 	table.misc = &misc_table;
 	table.window = flo_window_table;
 	table.clipboard = flo_clipboard_table;
+	table.download = flo_download_table;
 	table.fetch = gs_fetch_table;
 	table.bitmap = flo_bitmap_table;
 	table.layout = flo_layout_table;

@@ -55,6 +55,7 @@ static struct gui_window *gw_create(struct browser_window *bw, struct gui_window
 
 static void gw_destroy(struct gui_window *gw)
 {
+	flo_download_forget(gw);
 	if (gw->ui != NULL)
 		flo_ui_window_free(gw->ui);
 	free(gw);
