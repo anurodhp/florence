@@ -1,0 +1,2 @@
+# -*- mode: makefile-gmake -*-
+PKG_CONFIG := pkg-config

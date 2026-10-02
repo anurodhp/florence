@@ -1,0 +1,10 @@
+# -*- mode: makefile-gmake -*-
+# Florence (GNUstep) frontend options. Include paths come from Florence's build
+# script through the environment (see scripts/build_netsurf.sh).
+NETSURF_GNUSTEP_RESOURCES := $(PREFIX)/share/netsurf/
+NETSURF_USE_RSVG := NO
+NETSURF_USE_NSSVG := NO
+NETSURF_USE_ROSPRITE := NO
+NETSURF_USE_HARU_PDF := NO
+NETSURF_FS_BACKING_STORE := YES
+CFLAGS += -O2
