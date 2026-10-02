@@ -20,6 +20,18 @@
 #define RESIZE_DELAY 0.08
 
 static NSMutableArray *windows;         /* every live FloWindow */
+static NSImage *appIcon;                /* the Florentine giglio, from the bundle's Resources */
+
+static void loadIcon(void)
+{
+	NSString *path = [[NSBundle mainBundle] pathForResource:@"Florence" ofType:@"tiff"];
+	if (path == nil)
+		path = [[NSBundle mainBundle] pathForResource:@"Florence" ofType:@"png"];
+	if (path != nil)
+		appIcon = [[NSImage alloc] initWithContentsOfFile:path];
+	if (appIcon != nil)
+		[NSApp setApplicationIconImage:appIcon];
+}
 static NSString *startURL;
 
 /* ---- the scheduler pump -------------------------------------------------- */
@@ -145,6 +157,8 @@ static NSButton *makeButton(NSString *title, CGFloat x, CGFloat w, id target, SE
 	[win setDelegate:self];
 	[win setTitle:@"Florence"];
 	[win setAcceptsMouseMovedEvents:YES];
+	if (appIcon != nil)
+		[win setMiniwindowImage:appIcon];
 	[win setMinSize:NSMakeSize(320, 200)];
 
 	NSView *cv = [win contentView];
@@ -518,6 +532,7 @@ int main(int argc, char **argv)
 	flo_trace("main: gnustep initialised");
 	[NSApplication sharedApplication];
 	flo_trace("main: NSApplication");
+	loadIcon();
 	if (flo_core_init(argc, argv) != 0)
 		return 1;
 	flo_trace("main: core ready, building menus");

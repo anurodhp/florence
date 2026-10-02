@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Florence: the red giglio (Florentine lily) on a cream tile -->
+  <rect x="8" y="8" width="240" height="240" rx="44" fill="#f6efdc" stroke="#b3122c" stroke-width="6"/>
+  <!-- the stamens that mark the Florentine lily: drawn first, petals cover their stalks -->
+  <g fill="none" stroke="#c8102e" stroke-width="5" stroke-linecap="round">
+    <path d="M122 150 C 108 118, 94 88, 84 58"/>
+    <path d="M134 150 C 148 118, 162 88, 172 58"/>
+  </g>
+  <g fill="#c8102e">
+    <circle cx="84" cy="54" r="7"/>
+    <circle cx="172" cy="54" r="7"/>
+  </g>
+  <g fill="#c8102e" stroke="#7d0a1d" stroke-width="3" stroke-linejoin="round">
+    <!-- centre petal -->
+    <path d="M128 20 C 156 54, 164 100, 144 142 C 138 154, 133 162, 128 172 C 123 162, 118 154, 112 142 C 92 100, 100 54, 128 20 Z"/>
+    <!-- left petal: sweeps out and curls down -->
+    <path d="M112 160 C 78 160, 40 142, 36 108 C 33 82, 58 66, 80 78 C 64 86, 62 102, 76 112 C 90 122, 106 118, 118 104 C 112 126, 112 144, 112 160 Z"/>
+    <!-- right petal -->
+    <path d="M144 160 C 178 160, 216 142, 220 108 C 223 82, 198 66, 176 78 C 192 86, 194 102, 180 112 C 166 122, 150 118, 138 104 C 144 126, 144 144, 144 160 Z"/>
+    <!-- band -->
+    <rect x="82" y="166" width="92" height="20" rx="8"/>
+    <!-- lower centre petal -->
+    <path d="M128 236 C 110 220, 110 204, 128 190 C 146 204, 146 220, 128 236 Z"/>
+    <!-- lower side tails -->
+    <path d="M104 188 C 86 192, 76 208, 84 228 C 92 214, 104 206, 114 204 Z"/>
+    <path d="M152 188 C 170 192, 180 208, 172 228 C 164 214, 152 206, 142 204 Z"/>
+  </g>
+</svg>

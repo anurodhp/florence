@@ -100,7 +100,8 @@ if [ "$TARGET_FE" = gnustep ]; then
     # a GNUstep application bundle in the Mac layout the image uses (/Applications/X.app)
     APP="$ROOT/Applications/Florence.app"; rm -rf "$APP"; mkdir -p "$APP/Resources"
     cp "$ROOT$PREFIX/bin/nsgnustep" "$APP/Florence"
-    printf '{\n    ApplicationName = Florence;\n    ApplicationDescription = "NetSurf with a GNUstep UI";\n    NSExecutable = Florence;\n    NSPrincipalClass = NSApplication;\n    CFBundleIdentifier = "org.florence.browser";\n}\n' > "$APP/Resources/Info-gnustep.plist"
+    cp "$FL_DIR/frontend/assets/Florence.tiff" "$FL_DIR/frontend/assets/Florence.png" "$APP/Resources/"
+    printf '{\n    ApplicationName = Florence;\n    ApplicationDescription = "NetSurf with a GNUstep UI";\n    ApplicationRelease = "0.2";\n    NSExecutable = Florence;\n    NSIcon = "Florence.tiff";\n    NSPrincipalClass = NSApplication;\n    CFBundleIdentifier = "org.florence.browser";\n}\n' > "$APP/Resources/Info-gnustep.plist"
     echo "bundle $APP (run: openapp Florence, under an X server)"
 else
     fl_link_exe "$ROOT$PREFIX/bin/ns$TARGET_FE" "$OBJDIR" "${NSA[@]}" \
