@@ -164,25 +164,26 @@ void flo_trace(const char *stage)
 		fprintf(stderr, "florence: %s\n", stage);
 }
 
+/* netsurf_register() keeps this pointer for the life of the process (guit): it must not be a local */
+static struct netsurf_table table;
+
 int flo_core_init(int argc, char **argv)
 {
 	char buf[PATH_MAX];
 	const char *h = getenv("HOME");
 	nserror err;
-	struct netsurf_table table = {
-		.misc = &misc_table,
-		.window = flo_window_table,
-		.clipboard = flo_clipboard_table,
-		.fetch = gs_fetch_table,
-		.bitmap = flo_bitmap_table,
-		.layout = flo_layout_table,
-	};
 
 	install_crash_report();
 	snprintf(home_dir, sizeof(home_dir), "%s", h != NULL ? h : "/tmp");
 	home_path(buf, sizeof(buf), "");
 	mkdir(buf, 0700);
 
+	table.misc = &misc_table;
+	table.window = flo_window_table;
+	table.clipboard = flo_clipboard_table;
+	table.fetch = gs_fetch_table;
+	table.bitmap = flo_bitmap_table;
+	table.layout = flo_layout_table;
 	flo_trace("core: register tables");
 	if (netsurf_register(&table) != NSERROR_OK) {
 		fprintf(stderr, "florence: operation table registration failed\n");
