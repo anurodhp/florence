@@ -30,10 +30,17 @@ eval "$(cd "$FL_GS_TOOLS" && bash -c '
         "$LINK" "$LIBFLAGS" "$GS_SYS_HEADERS" "$GS_SYS_LIBS" "$OUT/objc4_public_headers"
 ' _ "${FL_GS_OWNERS[@]}")"
 
-# compiler flags for the Objective-C files and the C files that include cairo.
-# -DNeXT_RUNTIME (+ exceptions, blocks) is what the port's own objc4 probes use
-# (build_gnustep_config_probes.sh): without it GNUstep's headers want libobjc2's <objc/encoding.h>.
-FL_GS_CFLAGS="-DNeXT_RUNTIME -fobjc-exceptions -fblocks -DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNU_GUI_LIBRARY=1 -I$FL_GS_HEADERS -I$FL_GS_OBJC4 -I$X11INC/cairo -I$X11INC -I$X11INC/freetype2"
+# Compiler flags. The Objective-C flags are asked of the port's own installed gnustep-config,
+# exactly as build_foundation_smoketest.sh does (runtime defines, -fconstant-string-class=
+# NSConstantString so @"..." is an NSConstantString, exceptions, blocks); never hand-written.
+# FL_GS_CFLAGS is what the plain C glue needs (cairo headers) and is safe on C files.
+GSDIR="$IOKIT_LIBC/gnustep"
+fl_require "$GSDIR/GNUstep-build.conf" "run the iokit repo's build_gnustep_*.sh (an app build writes it)"
+FL_GS_OBJCFLAGS="$(GNUSTEP_CONFIG_FILE="$GSDIR/GNUstep-build.conf" GNUSTEP_MAKEFILES="$GSDIR/root/usr/GNUstep/System/Library/Makefiles" \
+    "$GSDIR/root/usr/GNUstep/System/Tools/gnustep-config" --objc-flags | sed 's/-MMD -MP //')"
+[ -n "$FL_GS_OBJCFLAGS" ] || { echo "error: gnustep-config --objc-flags returned nothing" >&2; exit 1; }
+FL_GS_OBJCFLAGS="$FL_GS_OBJCFLAGS -D_FORTIFY_SOURCE=0 -I$FL_GS_HEADERS -I$FL_GS_OBJC4 -I$X11INC/cairo -I$X11INC -I$X11INC/freetype2"
+FL_GS_CFLAGS="-I$X11INC/cairo -I$X11INC -I$X11INC/freetype2"
 
 # fl_link_gs_exe <out> <objdir> [libs...]: the recipe the port uses for its GNUstep apps
 # (gs_build_app): -nostdlib against owner dylibs, no Csu start files (ld gives LC_MAIN),

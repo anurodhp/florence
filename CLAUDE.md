@@ -30,8 +30,11 @@ Linux/macOS habits; they are wrong here.
 
 ## GNUstep specifics
 
-* The runtime is **Apple's objc4**, not libobjc2: no `-fobjc-runtime=gnustep-2.0`, no
-  `-fconstant-string-class` (that probe fails here). ARC is not used; keep retain/release.
+* The runtime is **Apple's objc4**, not libobjc2: no `-fobjc-runtime=gnustep-2.0`. ARC is not
+  used; keep retain/release. Objective-C compiler flags come from the port's installed
+  `gnustep-config --objc-flags` (as `build_foundation_smoketest.sh` does), never hand-written:
+  they carry `-fconstant-string-class=NSConstantString` (without it `@"..."` needs
+  `___CFConstantStringClassReference`, which nothing here provides) and the runtime defines.
 * GNUstep is installed by the iokit port in gnustep-make's "gnustep" layout under
   `libc_build/gnustep/root/usr/GNUstep/System/{Library,Applications,Tools}`; the image rearranges
   it to the Mac layout (`/Applications/X.app`, `/System/Library`, `/usr/local/bin`) with

@@ -80,10 +80,16 @@ fi
 NSA=("$NSROOT"/lib/libcss.a "$NSROOT"/lib/libdom.a "$NSROOT"/lib/libhubbub.a "$NSROOT"/lib/libparserutils.a
      "$NSROOT"/lib/libwapcaplet.a "$NSROOT"/lib/libnsutils.a "$NSROOT"/lib/libnsbmp.a "$NSROOT"/lib/libnsgif.a)
 if [ "$TARGET_FE" = gnustep ]; then
+    # NetSurf's make runs with -k and its failures are not fatal above: make sure the C glue
+    # really was built before linking, or the link reports every flo_* symbol as undefined.
+    for o in gs_core gs_window gs_plot gs_layout gs_bitmap; do
+        ls "$OBJDIR"/*"$o".o >/dev/null 2>&1 || { echo "error: $o.o was not built by NetSurf's make; see $BUILD/netsurf-gnustep.log" >&2
+            grep -n -m15 -E "\*\*\*|error|No rule|No such" "$BUILD/netsurf-gnustep.log" >&2 || true; exit 1; }
+    done
     # The Objective-C files are compiled here, not by NetSurf's Makefile (which may not know .m).
     for m in FloUI.m FloPage.m; do
         # shellcheck disable=SC2086
-        fl_compile "$OBJDIR" "$W/frontends/gnustep/$m" -I"$W/frontends" $FL_GS_CFLAGS
+        fl_compile "$OBJDIR" "$W/frontends/gnustep/$m" -I"$W/frontends" $FL_GS_OBJCFLAGS
     done
     fl_compile_report "gnustep UI"
     fl_link_gs_exe "$ROOT$PREFIX/bin/nsgnustep" "$OBJDIR" "${NSA[@]}"
