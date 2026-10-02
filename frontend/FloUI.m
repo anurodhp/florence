@@ -135,6 +135,7 @@ static NSButton *makeButton(NSString *title, CGFloat x, CGFloat w, id target, SE
 	if ((self = [super init]) == nil)
 		return nil;
 	gw = g;
+	g->ui = self;           /* callbacks arrive while the core is still creating the window */
 	CGFloat n = (CGFloat)[windows count];
 	NSRect frame = NSMakeRect(60 + 24 * fmod(n, 8), 60 + 24 * fmod(n, 8), 960, 640);
 	win = [[NSWindow alloc] initWithContentRect:frame
@@ -184,10 +185,20 @@ static NSButton *makeButton(NSString *title, CGFloat x, CGFloat w, id target, SE
 		name:NSViewFrameDidChangeNotification object:[scroll contentView]];
 
 	[windows addObject:self];
+	/* Not shown yet: showing it runs delegate callbacks that ask the core about history, and the
+	 * core has not finished building this browser window while it is calling us. Next loop pass. */
+	[self performSelector:@selector(showWindow) withObject:nil afterDelay:0];
+	return self;
+}
+
+- (void)showWindow
+{
+	if (gw == NULL)
+		return;
+	flo_trace("ui: show window");
 	[self updateButtons];
 	[win makeKeyAndOrderFront:nil];
 	[win makeFirstResponder:page];
-	return self;
 }
 
 - (void)dealloc
@@ -401,6 +412,7 @@ static FloWindow *currentWindow(void)
 
 - (void)applicationDidFinishLaunching:(NSNotification *)n
 {
+	flo_trace("app: did finish launching");
 	flo_open_url(startURL != nil ? [startURL UTF8String] : NULL);
 	flo_ui_wake();
 }
@@ -503,12 +515,16 @@ int main(int argc, char **argv)
 	{ extern char **environ; GSInitializeProcess(argc, argv, environ); }
 #endif
 	windows = [[NSMutableArray alloc] init];
+	flo_trace("main: gnustep initialised");
 	[NSApplication sharedApplication];
+	flo_trace("main: NSApplication");
 	if (flo_core_init(argc, argv) != 0)
 		return 1;
+	flo_trace("main: core ready, building menus");
 	app = [[FloApp alloc] init];
 	[NSApp setDelegate:app];
 	buildMenus(app);
+	flo_trace("main: run loop");
 	[NSApp run];
 	[pool release];
 	return 0;

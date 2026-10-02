@@ -23,6 +23,9 @@
 
 /* ---- gui_window_table ---------------------------------------------------- */
 
+/* the core can call back while gw_create is still running; every callback tolerates no UI yet */
+#define NOUI(gw) ((gw)->ui == NULL)
+
 static struct gui_window *gw_create(struct browser_window *bw, struct gui_window *existing,
 				    gui_window_create_flags flags)
 {
@@ -30,7 +33,8 @@ static struct gui_window *gw_create(struct browser_window *bw, struct gui_window
 	if (gw == NULL)
 		return NULL;
 	gw->bw = bw;
-	gw->ui = flo_ui_window_new(gw);
+	flo_trace("window: create");
+	gw->ui = flo_ui_window_new(gw);   /* the UI also stores itself in gw->ui at once */
 	if (gw->ui == NULL) {
 		free(gw);
 		return NULL;
@@ -40,12 +44,15 @@ static struct gui_window *gw_create(struct browser_window *bw, struct gui_window
 
 static void gw_destroy(struct gui_window *gw)
 {
-	flo_ui_window_free(gw->ui);
+	if (gw->ui != NULL)
+		flo_ui_window_free(gw->ui);
 	free(gw);
 }
 
 static nserror gw_invalidate(struct gui_window *gw, const struct rect *r)
 {
+	if (NOUI(gw))
+		return NSERROR_OK;
 	if (r == NULL)
 		flo_ui_invalidate(gw->ui, 0, 0, -1, -1);
 	else
@@ -55,24 +62,37 @@ static nserror gw_invalidate(struct gui_window *gw, const struct rect *r)
 
 static bool gw_get_scroll(struct gui_window *gw, int *sx, int *sy)
 {
+	if (NOUI(gw)) {
+		*sx = *sy = 0;
+		return true;
+	}
 	flo_ui_get_scroll(gw->ui, sx, sy);
 	return true;
 }
 
 static nserror gw_set_scroll(struct gui_window *gw, const struct rect *r)
 {
+	if (NOUI(gw))
+		return NSERROR_OK;
 	flo_ui_set_scroll(gw->ui, r->x0, r->y0);
 	return NSERROR_OK;
 }
 
 static nserror gw_get_dimensions(struct gui_window *gw, int *w, int *h)
 {
+	if (NOUI(gw)) {
+		*w = 960;
+		*h = 600;
+		return NSERROR_OK;
+	}
 	flo_ui_get_viewport(gw->ui, w, h);
 	return NSERROR_OK;
 }
 
 static nserror gw_event(struct gui_window *gw, enum gui_window_event ev)
 {
+	if (NOUI(gw))
+		return NSERROR_OK;
 	switch (ev) {
 	case GW_EVENT_UPDATE_EXTENT: flo_ui_update_extent(gw->ui); break;
 	case GW_EVENT_REMOVE_CARET: flo_ui_remove_caret(gw->ui); break;
@@ -83,19 +103,23 @@ static nserror gw_event(struct gui_window *gw, enum gui_window_event ev)
 	return NSERROR_OK;
 }
 
-static void gw_set_title(struct gui_window *gw, const char *title) { flo_ui_set_title(gw->ui, title); }
+static void gw_set_title(struct gui_window *gw, const char *title) { if (!NOUI(gw)) flo_ui_set_title(gw->ui, title); }
 
 static nserror gw_set_url(struct gui_window *gw, struct nsurl *url)
 {
+	if (NOUI(gw))
+		return NSERROR_OK;
 	flo_ui_set_url(gw->ui, nsurl_access(url));
 	return NSERROR_OK;
 }
 
-static void gw_set_status(struct gui_window *gw, const char *text) { flo_ui_set_status(gw->ui, text); }
+static void gw_set_status(struct gui_window *gw, const char *text) { if (!NOUI(gw)) flo_ui_set_status(gw->ui, text); }
 
 static void gw_set_pointer(struct gui_window *gw, enum gui_pointer_shape shape)
 {
 	int p;
+	if (NOUI(gw))
+		return;
 	switch (shape) {
 	case GUI_POINTER_POINT: p = FLO_PTR_HAND; break;
 	case GUI_POINTER_CARET: p = FLO_PTR_IBEAM; break;
@@ -112,6 +136,8 @@ static void gw_set_pointer(struct gui_window *gw, enum gui_pointer_shape shape)
 
 static nserror gw_place_caret(struct gui_window *gw, int x, int y, int height, const struct rect *clip)
 {
+	if (NOUI(gw))
+		return NSERROR_OK;
 	flo_ui_place_caret(gw->ui, x, y, height);
 	return NSERROR_OK;
 }

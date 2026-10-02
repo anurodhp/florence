@@ -33,6 +33,7 @@ int  flo_schedule_run(void);                    /* ms until the next callback, -
 void flo_open_url(const char *url);             /* new window; NULL: the home page */
 const struct plotter_table *flo_plotters(void); /* cairo plotters; ctx->priv is a cairo_t* */
 const char *flo_resource_dir(void);
+void flo_trace(const char *stage);             /* stderr "florence: <stage>" when FLORENCE_TRACE is set */
 struct plot_font_style;
 void *flo_scaled_font(const struct plot_font_style *fs);   /* cairo_scaled_font_t*, cached */
 struct bitmap;

@@ -106,6 +106,12 @@ static void apply_overrides(void)
 
 /* ---- life cycle --------------------------------------------------------- */
 
+void flo_trace(const char *stage)
+{
+	if (getenv("FLORENCE_TRACE") != NULL)
+		fprintf(stderr, "florence: %s\n", stage);
+}
+
 int flo_core_init(int argc, char **argv)
 {
 	char buf[PATH_MAX];
@@ -124,12 +130,14 @@ int flo_core_init(int argc, char **argv)
 	home_path(buf, sizeof(buf), "");
 	mkdir(buf, 0700);
 
+	flo_trace("core: register tables");
 	if (netsurf_register(&table) != NSERROR_OK) {
 		fprintf(stderr, "florence: operation table registration failed\n");
 		return -1;
 	}
 	flo_bitmap_init();
 
+	flo_trace("core: resources + options");
 	respaths = init_resources();
 	if (nsoption_init(set_defaults, &nsoptions, &nsoptions_default) != NSERROR_OK) {
 		fprintf(stderr, "florence: options init failed\n");
@@ -142,15 +150,18 @@ int flo_core_init(int argc, char **argv)
 	    messages_add_from_file(buf) != NSERROR_OK)
 		fprintf(stderr, "florence: no Messages file on the resource path (%s)\n", GNUSTEP_RESPATH);
 
+	flo_trace("core: netsurf_init");
 	err = netsurf_init(NULL);       /* NULL: no disk backing store path override */
 	if (err != NSERROR_OK) {
 		fprintf(stderr, "florence: netsurf_init failed (%d)\n", (int)err);
 		return -1;
 	}
+	flo_trace("core: urldb");
 	urldb_load(home_path(urls_path, sizeof(urls_path), "URLs"));
 	urldb_load_cookies(nsoption_charp(cookie_file));
 
 	gs_fetch_filetype_init(filepath_sfind(respaths, buf, "mimetypes") != NULL ? buf : "/etc/mime.types");
+	flo_trace("core: ready");
 	return 0;
 }
 
@@ -176,12 +187,14 @@ void flo_open_url(const char *url)
 	nsurl *u = NULL;
 	struct browser_window *bw = NULL;
 
+	flo_trace("open_url");
 	if (url == NULL || *url == '\0')
 		url = nsoption_charp(homepage_url) != NULL ? nsoption_charp(homepage_url) : "about:welcome";
 	if (nsurl_create(url, &u) != NSERROR_OK)
 		return;
 	browser_window_create(BW_CREATE_HISTORY, u, NULL, NULL, &bw);
 	nsurl_unref(u);
+	flo_trace("open_url: created");
 }
 
 const char *flo_resource_dir(void)
