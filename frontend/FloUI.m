@@ -445,7 +445,7 @@ static void buildMenus(FloApp *app)
 	addItem(m, @"Zoom Out", @selector(zoomOut:), @"-", app);
 	addItem(m, @"Actual Size", @selector(zoomReset:), @"0", app);
 	[m addItem:[NSMenuItem separatorItem]];
-	addItem(m, @"Hide Ads", @selector(toggleHideAds:), @"", app);
+	addItem(m, @"Block Ads and Trackers", @selector(toggleHideAds:), @"", app);
 	addItem(m, @"Send Do Not Track", @selector(toggleDNT:), @"", app);
 	{
 		NSMenu *sub = addSubmenu(m, @"Minimum Font Size");

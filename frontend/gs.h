@@ -107,6 +107,20 @@ void flo_win_find_clear(struct gui_window *gw);
 /* zoom: step +1/-1 (10 %), 0 resets to 100 %; returns the new percentage */
 int  flo_win_zoom(struct gui_window *gw, int step);
 
+/* the content blocker: Safari's content-blocker JSON lists (gs_blocker.c) */
+bool flo_fetch_blocked(const char *url, const char *referrer);  /* NetSurf's fetch_start() asks this */
+void flo_blocker_reload(void);                  /* rescan the lists (gs_core.c) */
+void flo_blocker_clear(void);
+int  flo_blocker_load_file(const char *path);   /* rules added, or -1 */
+int  flo_blocker_load_dir(const char *dir);     /* files loaded */
+void flo_blocker_finish(const char *css_path);  /* build the index; write the cosmetic stylesheet there */
+bool flo_blocker_enabled(void);
+void flo_blocker_enable(bool on);
+int  flo_blocker_rule_count(void);
+int  flo_blocker_file_count(void);
+int  flo_blocker_css_count(void);
+unsigned long flo_blocker_blocked_count(void);
+
 /* settings, remembered in ~/.netsurf/Choices */
 bool flo_opt_hide_ads(void);
 void flo_opt_set_hide_ads(bool on);

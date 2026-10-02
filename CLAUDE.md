@@ -84,6 +84,9 @@ fails, the problem is below Florence.
   process: it must be static, never a local of the init function (that was the first-window crash).
 * NetSurf only builds frontends named in `VLDTARGET` (`frontends/Makefile.hts`); the build script
   registers `gnustep` there in the build copy.
+* The build script makes exactly two edits to NetSurf, in the build copy only: `VLDTARGET` and a hook at the
+  top of `fetch_start()` in `content/fetch.c` for the content blocker (anchors are asserted; a changed
+  upstream aborts the build).
 * Window-table callbacks can arrive while `gw_create` is still running (`gw->ui` not yet assigned);
   the UI stores itself in `gw->ui` at creation and every callback tolerates no UI.
 * NetSurf 3.11 has no certificate-prompt hook for the frontend (`gui_misc_table` has no `cert_verify`):

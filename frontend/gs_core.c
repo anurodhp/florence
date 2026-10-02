@@ -12,6 +12,7 @@
 #include <string.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <signal.h>
 #include <stdint.h>
 #include <ucontext.h>
@@ -97,6 +98,7 @@ static nserror set_defaults(struct nsoption_s *defaults)
 
 	nsoption_setnull_charp(cookie_file, strdup(home_path(buf, sizeof(buf), "Cookies")));
 	nsoption_setnull_charp(cookie_jar, strdup(home_path(buf, sizeof(buf), "Cookies")));
+	defaults[NSOPTION_block_advertisements].value.b = true;     /* content blocking is on unless the user turns it off */
 	if (filepath_sfind(respaths, res, "ca-bundle") != NULL)
 		nsoption_setnull_charp(ca_bundle, strdup(res));
 	return NSERROR_OK;
@@ -166,6 +168,28 @@ static void install_crash_report(void)
 	sigaction(SIGBUS, &sa, NULL);
 }
 
+/* ---- content blocker ---------------------------------------------------------- */
+
+/* Reads the bundled starter list and every *.json in ~/.netsurf/blocklists (Safari content-blocker
+ * format), indexes them, and (re)writes ~/.netsurf/adblock.css from their cosmetic rules. */
+void flo_blocker_reload(void)
+{
+	char dir[PATH_MAX], list[PATH_MAX], css[PATH_MAX];
+
+	flo_blocker_clear();
+	if (filepath_sfind(respaths, list, "blocklist-default.json") != NULL)
+		flo_blocker_load_file(list);
+	home_path(dir, sizeof(dir), "blocklists");
+	mkdir(dir, 0755);
+	flo_blocker_load_dir(dir);
+	flo_blocker_finish(home_path(css, sizeof(css), "adblock.css"));
+	flo_blocker_enable(nsoption_bool(block_advertisements));
+	if (getenv("FLORENCE_TRACE") != NULL)
+		fprintf(stderr, "florence: blocker: %d rules from %d files, %d cosmetic selectors, %s\n",
+			flo_blocker_rule_count(), flo_blocker_file_count(), flo_blocker_css_count(),
+			flo_blocker_enabled() ? "on" : "off");
+}
+
 /* ---- life cycle --------------------------------------------------------- */
 
 void flo_trace(const char *stage)
@@ -222,6 +246,7 @@ int flo_core_init(int argc, char **argv)
 		fprintf(stderr, "florence: netsurf_init failed (%d)\n", (int)err);
 		return -1;
 	}
+	flo_blocker_reload();
 	flo_trace("core: urldb");
 	urldb_load(home_path(urls_path, sizeof(urls_path), "URLs"));
 	urldb_load_cookies(nsoption_charp(cookie_file));
@@ -318,7 +343,12 @@ void flo_js_set(bool on)
 }
 
 bool flo_opt_hide_ads(void) { return nsoption_bool(block_advertisements); }
-void flo_opt_set_hide_ads(bool on) { nsoption_set_bool(block_advertisements, on); save_choices(); }
+void flo_opt_set_hide_ads(bool on)
+{
+	nsoption_set_bool(block_advertisements, on);
+	flo_blocker_enable(on);                         /* requests are blocked at once; page styling next start */
+	save_choices();
+}
 bool flo_opt_dnt(void) { return nsoption_bool(do_not_track); }
 void flo_opt_set_dnt(bool on) { nsoption_set_bool(do_not_track, on); save_choices(); }
 int flo_opt_font_min(void) { return nsoption_int(font_min_size); }

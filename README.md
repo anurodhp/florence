@@ -44,7 +44,7 @@ in `~/.netsurf/Choices`, or `FLORENCE_JS=1`); expect it to be slow on a Pi 3 and
   (add Shift to bring it to the front).
 * **Find in page** (Edit > Find..., Cmd-F; Cmd-G / Shift-Cmd-G for next / previous; Esc or Done closes).
 * **Zoom** (View > Zoom In / Out / Actual Size, steps of 10 %, 30 %..300 %).
-* **View > Hide Ads** (NetSurf's adblock stylesheet), **Send Do Not Track**, **Minimum Font Size**. These are
+* **View > Block Ads and Trackers** (Safari-format JSON block lists, see `docs/content-blocking.md`), **Send Do Not Track**, **Minimum Font Size**. These are
   remembered in `~/.netsurf/Choices`, which keeps only your own choices (the low-power defaults are not written).
 
 ## Start page

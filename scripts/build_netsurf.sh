@@ -60,6 +60,15 @@ if [ "$TARGET_FE" = gnustep ]; then
     grep -q '^VLDTARGET := gnustep ' "$W/frontends/Makefile.hts" || { echo "error: could not register gnustep in $W/frontends/Makefile.hts" >&2; exit 1; }
     # resources come from the monkey frontend's res/ (Messages, CSS, icons); the UI draws its own chrome
     mkdir -p "$W/frontends/gnustep/res"; cp -R "$W/frontends/monkey/res/." "$W/frontends/gnustep/res/"   # links stay links: Messages points at a file make generates
+    # The content blocker (gs_blocker.c) must see every request before it starts, and NetSurf 3.11 has no
+    # frontend hook for that. One guarded edit of fetch_start() in the BUILD COPY adds the call; the
+    # anchors are checked so a different NetSurf fails here instead of building without the blocker.
+    F="$W/content/fetch.c"
+    [ "$(grep -c '^static scheme_fetcher fetchers\[MAX_FETCHERS\];$' "$F")" = 1 ] &&
+    [ "$(grep -c '^	fetch = calloc(1, sizeof (\*fetch));$' "$F")" = 1 ] ||
+        { echo "error: content/fetch.c is not the NetSurf 3.11 the content blocker hook expects" >&2; exit 1; }
+    perl -0pi -e 's/(\nstatic scheme_fetcher fetchers\[MAX_FETCHERS\];\n)/$1\n\/* Florence: asks the content blocker (frontend\/gs_blocker.c) *\/\nextern bool flo_fetch_blocked(const char *url, const char *referrer);\n/; s/(\n\tfetch = calloc\(1, sizeof \(\*fetch\)\);\n)/\n\t\/* Florence: a request the block lists refuse never starts (reported as unfetchable) *\/\n\tif (flo_fetch_blocked(nsurl_access(url), referer != NULL ? nsurl_access(referer) : NULL))\n\t\treturn NSERROR_BAD_URL;\n$1/' "$F"
+    [ "$(grep -c 'flo_fetch_blocked' "$F")" = 2 ] || { echo "error: could not add the content blocker hook to $F" >&2; exit 1; }
     EXTRA_CFLAGS="$FL_GS_CFLAGS"
     if [ "$DUK" = YES ]; then EXTRA_CFLAGS="$EXTRA_CFLAGS -DFLO_WITH_JS"; fi
 fi
@@ -130,4 +139,5 @@ fi
 RES="$ROOT$PREFIX/share/netsurf"; rm -rf "$RES"; mkdir -p "$RES"
 cp -RL "$W/frontends/$TARGET_FE/res/." "$RES/"   # -L: res/ is full of symlinks into ../../../resources
 rm -f "$RES/ca-bundle" "$RES/ca-bundle.txt"; cp "$TP/ca/cacert.pem" "$RES/ca-bundle"
+if [ "$TARGET_FE" = gnustep ]; then cp "$FL_DIR/frontend/assets/blocklist-default.json" "$RES/"; fi   # the content blocker's starter list
 echo "resources staged in $RES"
