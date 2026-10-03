@@ -11,7 +11,7 @@ JSON), so existing lists work unchanged. It is on by default (**View > Block Ads
 
 ## EasyList
 
-On first run and then once a week (when the file is older than seven days) a background thread downloads
+On first run and then once a week (when the file is older than seven days) a short-lived child process (this executable run with `--update-lists`, so the browser itself stays single-threaded) downloads
 `https://easylist.to/easylist/easylist.txt`, converts the Adblock Plus syntax to the format above and
 installs it as `~/.netsurf/blocklists/easylist.json`, then the blocker reloads. A failed or partial download
 leaves the previous list. Turn it off, or update at once, in Preferences > Content Blocking.

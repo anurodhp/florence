@@ -2,14 +2,21 @@
  * Florence: EasyList. Downloads the Adblock Plus list once a week (and on first run), converts it
  * to a Safari content-blocker JSON file in ~/.netsurf/blocklists/ and has the blocker reload it.
  *
- * The download and conversion run on one short-lived background thread, so the UI never waits;
- * the result is installed with a rename, so a failed or interrupted update leaves the old list.
+ * The download and conversion run in a CHILD PROCESS (this same executable started with
+ * --update-lists, before any GNUstep code runs), so the UI never waits and the browser stays
+ * single-threaded: the first version used a worker thread, and on the target the browser then died soon
+ * after start with an X connection error (bisected to that commit; the thread is the suspect, not proven). The parent looks at the child a few times with scheduled one-shot callbacks (no timer
+ * runs otherwise) and reloads the blocker when it has exited successfully. The result is installed
+ * with a rename, so a failed or interrupted update leaves the old list.
  * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
  */
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
-#include <pthread.h>
+#include <dlfcn.h>
+#include <signal.h>
+#include <spawn.h>
+#include <sys/wait.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -309,11 +316,19 @@ long flo_abp_convert(const char *in, const char *out)
 
 /* ---- the weekly update ---------------------------------------------------- */
 
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static bool busy;
-static int last_result;                 /* 0 none yet, 1 updated, -1 failed */
 static char ca_path[PATH_MAX];
 static char list_path[PATH_MAX], raw_path[PATH_MAX], part_path[PATH_MAX];
+static pid_t child = 0;                 /* the running updater, 0 none */
+static time_t child_started;
+static int last_result;                 /* 0 none yet, 1 updated, -1 failed */
+
+static void set_paths(const char *home, const char *cabundle)
+{
+	snprintf(list_path, sizeof(list_path), "%s/.netsurf/blocklists/easylist.json", home);
+	snprintf(raw_path, sizeof(raw_path), "%s/.netsurf/easylist.txt.new", home);
+	snprintf(part_path, sizeof(part_path), "%s/.netsurf/easylist.json.new", home);
+	snprintf(ca_path, sizeof(ca_path), "%s", cabundle != NULL ? cabundle : "");
+}
 
 static size_t sink(char *p, size_t sz, size_t n, void *fp)
 {
@@ -332,7 +347,7 @@ static bool download(const char *to)
 			curl_easy_cleanup(c);
 		return false;
 	}
-	curl_easy_setopt(c, CURLOPT_URL, LIST_URL);
+	curl_easy_setopt(c, CURLOPT_URL, getenv("FLORENCE_LIST_URL") != NULL ? getenv("FLORENCE_LIST_URL") : LIST_URL);   /* the variable is for testing and mirrors */
 	curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, sink);
 	curl_easy_setopt(c, CURLOPT_WRITEDATA, f);
 	curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
@@ -341,7 +356,7 @@ static bool download(const char *to)
 	curl_easy_setopt(c, CURLOPT_CONNECTTIMEOUT, 20L);
 	curl_easy_setopt(c, CURLOPT_LOW_SPEED_LIMIT, 1024L);    /* abandon a stalled transfer */
 	curl_easy_setopt(c, CURLOPT_LOW_SPEED_TIME, 30L);
-	curl_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);              /* we are not the main thread */
+	curl_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
 	curl_easy_setopt(c, CURLOPT_USERAGENT, "Florence");
 	curl_easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "");
 	if (ca_path[0] != '\0')
@@ -368,24 +383,22 @@ static bool looks_like_list(const char *path)
 	return strncmp(head, "[Adblock", 8) == 0 && stat(path, &st) == 0 && st.st_size > 100 * 1024;
 }
 
-static void *worker(void *arg)
+/* The child's whole life: main() calls this for "--update-lists <home> <ca bundle>" before it touches
+ * GNUstep. Exit status 0 only if a new list was installed. */
+int gs_lists_run_child(const char *home, const char *cabundle)
 {
-	int result = -1;
-	long n;
+	int fd, ok = 0;
 
-	(void)arg;
+	for (fd = 3; fd < 256; fd++)            /* nothing of the parent's: its X and IPC sockets */
+		close(fd);
+	set_paths(home, cabundle);
+	curl_global_init(CURL_GLOBAL_DEFAULT);
 	if (download(raw_path) && looks_like_list(raw_path) &&
-	    (n = flo_abp_convert(raw_path, part_path)) > 1000 && rename(part_path, list_path) == 0)
-		result = 1;
+	    flo_abp_convert(raw_path, part_path) > 1000 && rename(part_path, list_path) == 0)
+		ok = 1;
 	unlink(raw_path);
 	unlink(part_path);
-	pthread_mutex_lock(&lock);
-	last_result = result;
-	busy = false;
-	pthread_mutex_unlock(&lock);
-	if (result > 0)
-		flo_ui_lists_updated();         /* the main thread reloads the blocker */
-	return NULL;
+	return ok ? 0 : 1;
 }
 
 time_t flo_lists_updated(void)
@@ -395,46 +408,70 @@ time_t flo_lists_updated(void)
 	return list_path[0] != '\0' && stat(list_path, &st) == 0 ? st.st_mtime : 0;
 }
 
-bool flo_lists_busy(void)
-{
-	bool b;
-
-	pthread_mutex_lock(&lock);
-	b = busy;
-	pthread_mutex_unlock(&lock);
-	return b;
-}
-
+bool flo_lists_busy(void) { return child != 0; }
 int flo_lists_last_result(void) { return last_result; }
 
-/* start an update if one is due (or `force`); the background thread does the work */
-void gs_lists_start(const char *home, const char *cabundle, bool force)
+/* looks at the child; while it runs, looks again later (5 s, 10 s, 20 s, 30 s, then every 60 s, up to 15 minutes) */
+static void poll_child(void *arg)
 {
-	pthread_t t;
-	pthread_attr_t at;
-	time_t when;
+	int status = 0, waited = (int)(intptr_t)arg, delay;
+	pid_t r;
 
-	snprintf(list_path, sizeof(list_path), "%s/.netsurf/blocklists/easylist.json", home);
-	snprintf(raw_path, sizeof(raw_path), "%s/.netsurf/easylist.txt.new", home);
-	snprintf(part_path, sizeof(part_path), "%s/.netsurf/easylist.json.new", home);
-	snprintf(ca_path, sizeof(ca_path), "%s", cabundle != NULL ? cabundle : "");
+	if (child == 0)
+		return;
+	r = waitpid(child, &status, WNOHANG);
+	if (r == 0) {
+		if (time(NULL) - child_started > 15 * 60) {
+			kill(child, SIGKILL);
+			waitpid(child, &status, 0);
+			child = 0;
+			last_result = -1;
+			return;
+		}
+		delay = waited < 4 ? (5000 << waited) : 60000;
+		if (delay > 30000 && waited < 4)
+			delay = 30000;
+		flo_after(delay, poll_child, (void *)(intptr_t)(waited + 1));
+		return;
+	}
+	child = 0;
+	last_result = r > 0 && WIFEXITED(status) && WEXITSTATUS(status) == 0 ? 1 : -1;
+	flo_trace(last_result > 0 ? "lists: EasyList updated" : "lists: EasyList update failed");
+	if (last_result > 0)
+		flo_blocker_reload();
+}
+
+/* start an update if one is due (or `force`) */
+void gs_lists_start(const char *exe, const char *home, const char *cabundle, bool force)
+{
+	typedef int (*spawn_fn)(pid_t *, const char *, const void *, const void *, char *const[], char *const[]);
+	extern char **environ;
+	spawn_fn do_spawn;
+	char *argv[5];
+	time_t when;
+	pid_t pid = 0;
+
+	set_paths(home, cabundle);
 	when = flo_lists_updated();
-	if (!force && when != 0 && time(NULL) - when < WEEK)
+	if ((!force && when != 0 && time(NULL) - when < WEEK) || child != 0 || exe == NULL || exe[0] == '\0')
 		return;
-	pthread_mutex_lock(&lock);
-	if (busy) {
-		pthread_mutex_unlock(&lock);
+	do_spawn = (spawn_fn)dlsym(RTLD_DEFAULT, "posix_spawn");        /* looked up, so a system without it just skips updating */
+	if (do_spawn == NULL) {
+		flo_trace("lists: no posix_spawn, EasyList will not update");
 		return;
 	}
-	busy = true;
-	pthread_mutex_unlock(&lock);
-	pthread_attr_init(&at);
-	pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
-	pthread_attr_setstacksize(&at, 512 * 1024);
-	if (pthread_create(&t, &at, worker, NULL) != 0) {
-		pthread_mutex_lock(&lock);
-		busy = false;
-		pthread_mutex_unlock(&lock);
+	argv[0] = (char *)exe;
+	argv[1] = (char *)"--update-lists";
+	argv[2] = (char *)home;
+	argv[3] = (char *)(cabundle != NULL ? cabundle : "");
+	argv[4] = NULL;
+	if (do_spawn(&pid, exe, NULL, NULL, argv, environ) != 0 || pid <= 0) {
+		flo_trace("lists: could not start the updater");
+		last_result = -1;
+		return;
 	}
-	pthread_attr_destroy(&at);
+	child = pid;
+	child_started = time(NULL);
+	flo_trace("lists: updater started");
+	flo_after(5000, poll_child, (void *)(intptr_t)0);
 }

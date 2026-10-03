@@ -135,6 +135,18 @@ void flo_pref_set(const char *key, const char *val)
 	prefs_save();
 }
 
+static char exe_path[PATH_MAX];                 /* this executable, to start the list updater from */
+
+static void find_exe(const char *argv0)
+{
+	typedef int (*nsgetexe_fn)(char *, unsigned int *);
+	nsgetexe_fn f = (nsgetexe_fn)dlsym(RTLD_DEFAULT, "_NSGetExecutablePath");
+	unsigned int n = sizeof(exe_path);
+
+	if (f == NULL || f(exe_path, &n) != 0)
+		snprintf(exe_path, sizeof(exe_path), "%s", argv0 != NULL ? argv0 : "");
+}
+
 static char **init_resources(void)
 {
 	char path[PATH_MAX * 2];
@@ -160,6 +172,11 @@ static nserror flo_schedule(int ms, void (*cb)(void *p), void *p)
 	nserror err = gs_schedule(ms, cb, p);
 	flo_ui_wake();          /* the UI's timer may be sleeping past this new deadline */
 	return err;
+}
+
+void flo_after(int ms, void (*cb)(void *), void *arg)
+{
+	flo_schedule(ms, cb, arg);
 }
 
 static struct gui_misc_table misc_table = {
@@ -399,6 +416,7 @@ int flo_core_init(int argc, char **argv)
 	nserror err;
 
 	install_crash_report();
+	find_exe(argc > 0 ? argv[0] : NULL);
 	snprintf(home_dir, sizeof(home_dir), "%s", h != NULL ? h : "/tmp");
 	home_path(buf, sizeof(buf), "");
 	mkdir(buf, 0700);
@@ -585,7 +603,7 @@ void flo_lists_update(bool force)
 		flo_trace("lists: update disabled by FLORENCE_NOUPDATE");
 		return;
 	}
-	gs_lists_start(home_dir, nsoption_charp(ca_bundle), force);
+	gs_lists_start(exe_path, home_dir, nsoption_charp(ca_bundle), force);
 }
 
 bool flo_opt_referer(void) { return nsoption_bool(send_referer); }

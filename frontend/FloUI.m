@@ -336,7 +336,6 @@ static void refreshHistoryMenu(void) { fillStoreMenu(historyMenu, [FloStore hist
 }
 
 - (void)toggleHideAds:(id)s { flo_opt_set_hide_ads(!flo_opt_hide_ads()); [self reloadCurrent]; }
-- (void)listsUpdated:(id)s { flo_blocker_reload(); }
 - (void)showAbout:(id)s { [[FloAbout shared] show]; }
 - (void)showPrefs:(id)s { [[FloPrefs shared] show]; }
 - (void)toggleDNT:(id)s { flo_opt_set_dnt(!flo_opt_dnt()); }
@@ -410,12 +409,6 @@ static NSMenu *addSubmenu(NSMenu *bar, NSString *title)
 	NSMenu *m = [[[NSMenu alloc] initWithTitle:title] autorelease];
 	[bar setSubmenu:m forItem:i];
 	return m;
-}
-
-/* called from the update thread: the reload happens on the main thread */
-void flo_ui_lists_updated(void)
-{
-	[(id)[NSApp delegate] performSelectorOnMainThread:@selector(listsUpdated:) withObject:nil waitUntilDone:NO];
 }
 
 static void buildMenus(FloApp *app)
@@ -493,6 +486,9 @@ static void buildMenus(FloApp *app)
 
 int main(int argc, char **argv)
 {
+	/* the EasyList updater is this executable run again; it must not start GNUstep or open a window */
+	if (argc >= 4 && strcmp(argv[1], "--update-lists") == 0)
+		return gs_lists_run_child(argv[2], argv[3]);
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	FloApp *app;
 	int i;
