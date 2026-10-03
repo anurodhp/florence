@@ -37,6 +37,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "gnustep/gs.h"
@@ -1508,7 +1509,23 @@ static bool domain_listed(uint32_t off, const char *host)
 
 static int cmp_int(const void *a, const void *b) { return *(const int *)a - *(const int *)b; }
 
+static bool fetch_blocked(const char *url, const char *referrer);
+
+/* every request NetSurf starts passes through here, so this is also where FLORENCE_TRACE_FETCH=1 can list them
+ * (one line each: when, whether it was refused, the address) to see how many requests a page really makes */
 bool flo_fetch_blocked(const char *url, const char *referrer)
+{
+	static int tracing = -1;
+	bool blocked = fetch_blocked(url, referrer);
+
+	if (tracing < 0)
+		tracing = getenv("FLORENCE_TRACE_FETCH") != NULL;
+	if (tracing && url != NULL)
+		fprintf(stderr, "florence: fetch %ld %s %.200s\n", (long)time(NULL), blocked ? "BLOCKED" : "start  ", url);
+	return blocked;
+}
+
+static bool fetch_blocked(const char *url, const char *referrer)
 {
 	char low[2048], host[256], phost[256], pagelow[1024];
 	const char *h, *ph = NULL;
