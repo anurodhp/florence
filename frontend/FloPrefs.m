@@ -251,7 +251,7 @@ static int fontIndex(void)
 				[[NSDate dateWithTimeIntervalSince1970:(NSTimeInterval)when] descriptionWithCalendarFormat:@"%Y-%m-%d" timeZone:nil locale:nil]];
 		[blockInfo setStringValue:[NSString stringWithFormat:
 			@"%d rules from %d lists (built in plus downloaded and your own),\n%d element-hiding rules, %lu requests blocked this session.\n%@.",
-			flo_blocker_rule_count(), flo_blocker_file_count() + 1, flo_blocker_css_count(), flo_blocker_blocked_count(), st]];
+			flo_blocker_rule_count(), flo_blocker_file_count(), flo_blocker_css_count(), flo_blocker_blocked_count(), st]];
 	}
 }
 

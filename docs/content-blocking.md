@@ -33,6 +33,17 @@ site-wide `##selector` hiding rules. It drops what a Safari list cannot say: `/r
 
 `block-cookies`, `make-https`, `if-frame-url`/`unless-frame-url`-style frame triggers.
 
+## Compiled cache
+
+Parsing a big list and compiling its patterns takes seconds and tens of megabytes on a Pi, so the compiled
+rules are saved to `~/.netsurf/blocklists.cache` and the next start maps that file read-only instead of
+parsing anything: setup takes about a millisecond and the rules cost almost no private memory, since the
+kernel can drop the pages when it needs them and read them back from the file. The cache is rebuilt
+whenever a list file is added, removed or changed (it records every file's path, size and modification
+time), and a missing, truncated or damaged cache is ignored and rebuilt. Rules are always read through
+bounds-checked offsets, so a damaged cache can lose a rule but not crash the browser. Delete the file to
+force a rebuild. Lists load in file-name order.
+
 ## Notes
 
 * NetSurf's fetcher does not tell us the resource type, so it is guessed from the URL extension;

@@ -248,15 +248,14 @@ static void install_crash_report(void)
  * format), indexes them, and (re)writes ~/.netsurf/adblock.css from their cosmetic rules. */
 void flo_blocker_reload(void)
 {
-	char dir[PATH_MAX], list[PATH_MAX], css[PATH_MAX];
+	char dir[PATH_MAX], list[PATH_MAX], css[PATH_MAX], cache[PATH_MAX];
 
-	flo_blocker_clear();
-	if (filepath_sfind(respaths, list, "blocklist-default.json") != NULL)
-		flo_blocker_load_file(list);
 	home_path(dir, sizeof(dir), "blocklists");
 	mkdir(dir, 0755);
-	flo_blocker_load_dir(dir);
-	flo_blocker_finish(home_path(css, sizeof(css), "adblock.css"));
+	/* the compiled rules are kept in ~/.netsurf/blocklists.cache and mapped on later starts; they are
+	 * rebuilt whenever a list file is added, removed or changed */
+	flo_blocker_setup(filepath_sfind(respaths, list, "blocklist-default.json") != NULL ? list : NULL, dir,
+			  home_path(css, sizeof(css), "adblock.css"), home_path(cache, sizeof(cache), "blocklists.cache"));
 	flo_blocker_enable(nsoption_bool(block_advertisements));
 	if (getenv("FLORENCE_TRACE") != NULL)
 		fprintf(stderr, "florence: blocker: %d rules from %d files, %d cosmetic selectors, %s\n",

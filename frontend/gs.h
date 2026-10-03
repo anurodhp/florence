@@ -112,6 +112,7 @@ int  flo_win_zoom(struct gui_window *gw, int step);
 
 /* the content blocker: Safari's content-blocker JSON lists (gs_blocker.c) */
 bool flo_fetch_blocked(const char *url, const char *referrer);  /* NetSurf's fetch_start() asks this */
+int  flo_blocker_setup(const char *default_list, const char *dir, const char *css_path, const char *cache_path);   /* rules, from the cache if it is current */
 void flo_blocker_reload(void);                  /* rescan the lists (gs_core.c) */
 void flo_blocker_clear(void);
 int  flo_blocker_load_file(const char *path);   /* rules added, or -1 */

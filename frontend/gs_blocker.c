@@ -18,16 +18,26 @@
  * Built for a small machine: rules are indexed by a four-character piece of their pattern, so a
  * request only looks at the few rules that could match, never at the whole list.
  * The regular-expression matcher is the small backtracking one below: no libc regex needed.
+ *
+ * Parsing and compiling a big list costs seconds and tens of megabytes on a Pi, so the compiled rules
+ * (flat records, regex programs and strings in one arena, plus the index) are saved to a cache file and
+ * the next start maps it read-only: no parsing, no heap, and the kernel can drop its pages under memory
+ * pressure. Everything the matcher reads is an offset into that arena, bounds-checked, so a damaged
+ * cache cannot do worse than miss a rule.
  * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
  */
 #include <ctype.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "gnustep/gs.h"
 
@@ -370,10 +380,11 @@ static struct re *re_compile(const char *pattern, bool icase)
 static bool re_run(const struct re *re, int pc, const char *s, const char *start, int *budget)
 {
 	for (;;) {
-		const struct inst *i = &re->code[pc];
+		const struct inst *i;
 
-		if (--*budget < 0)
+		if (pc < 0 || pc >= re->n || --*budget < 0)       /* a program from a damaged cache cannot leave its array */
 			return false;
+		i = &re->code[pc];
 		switch (i->op) {
 		case OP_CHAR:
 			if ((unsigned char)*s != i->c)
@@ -388,7 +399,7 @@ static bool re_run(const struct re *re, int pc, const char *s, const char *start
 			pc++;
 			break;
 		case OP_CLASS:
-			if (*s == '\0' || !(re->cls[i->x][(unsigned char)*s >> 3] & (1u << ((unsigned char)*s & 7))))
+			if (*s == '\0' || i->x < 0 || i->x >= re->ncls || !(re->cls[i->x][(unsigned char)*s >> 3] & (1u << ((unsigned char)*s & 7))))
 				return false;
 			s++;
 			pc++;
@@ -411,8 +422,10 @@ static bool re_run(const struct re *re, int pc, const char *s, const char *start
 				return true;
 			pc = i->y;
 			break;
+		case OP_MATCH:
+			return true;
 		default:
-			return true;                    /* OP_MATCH */
+			return false;
 		}
 	}
 }
@@ -462,7 +475,7 @@ enum { PARTY_ANY, PARTY_FIRST, PARTY_THIRD };
 
 struct strlist { char **v; int n; };
 
-struct rule {
+struct rule {                   /* a rule while it is being read; add_rule() packs it into the arena */
 	struct re *re;                  /* url-filter, NULL: matches every URL */
 	char *literal;                  /* a piece every match contains, lower case (for the index), or NULL */
 	unsigned short types;
@@ -470,12 +483,25 @@ struct rule {
 	bool case_sensitive;
 	struct strlist if_domain, unless_domain;
 	struct re *if_top, *unless_top;
-	int next;                       /* in the index bucket's chain */
 };
 
-static struct rule *rules;
+/* the packed form the matcher uses; every uint32_t is an offset into the arena (0: none) */
+struct rrec {
+	uint32_t re, literal, if_domain, unless_domain, if_top, unless_top;
+	int32_t next;                   /* in the index bucket's chain */
+	uint16_t types;
+	uint8_t party, action, case_sensitive, pad[3];
+};
+
+static struct { unsigned char *p; size_t len, cap; } ar;        /* the arena being built (heap) */
+static struct rrec *recs;
 static int nrules, caprules;
+static const unsigned char *blob;       /* the arena the matcher reads: ar.p, or inside the mapped cache */
+static size_t blob_len;
 static int head[BUCKETS + 1];           /* [BUCKETS] is the "always look" chain */
+static const int *headp = head;
+static void *map_base;                  /* the cache mapping, if that is where the rules live */
+static size_t map_len;
 static unsigned *stamp;
 static unsigned gen;
 static bool enabled = true;
@@ -505,25 +531,144 @@ static void rule_free(struct rule *r)
 	free(r->literal);
 	strlist_free(&r->if_domain);
 	strlist_free(&r->unless_domain);
+	memset(r, 0, sizeof(*r));
+}
+
+/* ---- the arena ---- */
+
+static uint32_t ar_put(const void *d, size_t n)
+{
+	size_t at;
+
+	if (ar.p == NULL) {
+		ar.cap = 1 << 16;
+		if ((ar.p = calloc(1, ar.cap)) == NULL) {
+			ar.cap = 0;
+			return 0;
+		}
+		ar.len = 8;                     /* offset 0 means "none" */
+	}
+	at = (ar.len + 3) & ~(size_t)3;
+	if (at + n + 1 > ar.cap) {
+		size_t cap = ar.cap * 2;
+		unsigned char *np;
+
+		while (cap < at + n + 1)
+			cap *= 2;
+		if ((np = realloc(ar.p, cap)) == NULL)
+			return 0;
+		memset(np + ar.cap, 0, cap - ar.cap);
+		ar.p = np;
+		ar.cap = cap;
+	}
+	memcpy(ar.p + at, d, n);
+	memset(ar.p + at + n, 0, 1);
+	ar.len = at + n;
+	return at > UINT32_MAX ? 0 : (uint32_t)at;
+}
+
+static uint32_t pack_str(const char *s) { return ar_put(s, strlen(s) + 1); }
+
+static uint32_t pack_re(const struct re *re)
+{
+	size_t csz = (size_t)re->ncls * 32, isz = (size_t)re->n * sizeof(struct inst);
+	unsigned char *t = malloc(8 + csz + isz);
+	int32_t h[2] = { re->n, re->ncls };
+	uint32_t off;
+
+	if (t == NULL)
+		return 0;
+	memcpy(t, h, 8);
+	if (csz > 0)
+		memcpy(t + 8, re->cls, csz);
+	memcpy(t + 8 + csz, re->code, isz);
+	off = ar_put(t, 8 + csz + isz);
+	free(t);
+	return off;
+}
+
+static uint32_t pack_list(const struct strlist *l)
+{
+	uint32_t *t;
+	uint32_t off = 0;
+	int i;
+
+	if (l->n == 0)
+		return 0;
+	if ((t = malloc(((size_t)l->n + 1) * 4)) == NULL)
+		return 0;
+	t[0] = (uint32_t)l->n;
+	for (i = 0; i < l->n; i++)
+		if ((t[i + 1] = pack_str(l->v[i])) == 0)
+			goto out;
+	off = ar_put(t, ((size_t)l->n + 1) * 4);
+out:
+	free(t);
+	return off;
+}
+
+/* reading the arena: never trusts an offset */
+static bool re_at(uint32_t off, struct re *v)
+{
+	const int32_t *h;
+	int32_t n, nc;
+
+	if (off == 0 || blob_len < 16 || off > blob_len - 8)
+		return false;
+	h = (const int32_t *)(const void *)(blob + off);
+	n = h[0];
+	nc = h[1];
+	if (n <= 0 || nc < 0 || (size_t)off + 8 + (size_t)nc * 32 + (size_t)n * sizeof(struct inst) > blob_len)
+		return false;
+	v->n = n;
+	v->ncls = nc;
+	v->cls = (unsigned char (*)[32])(void *)(blob + off + 8);
+	v->code = (struct inst *)(void *)(blob + off + 8 + (size_t)nc * 32);
+	return true;
+}
+
+static bool re_hit(uint32_t off, const char *subject)
+{
+	struct re v;
+
+	return re_at(off, &v) && re_search(&v, subject);
+}
+
+static const char *str_at(uint32_t off)
+{
+	return off != 0 && off < blob_len ? (const char *)(blob + off) : NULL;
+}
+
+static bool domain_listed(uint32_t off, const char *host);
+
+static void release_state(void)
+{
+	free(ar.p);
+	memset(&ar, 0, sizeof(ar));
+	if (map_base != NULL)
+		munmap(map_base, map_len);
+	else
+		free(recs);
+	map_base = NULL;
+	map_len = 0;
+	recs = NULL;
+	free(stamp);
+	free(css_buf);
+	stamp = NULL;
+	css_buf = NULL;
+	css_len = 0;
+	css_count = 0;
+	nrules = caprules = 0;
+	nfiles = 0;
+	indexed = false;
+	blob = NULL;
+	blob_len = 0;
+	headp = head;
 }
 
 void flo_blocker_clear(void)
 {
-	int i;
-
-	for (i = 0; i < nrules; i++)
-		rule_free(&rules[i]);
-	free(rules);
-	free(stamp);
-	free(css_buf);
-	rules = NULL;
-	stamp = NULL;
-	css_buf = NULL;
-	nrules = caprules = 0;
-	css_len = 0;
-	css_count = 0;
-	nfiles = 0;
-	indexed = false;
+	release_state();
 	memset(head, 0xff, sizeof(head));
 }
 
@@ -1036,17 +1181,36 @@ static bool add_rule(struct pending *p)
 	r->if_top = compile_any(&p->if_top, true);
 	r->unless_top = compile_any(&p->unless_top, true);
 
-	if (nrules == caprules) {
-		int cap = caprules ? caprules * 2 : 1024;
-		struct rule *nr = realloc(rules, (size_t)cap * sizeof(*rules));
+	{
+		struct rrec rec;
 
-		if (nr == NULL)
+		memset(&rec, 0, sizeof(rec));
+		rec.types = r->types;
+		rec.party = r->party;
+		rec.action = r->action;
+		rec.case_sensitive = r->case_sensitive;
+		rec.next = -1;
+		if ((r->re != NULL && (rec.re = pack_re(r->re)) == 0) ||
+		    (r->literal != NULL && (rec.literal = pack_str(r->literal)) == 0) ||
+		    (r->if_domain.n > 0 && (rec.if_domain = pack_list(&r->if_domain)) == 0) ||
+		    (r->unless_domain.n > 0 && (rec.unless_domain = pack_list(&r->unless_domain)) == 0) ||
+		    (r->if_top != NULL && (rec.if_top = pack_re(r->if_top)) == 0) ||
+		    (r->unless_top != NULL && (rec.unless_top = pack_re(r->unless_top)) == 0)) {
+			rule_free(r);
 			return false;
-		rules = nr;
-		caprules = cap;
+		}
+		rule_free(r);                           /* what was built is in the arena now */
+		if (nrules == caprules) {
+			int cap = caprules ? caprules * 2 : 1024;
+			struct rrec *nr = realloc(recs, (size_t)cap * sizeof(*recs));
+
+			if (nr == NULL)
+				return false;
+			recs = nr;
+			caprules = cap;
+		}
+		recs[nrules++] = rec;
 	}
-	rules[nrules++] = *r;
-	memset(r, 0, sizeof(*r));                       /* the rule array owns what it held */
 	return true;
 }
 
@@ -1139,25 +1303,39 @@ int flo_blocker_load_file(const char *path)
 	return n;
 }
 
-int flo_blocker_load_dir(const char *dir)
+#define MAX_SRC 64
+
+/* the .json files of a directory, by name (so the order of rules does not depend on the file system) */
+static int list_json(const char *dir, char names[][NAME_MAX + 1])
 {
 	DIR *d = opendir(dir);
 	struct dirent *e;
-	int loaded = 0;
+	int n = 0;
 
 	if (d == NULL)
 		return 0;
-	while ((e = readdir(d)) != NULL) {
-		size_t n = strlen(e->d_name);
-		char path[PATH_MAX];
+	while ((e = readdir(d)) != NULL && n < MAX_SRC) {
+		size_t len = strlen(e->d_name);
 
-		if (n < 6 || strcmp(e->d_name + n - 5, ".json") != 0)
-			continue;
-		snprintf(path, sizeof(path), "%s/%s", dir, e->d_name);
+		if (len >= 6 && len <= NAME_MAX && strcmp(e->d_name + len - 5, ".json") == 0)
+			strcpy(names[n++], e->d_name);
+	}
+	closedir(d);
+	qsort(names, (size_t)n, NAME_MAX + 1, (int (*)(const void *, const void *))strcmp);
+	return n;
+}
+
+int flo_blocker_load_dir(const char *dir)
+{
+	static char names[MAX_SRC][NAME_MAX + 1];
+	char path[PATH_MAX];
+	int i, n = list_json(dir, names), loaded = 0;
+
+	for (i = 0; i < n; i++) {
+		snprintf(path, sizeof(path), "%s/%s", dir, names[i]);
 		if (flo_blocker_load_file(path) >= 0)
 			loaded++;
 	}
-	closedir(d);
 	return loaded;
 }
 
@@ -1167,14 +1345,18 @@ void flo_blocker_finish(const char *css_path)
 	int i;
 
 	memset(head, 0xff, sizeof(head));
+	headp = head;
 	free(stamp);
 	stamp = calloc((size_t)(nrules ? nrules : 1), sizeof(*stamp));
 	gen = 0;
+	blob = ar.p;                                    /* the arena stopped growing */
+	blob_len = ar.p != NULL ? ar.len + 1 : 0;       /* ar_put keeps a zero byte after the end */
 	for (i = nrules - 1; i >= 0; i--) {             /* so each chain runs in rule order */
-		const char *g = rules[i].literal != NULL ? pick_gram(rules[i].literal) : NULL;
+		const char *lit = str_at(recs[i].literal);
+		const char *g = lit != NULL ? pick_gram(lit) : NULL;
 		unsigned b = g != NULL ? gram_hash(g) : BUCKETS;
 
-		rules[i].next = head[b];
+		recs[i].next = head[b];
 		head[b] = i;
 	}
 	indexed = true;
@@ -1292,14 +1474,24 @@ static unsigned guess_type(const char *url)
 	return RT_DOCUMENT | RT_RAW | RT_SCRIPT | RT_IMAGE;
 }
 
-static bool domain_in(const struct strlist *l, const char *host)
+static bool domain_listed(uint32_t off, const char *host)
 {
-	int i;
+	const uint32_t *l;
+	uint32_t i, n;
+	size_t hl = strlen(host);
 
-	for (i = 0; i < l->n; i++) {
-		const char *d = l->v[i];
-		size_t dl, hl = strlen(host);
+	if (off == 0 || off > blob_len - 4)
+		return false;
+	l = (const uint32_t *)(const void *)(blob + off);
+	n = l[0];
+	if ((size_t)off + 4 + (size_t)n * 4 > blob_len)
+		return false;
+	for (i = 0; i < n; i++) {
+		const char *d = str_at(l[1 + i]);
+		size_t dl;
 
+		if (d == NULL)
+			continue;
 		if (*d == '*') {                        /* the domain and everything under it */
 			d++;
 			dl = strlen(d);
@@ -1320,12 +1512,12 @@ bool flo_fetch_blocked(const char *url, const char *referrer)
 {
 	char low[2048], host[256], phost[256], pagelow[1024];
 	const char *h, *ph = NULL;
-	int cand_buf[512], *cand = cand_buf, ncand = 0, capcand = 512, i, r;
+	int cand_buf[512], *cand = cand_buf, ncand = 0, capcand = 512, i, r, steps;
 	unsigned types;
 	size_t len;
 	bool third = false, unknown = true, blocked = false, heap = false;
 
-	if (!enabled || nrules == 0 || !indexed || url == NULL || strncmp(url, "http", 4) != 0)
+	if (!enabled || nrules == 0 || !indexed || blob == NULL || url == NULL || strncmp(url, "http", 4) != 0)
 		return false;
 	for (len = 0; url[len] != '\0' && len < sizeof(low) - 1; len++)
 		low[len] = (char)tolower((unsigned char)url[len]);
@@ -1350,7 +1542,7 @@ bool flo_fetch_blocked(const char *url, const char *referrer)
 	 * that have none; each once, then in rule order */
 	if (++gen == 0)
 		memset(stamp, 0, (size_t)nrules * sizeof(*stamp)), gen = 1;
-#define ADD(chain) for (r = (chain); r >= 0; r = rules[r].next) { \
+#define ADD(chain) for (r = (chain), steps = 0; r >= 0 && r < nrules && steps++ < nrules; r = recs[r].next) { \
 		if (stamp[r] == gen) continue; \
 		stamp[r] = gen; \
 		if (ncand == capcand) { \
@@ -1361,29 +1553,30 @@ bool flo_fetch_blocked(const char *url, const char *referrer)
 		} \
 		cand[ncand++] = r; }
 	for (i = 0; low[i] != '\0' && low[i + 1] != '\0' && low[i + 2] != '\0' && low[i + 3] != '\0'; i++)
-		ADD(head[gram_hash(low + i)])
-	ADD(head[BUCKETS])
+		ADD(headp[gram_hash(low + i)])
+	ADD(headp[BUCKETS])
 #undef ADD
 	qsort(cand, (size_t)ncand, sizeof(int), cmp_int);
 
 	for (i = 0; i < ncand; i++) {
-		const struct rule *ru = &rules[cand[i]];
+		const struct rrec *ru = &recs[cand[i]];
+		const char *lit;
 
 		if (!(ru->types & types))
 			continue;
 		if (ru->party != PARTY_ANY && (unknown || (ru->party == PARTY_THIRD) != third))
 			continue;
-		if (ru->literal != NULL && strstr(low, ru->literal) == NULL)
+		if ((lit = str_at(ru->literal)) != NULL && strstr(low, lit) == NULL)
 			continue;
-		if (ru->re != NULL && !re_search(ru->re, ru->case_sensitive ? url : low))
+		if (ru->re != 0 && !re_hit(ru->re, ru->case_sensitive ? url : low))
 			continue;
-		if (ru->if_domain.n > 0 && (ph == NULL || !domain_in(&ru->if_domain, ph)))
+		if (ru->if_domain != 0 && (ph == NULL || !domain_listed(ru->if_domain, ph)))
 			continue;
-		if (ru->unless_domain.n > 0 && ph != NULL && domain_in(&ru->unless_domain, ph))
+		if (ru->unless_domain != 0 && ph != NULL && domain_listed(ru->unless_domain, ph))
 			continue;
-		if (ru->if_top != NULL && (referrer == NULL || !re_search(ru->if_top, pagelow)))
+		if (ru->if_top != 0 && (referrer == NULL || !re_hit(ru->if_top, pagelow)))
 			continue;
-		if (ru->unless_top != NULL && referrer != NULL && re_search(ru->unless_top, pagelow))
+		if (ru->unless_top != 0 && referrer != NULL && re_hit(ru->unless_top, pagelow))
 			continue;
 		if (ru->action == ACT_BLOCK)
 			blocked = true;
@@ -1395,6 +1588,153 @@ bool flo_fetch_blocked(const char *url, const char *referrer)
 	if (blocked)
 		blocked_total++;
 	return blocked;
+}
+
+/* ---- the compiled cache -------------------------------------------------------------------- */
+
+#define CACHE_VERSION 1
+struct chdr {
+	char magic[8];
+	uint32_t version, probe, rrec_size, buckets, nrules, css_count, nfiles, pad;
+	uint64_t sig, off_head, off_recs, off_blob, blob_len, total;
+};
+
+static uint64_t fnv(uint64_t h, const void *d, size_t n)
+{
+	const unsigned char *p = d;
+
+	while (n-- > 0)
+		h = (h ^ *p++) * 1099511628211ull;
+	return h;
+}
+
+static bool cache_write(const char *path, uint64_t sig)
+{
+	char tmp[PATH_MAX + 8];
+	static const char zeros[8] = { 0 };
+	struct chdr h;
+	size_t head_sz = (BUCKETS + 1) * sizeof(int), recs_sz = (size_t)nrules * sizeof(struct rrec);
+	FILE *f;
+	bool ok;
+
+	if (ar.p == NULL || snprintf(tmp, sizeof(tmp), "%s.new", path) >= (int)sizeof(tmp))
+		return false;
+	memset(&h, 0, sizeof(h));
+	memcpy(h.magic, "FLOBLK\0\1", 8);
+	h.version = CACHE_VERSION;
+	h.probe = 0x01020304u;
+	h.rrec_size = sizeof(struct rrec);
+	h.buckets = BUCKETS;
+	h.nrules = (uint32_t)nrules;
+	h.css_count = (uint32_t)css_count;
+	h.nfiles = (uint32_t)nfiles;
+	h.sig = sig;
+	h.off_head = (sizeof(h) + 7) & ~(size_t)7;
+	h.off_recs = (h.off_head + head_sz + 7) & ~(size_t)7;
+	h.off_blob = (h.off_recs + recs_sz + 7) & ~(size_t)7;
+	h.blob_len = ar.len + 1;
+	h.total = h.off_blob + h.blob_len;
+	if ((f = fopen(tmp, "wb")) == NULL)
+		return false;
+	ok = fwrite(&h, sizeof(h), 1, f) == 1;
+	ok = ok && fwrite(zeros, 1, h.off_head - sizeof(h), f) == h.off_head - sizeof(h);
+	ok = ok && fwrite(head, 1, head_sz, f) == head_sz;
+	ok = ok && fwrite(zeros, 1, h.off_recs - h.off_head - head_sz, f) == h.off_recs - h.off_head - head_sz;
+	ok = ok && fwrite(recs, 1, recs_sz, f) == recs_sz;
+	ok = ok && fwrite(zeros, 1, h.off_blob - h.off_recs - recs_sz, f) == h.off_blob - h.off_recs - recs_sz;
+	ok = ok && fwrite(ar.p, 1, h.blob_len, f) == h.blob_len;
+	if (fclose(f) != 0)
+		ok = false;
+	if (!ok || rename(tmp, path) != 0) {
+		remove(tmp);
+		return false;
+	}
+	return true;
+}
+
+/* maps the cache and makes it the active rule set; false (nothing changed) if it is missing, stale or damaged */
+static bool cache_map(const char *path, uint64_t sig, const char *css_path)
+{
+	struct chdr h;
+	struct stat st;
+	unsigned char *m;
+	int fd = open(path, O_RDONLY);
+
+	if (fd < 0)
+		return false;
+	if (fstat(fd, &st) != 0 || st.st_size < (off_t)sizeof(h)) {
+		close(fd);
+		return false;
+	}
+	m = mmap(NULL, (size_t)st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	close(fd);
+	if (m == MAP_FAILED)
+		return false;
+	memcpy(&h, m, sizeof(h));
+	if (memcmp(h.magic, "FLOBLK\0\1", 8) != 0 || h.version != CACHE_VERSION || h.probe != 0x01020304u ||
+	    h.rrec_size != sizeof(struct rrec) || h.buckets != BUCKETS || h.sig != sig ||
+	    h.total != (uint64_t)st.st_size || h.nrules == 0 || h.nrules > MAX_RULES || h.blob_len < 16 ||
+	    h.off_head % 8 != 0 || h.off_recs % 8 != 0 || h.off_blob % 8 != 0 ||
+	    h.off_head + (BUCKETS + 1) * sizeof(int) > h.off_recs ||
+	    h.off_recs + (uint64_t)h.nrules * sizeof(struct rrec) > h.off_blob ||
+	    h.off_blob + h.blob_len != h.total ||
+	    (h.css_count > 0 && (css_path == NULL || access(css_path, R_OK) != 0))) {
+		munmap(m, (size_t)st.st_size);
+		return false;
+	}
+	release_state();
+	map_base = m;
+	map_len = (size_t)st.st_size;
+	headp = (const int *)(const void *)(m + h.off_head);
+	recs = (struct rrec *)(void *)(m + h.off_recs);
+	blob = m + h.off_blob;
+	blob_len = (size_t)h.blob_len;
+	nrules = (int)h.nrules;
+	css_count = (int)h.css_count;
+	nfiles = (int)h.nfiles;
+	stamp = calloc((size_t)nrules, sizeof(*stamp));
+	gen = 0;
+	indexed = stamp != NULL;
+	return indexed;
+}
+
+int flo_blocker_setup(const char *default_list, const char *dir, const char *css_path, const char *cache_path)
+{
+	static char names[MAX_SRC][NAME_MAX + 1];
+	char path[MAX_SRC + 1][PATH_MAX];
+	struct stat st;
+	uint64_t sig = 1469598103934665603ull;
+	int i, n = 0, nn, loaded = 0;
+
+	if (default_list != NULL && stat(default_list, &st) == 0)
+		snprintf(path[n++], PATH_MAX, "%s", default_list);
+	nn = dir != NULL ? list_json(dir, names) : 0;
+	for (i = 0; i < nn; i++)
+		snprintf(path[n++], PATH_MAX, "%s/%s", dir, names[i]);
+	sig = fnv(sig, "florence-blocker", 16);
+	sig = fnv(sig, &(uint32_t){ CACHE_VERSION }, 4);
+	for (i = 0; i < n; i++) {
+		long long size = 0, mtime = 0;
+
+		if (stat(path[i], &st) == 0) {
+			size = (long long)st.st_size;
+			mtime = (long long)st.st_mtime;
+		}
+		sig = fnv(sig, path[i], strlen(path[i]) + 1);
+		sig = fnv(sig, &size, sizeof(size));
+		sig = fnv(sig, &mtime, sizeof(mtime));
+	}
+
+	flo_blocker_clear();
+	if (n > 0 && cache_path != NULL && cache_map(cache_path, sig, css_path))
+		return nrules;                          /* the compiled rules, as they were: nothing to parse */
+	for (i = 0; i < n; i++)
+		if (flo_blocker_load_file(path[i]) >= 0)
+			loaded++;
+	flo_blocker_finish(css_path);
+	if (loaded > 0 && cache_path != NULL && nrules > 0 && cache_write(cache_path, sig))
+		cache_map(cache_path, sig, css_path);   /* drop the heap copy for the mapped one; on failure keep it */
+	return nrules;
 }
 
 /* ---- status ------------------------------------------------------------------------------- */
