@@ -20,6 +20,7 @@ WK="$FL_DIR/third_party/webkit"
 BUILD="$FL_DIR/build"
 [ -f "$WK/CMakeLists.txt" ] || { echo "error: $WK missing -- run ./setup_third_party.sh" >&2; exit 1; }
 scripts/check_webkit_options.sh
+scripts/webkit_fixes.sh         # two missing #if guards the option set exposes; asserts its anchors
 
 case "$MODE" in
 host)

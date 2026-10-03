@@ -83,7 +83,31 @@ Done on Linux (Ubuntu 24.04, x86-64, clang) against the pinned tree:
   features, and CMake still insisted on GStreamer until it was turned off too.
 * The Objective-C files syntax-check against gnustep-gui 0.30.
 
-See "Build and run results" at the end for what the Linux build and the smoke test showed.
+* The whole engine **compiles and links on Linux** with the option set (`scripts/build_webkit.sh host`, 8,400
+  steps, about an hour on four cores). That needed three edits to WebKit (`scripts/webkit_fixes.sh`, anchors asserted):
+  * `ENABLE_VIDEO=OFF` still compiled `JSHTMLMediaElementCustom.cpp`, which has no `#if ENABLE(VIDEO)`.
+  * `USE_LIBDRM=OFF` left `DRM_FORMAT_XRGB8888` undeclared in `AcceleratedBackingStore.cpp`.
+  * **WPE forces GL compositing in the web process** (`WebPreferencesWPE.cpp`), so "no GPU" really means
+    software GL: the first run aborted in libepoxy looking for libGLESv2. GTK has `WEBKIT_DISABLE_COMPOSITING_MODE`
+    for the non-composited renderer (Skia on the CPU into shared memory); WPE had no equivalent, so the edit gives
+    it one, and `flo_engine_init` sets it. With that, no GL library is loaded at all.
+* **End to end, with no UI and no GL** (`scripts/test_host.sh`, `tests/smoke_engine.c`, built against the real
+  engine): a frame arrives; title and address events fire; pixels are exact (red, blue and white boxes at the
+  expected positions); a mouse click on a link loads the second page; Page Down scrolls. 7 of 8 checks pass.
+* The Objective-C files syntax-check against gnustep-gui 0.30 (they have not been run: no X session was used).
+
+**Known problems found by that run, not fixed:**
+
+* **The mouse wheel does not scroll** in non-composited mode (the keyboard does). In the UI process the wheel
+  handler (`WebPageProxy::handleNativeWheelEvent` onward) was being traced when work stopped; the web process
+  never saw a wheel message. The WPE events sent are the same as the Wayland platform's for a discrete wheel.
+* **The page repaints at about 60 frames per second while idle**, always the 21-pixel scrollbar strip on the
+  right (`WEBKIT_DISPLAY_REFRESH_THROTTLE_FPS=30` did not slow it). Probably the same cause: threaded/async
+  scrolling is off in the web process (`setThreadedScrollingEnabled(false)`) but `ENABLE_ASYNC_SCROLLING` is built
+  in, so the coordinated scrollbar controller is in a mixed state. Candidate fixes: build with
+  `ENABLE_ASYNC_SCROLLING=OFF` (not yet tried), or fix the scrollbar path. This is the main idle-CPU cost to remove
+  before the Pi.
+* The Linux build is unstripped (the library is 114 MB); the size on the Pi is unmeasured.
 
 **Not done, and not claimed:** nothing here has been built for or run on Darwin or the Pi.
 
@@ -115,7 +139,7 @@ how much of it assumes Linux (the process launcher, shared memory, `eventfd`/`me
 tree). Under the iokit port's rule every such change is a commit in an `anurodhp/WebKit` fork that
 `setup_third_party.sh` then points at; no patch files.
 
-`WEBKIT_DISABLE_ASYNC_SCROLLING`, `WEBKIT_TLS_CAFILE_PEM` and other tuning variables exist only in
+`WEBKIT_DISABLE_ASYNC_SCROLLING`, `WEBKIT_TLS_CAFILE_PEM`, `WEBKIT_EXEC_PATH` and other tuning variables exist only in
 developer-mode builds, which this configuration is not; the knobs that are real are in `flo_engine_init`,
 each with the source line that reads it.
 

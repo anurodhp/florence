@@ -78,6 +78,7 @@ int flo_engine_init(const char *data_dir, const char *cache_dir)
 
 	/* Read by WebKit's processes at start-up (they inherit our environment); setdefault keeps
 	 * anything the user put there for experiments. Each is a source line in the pinned tree: */
+	setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1");      /* scripts/webkit_fixes.sh: no GL compositor, paint on the CPU */
 	setdefault("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1");     /* WebProcessGLib.cpp: no GPU buffers, shared memory */
 	setdefault("WEBKIT_SKIA_CPU_PAINTING_THREADS", "1");     /* SkiaPaintingEngine.cpp: default is half the cores */
 	setdefault("WEBKIT_FORCE_VBLANK_TIMER", "1");            /* DisplayVBlankMonitor.cpp: no screen to ask */
@@ -99,20 +100,18 @@ int flo_engine_init(const char *data_dir, const char *cache_dir)
 
 	settings = webkit_settings_new();
 	webkit_settings_set_enable_javascript(settings, FALSE);  /* until the user opts in */
-	webkit_settings_set_hardware_acceleration_policy(settings, WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER);
+	/* No hardware-acceleration policy here: that setting is GTK's. WPE's CPU path is the environment
+	 * variable above. DNS prefetching, hyperlink auditing and the offline application cache have
+	 * deprecated setters that do nothing in this WebKit, so they are not called. */
 	webkit_settings_set_enable_page_cache(settings, FALSE);
 	webkit_settings_set_enable_smooth_scrolling(settings, FALSE);
-	webkit_settings_set_enable_dns_prefetching(settings, FALSE);
-	webkit_settings_set_enable_hyperlink_auditing(settings, FALSE);
 	webkit_settings_set_enable_html5_database(settings, FALSE);
-	webkit_settings_set_enable_offline_web_application_cache(settings, FALSE);
 	webkit_settings_set_enable_developer_extras(settings, FALSE);
 	webkit_settings_set_enable_media(settings, FALSE);
 	webkit_settings_set_enable_mediasource(settings, FALSE);
 	webkit_settings_set_enable_media_stream(settings, FALSE);
 	webkit_settings_set_enable_webaudio(settings, FALSE);
 	webkit_settings_set_enable_webgl(settings, FALSE);
-	webkit_settings_set_enable_back_forward_navigation_gestures(settings, FALSE);
 	return 0;
 }
 
@@ -305,7 +304,8 @@ void flo_page_pointer_button(struct flo_page *p, int mods, int button, bool down
 	else
 		p->buttons &= ~bit;
 	send_event(p, wpe_event_pointer_button_new(down ? WPE_EVENT_POINTER_DOWN : WPE_EVENT_POINTER_UP, p->view,
-		WPE_INPUT_SOURCE_MOUSE, now_ms(), wpe_mods(p, mods), (guint)button, x, y, clicks > 0 ? (guint)clicks : 1));
+		WPE_INPUT_SOURCE_MOUSE, now_ms(), wpe_mods(p, mods), (guint)button, x, y,
+		down ? (clicks > 0 ? (guint)clicks : 1) : 0));      /* WPE asserts a press count only on a press */
 }
 
 void flo_page_scroll(struct flo_page *p, int mods, double dx, double dy, double x, double y)

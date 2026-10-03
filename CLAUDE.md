@@ -78,9 +78,10 @@ with a stated reason in the "Left on" list.
   `ENABLE(DEVELOPER_MODE)`, which this build is not: check before relying on one.
 * New third-party code: a pinned entry in `setup_third_party.sh` (git tag or sha256, plus the commit for a git tag),
   a `scripts/build_*.sh` using `tools/common.sh` helpers, dylib not static archive (the iokit port's
-  standing rule: nothing ships fully static except its password tool). The iokit port's rule also applies to WebKit:
-  a change to a third-party tree is a commit in an `anurodhp/*` fork that the pin points at, never a patch file or a
-  build-copy edit.
+  standing rule: nothing ships fully static except its password tool). Edits to a third-party tree are few,
+  scripted, idempotent and assert their anchors (`scripts/webkit_fixes.sh`, the same pattern as the two NetSurf
+  edits on `master`): a different upstream stops the build instead of building something else. The iokit port's
+  rule is a fork (`anurodhp/*`) instead of patches; WebKit's Darwin port will need that, and this file then goes away.
 * Licensing: the repo is GPL-2.0-only (see `LICENSE`; the reason was NetSurf, which is gone from this branch, and
   whether to keep it is undecided). Every file has an SPDX line. New files get `SPDX-License-Identifier: GPL-2.0-only`.
   Exceptions: `configs/curl/curl_config.h` (curl's licence) and the vendored `tools/bind_audit.sh`.
@@ -92,6 +93,14 @@ with a stated reason in the "Left on" list.
   work into a child process (posix_spawn) fixed it. Background work is a child process. The cause was never pinned
   down. WebKit runs its network and web content in child processes already, but its UI-process library makes some
   threads of its own: if `fatal IO error 22` returns, this is the first suspect.
+* Upstream does not test the stripped configuration. Building it found two missing guards (`ENABLE_VIDEO=OFF`
+  still compiles `JSHTMLMediaElementCustom.cpp`; `USE_LIBDRM=OFF` leaves `DRM_FORMAT_XRGB8888` undeclared in
+  `AcceleratedBackingStore.cpp`), fixed by `scripts/webkit_fixes.sh`. Expect more with each option turned off
+  and with every new WebKit tag; the full compile is the only test, and it takes about an hour on four cores
+  (JavaScriptCore's `LowLevelInterpreter.cpp` alone is ~20 minutes and blocks everything behind it).
+* WebKit caches `LIB_INSTALL_DIR`, `EXEC_INSTALL_DIR` and `LIBEXEC_INSTALL_DIR` on the first configure of a build
+  directory (`OptionsWPE.cmake`), so a different `CMAKE_INSTALL_PREFIX` later does not take effect (and `cmake
+  --install` writes to the old one). Use a fresh build directory, or `cmake -U` those three, which rebuilds everything.
 * A failed `cmake -C` option does not fail: see Build. The first configure of this option set stopped on
   GStreamer although every media feature was off, because `USE_GSTREAMER` is a separate switch.
 * WebKit's `*_DEFAULT`s depend on the CPU and OS (`WebKitFeatures.cmake`): on arm64 the JIT, FTL and WebAssembly

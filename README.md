@@ -6,8 +6,10 @@ user interface: the engine is built with every feature that can be left out left
 UI (tabs, bookmarks, start page, content blocker, preferences), is on `master`.
 
 The target is a **Raspberry Pi 3 running the Darwin/XNU port** in the sibling repository `xnu-iokit-pi3` ("the
-iokit port"), 1 GB of RAM and a slow CPU; it should also run on Linux. **Status: the engine configures and
-compiles on Linux with the option set; nothing has been built for Darwin or run on the Pi.** `docs/webkit-port.md`
+iokit port"), 1 GB of RAM and a slow CPU; it should also run on Linux. **Status: the engine compiles on Linux with the option set (needing three small edits, `scripts/webkit_fixes.sh`) and
+passes an end-to-end smoke test there (`scripts/test_host.sh`: frame, pixels, click navigation; the mouse wheel does not
+scroll yet and idle repaint is too high); the GNUstep UI has only been compiled, not run; nothing has been built for
+Darwin or run on the Pi.** `docs/webkit-port.md`
 says what has been checked, what the Pi build still needs, and what is missing.
 
 ## What there is
@@ -37,7 +39,8 @@ and gnustep-base/gui; the package list is at the top of `scripts/build_webkit.sh
 
     ./setup_third_party.sh
     scripts/build_webkit.sh host          # the engine: long (WebKit), one JavaScriptCore file alone takes minutes
-    scripts/build_florence.sh host        # build/florence-host/florence; run under an X server
+    scripts/build_florence.sh host        # build/florence-host/florence; run under an X server (LD_LIBRARY_PATH=build/webkit-host/root/lib)
+    scripts/test_host.sh                  # engine end-to-end check, no UI, no X
 
 For the Raspberry Pi (cross-compiled on a **Mac** with the iokit port's toolchain; see `CLAUDE.md`):
 `scripts/build_webkit.sh cross` and `scripts/build_florence.sh pi` exist but **do not work yet**: the port does not

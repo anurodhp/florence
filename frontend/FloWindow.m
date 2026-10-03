@@ -191,7 +191,8 @@ static NSButton *button(NSString *title, id target, SEL action, NSRect frame)
 	flo_page_free(page);
 	page = NULL;
 	[win setDelegate:nil];
-	[[FloWindow all] removeObject:self];            /* releases us */
+	[[self retain] autorelease];                    /* we are inside the window's own notification: outlive it */
+	[[FloWindow all] removeObject:self];            /* drops the list's reference */
 }
 
 @end

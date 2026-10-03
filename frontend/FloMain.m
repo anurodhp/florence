@@ -5,7 +5,9 @@
  */
 #import <AppKit/AppKit.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #import "FloWindow.h"
 #import "FloGLib.h"
 #include "flo.h"
@@ -85,6 +87,21 @@ static void buildMenus(FloApp *app)
 	[NSApp setMainMenu:bar];
 }
 
+/* mkdir -p: the engine opens its data and cache directories but does not make the path to them */
+static void make_dirs(const char *path)
+{
+	char buf[1024], *p;
+
+	snprintf(buf, sizeof buf, "%s", path);
+	for (p = buf + 1; *p != '\0'; p++)
+		if (*p == '/') {
+			*p = '\0';
+			mkdir(buf, 0700);
+			*p = '/';
+		}
+	mkdir(buf, 0700);
+}
+
 int main(int argc, char **argv)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -106,6 +123,8 @@ int main(int argc, char **argv)
 	[NSApplication sharedApplication];
 	snprintf(data, sizeof data, "%s/.florence/data", home != NULL ? home : "/tmp");
 	snprintf(cache, sizeof cache, "%s/.florence/cache", home != NULL ? home : "/tmp");
+	make_dirs(data);
+	make_dirs(cache);
 	if (flo_engine_init(data, cache) != 0)
 		return 1;
 	FloApp *app = [[FloApp alloc] initWithStartAddress:start];
