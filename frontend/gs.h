@@ -29,6 +29,10 @@ struct gui_window {
 /* ---- C glue, called by the UI ------------------------------------------- */
 int  flo_core_init(int argc, char **argv);      /* options, tables, netsurf_init */
 void flo_core_fini(void);
+void flo_memory_note(void);                     /* memory just changed hands: check it soon, and drop unused cache if low */
+int  gs_memory_level(void);                     /* 0 fine (or unknown), 1 low */
+int  gs_memory_level_for(uint64_t avail_bytes, uint64_t total_bytes);
+void gs_memory_purge(void);
 int  flo_schedule_run(void);                    /* ms until the next callback, -1 none */
 void flo_open_url(const char *url);             /* new window; NULL: the home page */
 const struct plotter_table *flo_plotters(void); /* cairo plotters; ctx->priv is a cairo_t* */

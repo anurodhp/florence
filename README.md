@@ -126,6 +126,11 @@ commands actually carried, and warns about any `-O0`.
 * The scheduler pump is a one-shot `NSTimer` that sleeps until NetSurf's next callback (0.3% CPU idle, measured).
 * Only the exposed rectangle is rendered; scrolling blits existing pixels (`copiesOnScroll`).
 * Window resizes are debounced (80 ms) so a drag reflows once.
+* Low memory: the iokit port delivers no memory-pressure notifications and has no swap, so after a page finishes
+  loading or a tab closes (once, 1.5 s later, never on a timer) Florence asks the kernel how much is free; under
+  15 % of RAM it has NetSurf drop every cached object nobody is using (`gs_memory.c`). If the kernel call is not
+  available the check is simply off.
+* The block lists are compiled once and mapped from `~/.netsurf/blocklists.cache` (see `docs/content-blocking.md`).
 * Options: JS off, 8 MB memory cache, no animated images, few fetchers (`FLORENCE_FULL=1` keeps NetSurf's defaults).
 
 ## Status

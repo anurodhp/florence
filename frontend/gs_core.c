@@ -350,6 +350,27 @@ void flo_core_fini(void)
 	}
 }
 
+/* ---- low memory: see gs_memory.c ------------------------------------------------------------ */
+
+static bool memory_check_pending;
+
+static void memory_check(void *unused)
+{
+	memory_check_pending = false;
+	if (gs_memory_level() != 0) {
+		flo_trace("memory: low, purging the unused cache");
+		gs_memory_purge();
+	}
+}
+
+/* memory just changed hands (a page loaded, a tab closed): look soon, once. Deferred out of the
+ * callback that reported it, and no timer runs unless something happened. */
+void flo_memory_note(void)
+{
+	if (!memory_check_pending && flo_schedule(1500, memory_check, NULL) == NSERROR_OK)
+		memory_check_pending = true;
+}
+
 int flo_schedule_run(void)
 {
 	return gs_schedule_run();

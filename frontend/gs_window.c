@@ -64,6 +64,7 @@ static void gw_destroy(struct gui_window *gw)
 	if (gw->ui != NULL)
 		flo_ui_window_free(gw->ui);
 	free(gw);
+	flo_memory_note();
 }
 
 static nserror gw_invalidate(struct gui_window *gw, const struct rect *r)
@@ -115,7 +116,7 @@ static nserror gw_event(struct gui_window *gw, enum gui_window_event ev)
 	case GW_EVENT_UPDATE_EXTENT: flo_ui_update_extent(gw->ui); break;
 	case GW_EVENT_REMOVE_CARET: flo_ui_remove_caret(gw->ui); break;
 	case GW_EVENT_START_THROBBER: flo_ui_throbber(gw->ui, true); break;
-	case GW_EVENT_STOP_THROBBER: flo_ui_throbber(gw->ui, false); break;
+	case GW_EVENT_STOP_THROBBER: flo_ui_throbber(gw->ui, false); flo_memory_note(); break;
 	default: break;
 	}
 	return NSERROR_OK;
