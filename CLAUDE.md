@@ -95,6 +95,12 @@ fails, the problem is below Florence.
 * Real NetSurf 3.11 headers can be had without the (blocked) upstream host: Ubuntu's `netsurf` source
   package is exactly 3.11 with all its libraries. Compile the C glue against it before every push
   (`gcc -fsyntax-only` with `-I` for netsurf/, netsurf/include and each lib's include/).
+* Do not run threads beside GNUstep's run loop on this port. A worker thread running libcurl (the first EasyList
+  updater) made the browser die within seconds with `fatal IO error 22` on the X connection; moving the work into a
+  child process (this executable with `--update-lists`, started with posix_spawn) fixed it. Background work is a child
+  process, checked from the main thread with one-shot scheduler callbacks. The cause was never pinned down.
+* `FLORENCE_NOUPDATE`, `FLORENCE_NOCACHE` and `FLORENCE_NOMEM` switch the newer features off for bisecting on the Pi;
+  a built-in X IO error report prints errno, the X descriptor's state and named frames.
 * A segfault on the Pi has no debugger: use `FLORENCE_TRACE=1` and the built-in crash report.
 
 ## Verifying without the Pi
