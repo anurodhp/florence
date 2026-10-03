@@ -1,9 +1,13 @@
 # CLAUDE.md
 
-Florence: NetSurf 3.11 (no JavaScript) with a GNUstep UI, for small machines. The target is
-the Raspberry Pi 3 running the Darwin/XNU port in the sibling repo `xnu-iokit-pi3` ("the iokit
-port"). Anything built here is cross-compiled on a Mac and deployed to the Pi; this repo
-cannot be built or run on Linux. README.md has the layout and status.
+Florence: a browser for small machines. On this branch the engine is WPE WebKit 2.54.0, built
+for CPU rendering with every removable feature removed, under a bare-minimum GNUstep UI (the
+NetSurf 3.11 engine and its full UI are on `master`). The target is the Raspberry Pi 3 running
+the Darwin/XNU port in the sibling repo `xnu-iokit-pi3` ("the iokit port"); Pi builds are
+cross-compiled on a Mac. The engine and the glue also build and run on Linux (`scripts/build_*.sh
+host`), which is where they are developed and tested; nothing has been built for the Pi yet.
+README.md has the layout and status; `docs/webkit-port.md` has the design, the verified/unverified
+list and the dependency table the Pi build is waiting on.
 
 ## Read the iokit port before touching the build
 
@@ -50,58 +54,53 @@ Linux/macOS habits; they are wrong here.
 
 ## Build
 
-    ./setup_third_party.sh
-    scripts/build_mbedtls.sh && scripts/build_curl.sh && scripts/build_jpeg.sh
-    scripts/build_netsurf_libs.sh
-    scripts/build_netsurf.sh monkey      # headless smoke test; proven on the Pi
-    scripts/build_netsurf.sh gnustep     # the browser -> build/root/Applications/Florence.app
+    ./setup_third_party.sh               # pinned sources; WebKit is a sparse shallow clone of a tag, commit asserted
+    scripts/build_webkit.sh host         # Linux: the engine (cmake + ninja; see the script's header for packages)
+    scripts/build_florence.sh host       # Linux: build/florence-host/florence
+    scripts/build_webkit.sh cross        # the Pi: configure only, stops at the first missing dependency
+    scripts/build_florence.sh pi         # the Pi: Florence.app; written, never run
     tools/deploy_to_pi.sh                # PI_HOST/PI_USER/PI_PASS (default password "darwin", test image)
-    # optional JavaScript (does every step, in order):  scripts/enable_js.sh [--check] [--deploy]
 
-`build_netsurf.sh` compiles the C glue through NetSurf's own make (`frontend/` is copied to
-`netsurf/frontends/gnustep/`), compiles the `.m` files itself, skips NetSurf's link step and
-links with this repo's recipe. Logs: `build/netsurf-<frontend>.log`. Build `monkey` first: if it
-fails, the problem is below Florence.
+WebKit's options are `config/webkit-options.cmake`, nothing else: add or change one there, run
+`scripts/check_webkit_options.sh` (CMake ignores an option name that does not exist and builds with the default,
+silently turning a feature back on), and put a reason in the file. Prefer fewer features; a feature stays on only
+with a stated reason in the "Left on" list.
 
 ## Code conventions
 
-* Plain C glue (`gs_*.c`) talks to NetSurf; Objective-C (`Flo*.m`) never includes NetSurf headers.
-  The only crossing is `frontend/gs.h` (`flo_win_*` down, `flo_ui_*` up, plain enums).
+* Plain C glue (`flo_*.c`) talks to WebKit and GLib; Objective-C (`Flo*.m`) never includes their headers.
+  The only crossing is `frontend/flo.h` (plain C types: input down, BGRA pixels and event callbacks up).
 * Target is underpowered hardware: paint only dirty rects into one reusable buffer, no per-frame
-  allocation, no polling timers (the pump sleeps until NetSurf's next callback), debounce resizes,
-  cap caches (`apply_overrides()` in `gs_core.c`). Check any change against that.
-* New third-party code: a pinned entry in `setup_third_party.sh` (git tag or sha256), a
-  `scripts/build_*.sh` using `tools/common.sh` helpers, dylib not static archive (the iokit port's
-  standing rule: nothing ships fully static except its password tool).
-* Licensing: the whole repo is GPL-2.0-only (NetSurf's core is GPL-2.0-only, never "or later", and several
-  files derive from NetSurf's frontends). See `LICENSE`; every file has an SPDX line. New files get
-  `SPDX-License-Identifier: GPL-2.0-only`. Exceptions: `configs/curl/curl_config.h` (curl's licence) and the
-  vendored `tools/bind_audit.sh`.
+  allocation, no polling timers (GLib's main context is driven from the run loop and sleeps in it, `FloGLib.m`),
+  debounce resizes, small caches. Check any change against that.
+* A WebKit environment variable or setting goes in `flo_engine_init` with the source line in the pinned tree that
+  reads it. Many knobs (`WEBKIT_DISABLE_ASYNC_SCROLLING`, `WEBKIT_TLS_CAFILE_PEM`) exist only under
+  `ENABLE(DEVELOPER_MODE)`, which this build is not: check before relying on one.
+* New third-party code: a pinned entry in `setup_third_party.sh` (git tag or sha256, plus the commit for a git tag),
+  a `scripts/build_*.sh` using `tools/common.sh` helpers, dylib not static archive (the iokit port's
+  standing rule: nothing ships fully static except its password tool). The iokit port's rule also applies to WebKit:
+  a change to a third-party tree is a commit in an `anurodhp/*` fork that the pin points at, never a patch file or a
+  build-copy edit.
+* Licensing: the repo is GPL-2.0-only (see `LICENSE`; the reason was NetSurf, which is gone from this branch, and
+  whether to keep it is undecided). Every file has an SPDX line. New files get `SPDX-License-Identifier: GPL-2.0-only`.
+  Exceptions: `configs/curl/curl_config.h` (curl's licence) and the vendored `tools/bind_audit.sh`.
 
 ## Lessons learned the hard way
 
-* `netsurf_register()` keeps the pointer to the `netsurf_table` (global `guit`) for the life of the
-  process: it must be static, never a local of the init function (that was the first-window crash).
-* NetSurf only builds frontends named in `VLDTARGET` (`frontends/Makefile.hts`); the build script
-  registers `gnustep` there in the build copy.
-* The build script makes exactly two edits to NetSurf, in the build copy only: `VLDTARGET` and a hook at the
-  top of `fetch_start()` in `content/fetch.c` for the content blocker (anchors are asserted; a changed
-  upstream aborts the build).
-* Window-table callbacks can arrive while `gw_create` is still running (`gw->ui` not yet assigned);
-  the UI stores itself in `gw->ui` at creation and every callback tolerates no UI.
-* NetSurf 3.11 has no certificate-prompt hook for the frontend (`gui_misc_table` has no `cert_verify`):
-  on a failed check the core itself navigates to its `about:query/ssl` page (Proceed / Back to safety),
-  which works without a certificate chain (libcurl here is mbedTLS, not OpenSSL). Nothing to implement.
-* Real NetSurf 3.11 headers can be had without the (blocked) upstream host: Ubuntu's `netsurf` source
-  package is exactly 3.11 with all its libraries. Compile the C glue against it before every push
-  (`gcc -fsyntax-only` with `-I` for netsurf/, netsurf/include and each lib's include/).
 * Do not run threads beside GNUstep's run loop on this port. A worker thread running libcurl (the first EasyList
-  updater) made the browser die within seconds with `fatal IO error 22` on the X connection; moving the work into a
-  child process (this executable with `--update-lists`, started with posix_spawn) fixed it. Background work is a child
-  process, checked from the main thread with one-shot scheduler callbacks. The cause was never pinned down.
-* `FLORENCE_TRACE_FETCH=1` lists every request the engine starts (time, refused or not, URL). `FLORENCE_NOUPDATE`, `FLORENCE_NOCACHE` and `FLORENCE_NOMEM` switch the newer features off for bisecting on the Pi;
-  a built-in X IO error report prints errno, the X descriptor's state and named frames.
-* A segfault on the Pi has no debugger: use `FLORENCE_TRACE=1` and the built-in crash report.
+  updater, NetSurf days) made the browser die within seconds with `fatal IO error 22` on the X connection; moving the
+  work into a child process (posix_spawn) fixed it. Background work is a child process. The cause was never pinned
+  down. WebKit runs its network and web content in child processes already, but its UI-process library makes some
+  threads of its own: if `fatal IO error 22` returns, this is the first suspect.
+* A failed `cmake -C` option does not fail: see Build. The first configure of this option set stopped on
+  GStreamer although every media feature was off, because `USE_GSTREAMER` is a separate switch.
+* WebKit's `*_DEFAULT`s depend on the CPU and OS (`WebKitFeatures.cmake`): on arm64 the JIT, FTL and WebAssembly
+  default ON and the interpreter OFF. The options file sets them all explicitly.
+* WPE's render path wants its protocol kept: after `render_buffer` WebKit sends no further frame until
+  `buffer-rendered`, and the previous buffer must be reported `released` (`flo_platform.c`).
+* The old lessons (NetSurf's `netsurf_table` lifetime, `VLDTARGET`, the `fetch_start()` hook) live in
+  `git show master:CLAUDE.md`; the diagnostics of that UI (`FLORENCE_TRACE`, the X IO error handler, the crash
+  report) were not carried over and may be wanted on the first Pi run (`git show master:frontend/gs_core.c`).
 
 ## Verifying without the Pi
 

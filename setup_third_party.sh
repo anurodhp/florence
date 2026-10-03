@@ -8,20 +8,10 @@ FORCE=0; [ "${1:-}" = "--force" ] && FORCE=1
 mkdir -p third_party
 
 # git repos: name|url|ref
+# (mbedtls, curl and jpeg below are left over from the NetSurf engine on master; WebKit's network
+# stack is libsoup and its JPEG decoder wants libjpeg-turbo, so nothing here uses them yet.)
 REPOS='
 mbedtls|https://github.com/Mbed-TLS/mbedtls.git|v3.6.7
-buildsystem|git://git.netsurf-browser.org/buildsystem.git|release/1.10
-libwapcaplet|git://git.netsurf-browser.org/libwapcaplet.git|release/0.4.3
-libparserutils|git://git.netsurf-browser.org/libparserutils.git|release/0.2.5
-libhubbub|git://git.netsurf-browser.org/libhubbub.git|release/0.3.8
-libcss|git://git.netsurf-browser.org/libcss.git|release/0.9.2
-libdom|git://git.netsurf-browser.org/libdom.git|release/0.4.2
-libnsutils|git://git.netsurf-browser.org/libnsutils.git|release/0.1.1
-libnslog|git://git.netsurf-browser.org/libnslog.git|release/0.1.3
-libnsbmp|git://git.netsurf-browser.org/libnsbmp.git|release/0.1.7
-libnsgif|git://git.netsurf-browser.org/libnsgif.git|release/1.0.0
-netsurf|git://git.netsurf-browser.org/netsurf.git|release/3.11
-nsgenbind|git://git.netsurf-browser.org/nsgenbind.git|release/0.9
 '
 echo "$REPOS" | while IFS='|' read -r name url ref; do
     [ -z "$name" ] && continue
@@ -32,6 +22,28 @@ echo "$REPOS" | while IFS='|' read -r name url ref; do
     echo "+ $name @ $ref"
     git clone -q --depth 1 --branch "$ref" "$url" "$d"
 done
+
+# The rendering engine: WPE WebKit, pinned to a release tag AND the commit that tag points at
+# (a moved tag aborts). A full checkout is 8 GB, most of it tests; the sparse set below leaves out
+# everything the build never reads (LayoutTests, JSTests, ...) and blobs are fetched on demand.
+# Bump WEBKIT_TAG and WEBKIT_COMMIT together:  git ls-remote --tags https://github.com/WebKit/WebKit.git 'wpewebkit-*'
+WEBKIT_URL=https://github.com/WebKit/WebKit.git
+WEBKIT_TAG=wpewebkit-2.54.0
+WEBKIT_COMMIT=73f39d84ea9d4071994214373efbde3665402b05
+d=third_party/webkit
+if [ -d "$d" ]; then
+    [ "$FORCE" = 1 ] && rm -rf "$d" || echo "= $d exists"
+fi
+if [ ! -d "$d" ]; then
+    echo "+ webkit @ $WEBKIT_TAG"
+    git clone -q -c advice.detachedHead=false --depth 1 --filter=blob:none --no-checkout --branch "$WEBKIT_TAG" "$WEBKIT_URL" "$d"
+    got="$(git -C "$d" rev-parse HEAD)"
+    [ "$got" = "$WEBKIT_COMMIT" ] || { echo "error: $WEBKIT_TAG is $got, expected $WEBKIT_COMMIT" >&2; rm -rf "$d"; exit 1; }
+    git -C "$d" sparse-checkout set --no-cone '/*' '!/LayoutTests' '!/JSTests' '!/PerformanceTests' \
+        '!/ManualTests' '!/WebDriverTests' '!/Websites'
+    git -C "$d" checkout -q
+    echo "  $(du -sh "$d" | cut -f1) checked out"
+fi
 
 # release tarballs: name|url|sha256 (curl's configure only generates curl_config.h;
 # a git tag has no configure script)
