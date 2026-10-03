@@ -128,6 +128,16 @@ bool flo_opt_dnt(void);
 void flo_opt_set_dnt(bool on);
 int  flo_opt_font_min(void);                    /* tenths of a point: 85 = 8.5 pt */
 void flo_opt_set_font_min(int tenths);
+bool flo_opt_referer(void);                     /* send the Referer header */
+void flo_opt_set_referer(bool on);
+const char *flo_opt_homepage(void);             /* "" when none */
+void flo_opt_set_homepage(const char *url);
+void flo_clear_cookies(void);                   /* the cookie file goes now, the in-memory jar is not saved at quit */
+void flo_clear_history(void);                   /* likewise the visited-URL database */
+
+/* Florence's own settings (~/.netsurf/Florence.conf): search engine, downloads folder, cache size ... */
+const char *flo_pref_get(const char *key, const char *def);
+void flo_pref_set(const char *key, const char *val);
 
 /* ---- UI, called by the C glue (FloUI.m) --------------------------------- */
 char *flo_ui_clipboard_get(size_t *len);                         /* malloc'd UTF-8, or NULL */

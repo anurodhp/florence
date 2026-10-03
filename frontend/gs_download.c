@@ -79,8 +79,12 @@ static bool pick_path(struct gui_download_window *dw)
 	const char *dot;
 	struct stat st;
 	int i;
+	const char *chosen = flo_pref_get("downloads", "");
 
-	snprintf(dir, sizeof(dir), "%s/Downloads", home != NULL ? home : "/tmp");
+	if (*chosen != '\0')
+		snprintf(dir, sizeof(dir), "%s", chosen);
+	else
+		snprintf(dir, sizeof(dir), "%s/Downloads", home != NULL ? home : "/tmp");
 	if (mkdir(dir, 0755) != 0 && errno != EEXIST)
 		return false;
 	dot = strrchr(dw->name, '.');

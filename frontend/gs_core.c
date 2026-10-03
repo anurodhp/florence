@@ -59,6 +59,78 @@ static const char *home_path(char *buf, size_t len, const char *name)
 	return buf;
 }
 
+/* ---- Florence's own preferences: ~/.netsurf/Florence.conf, "key=value" lines -------------------
+ * For what NetSurf's option table has no slot for (search engine, downloads folder, ...). Tiny and
+ * fixed-size: no allocation after load. */
+#define PREF_MAX 24
+static struct { char key[24]; char val[PATH_MAX]; } prefs[PREF_MAX];
+static int npref;
+static bool drop_cookies, drop_history;        /* "clear" was asked: honoured when the databases are saved at quit */
+
+static void prefs_load(void)
+{
+	char path[PATH_MAX], line[PATH_MAX + 32], *eq, *nl;
+	FILE *f = fopen(home_path(path, sizeof(path), "Florence.conf"), "r");
+
+	if (f == NULL)
+		return;
+	while (npref < PREF_MAX && fgets(line, sizeof(line), f) != NULL) {
+		if ((nl = strchr(line, '\n')) != NULL)
+			*nl = '\0';
+		if ((eq = strchr(line, '=')) == NULL || eq == line || eq - line >= (int)sizeof(prefs[0].key))
+			continue;
+		*eq = '\0';
+		snprintf(prefs[npref].key, sizeof(prefs[npref].key), "%s", line);
+		snprintf(prefs[npref].val, sizeof(prefs[npref].val), "%s", eq + 1);
+		npref++;
+	}
+	fclose(f);
+}
+
+static void prefs_save(void)
+{
+	char path[PATH_MAX], tmp[PATH_MAX + 8];
+	FILE *f;
+	int i;
+
+	home_path(path, sizeof(path), "Florence.conf");
+	snprintf(tmp, sizeof(tmp), "%s.new", path);
+	if ((f = fopen(tmp, "w")) == NULL)
+		return;
+	for (i = 0; i < npref; i++)
+		fprintf(f, "%s=%s\n", prefs[i].key, prefs[i].val);
+	if (fclose(f) == 0)
+		rename(tmp, path);
+}
+
+const char *flo_pref_get(const char *key, const char *def)
+{
+	int i;
+
+	for (i = 0; i < npref; i++)
+		if (strcmp(prefs[i].key, key) == 0)
+			return prefs[i].val;
+	return def;
+}
+
+void flo_pref_set(const char *key, const char *val)
+{
+	int i;
+
+	if (val == NULL || strchr(val, '\n') != NULL || strlen(key) >= sizeof(prefs[0].key))
+		return;
+	for (i = 0; i < npref && strcmp(prefs[i].key, key) != 0; i++)
+		;
+	if (i == npref) {
+		if (npref == PREF_MAX)
+			return;
+		npref++;
+		snprintf(prefs[i].key, sizeof(prefs[i].key), "%s", key);
+	}
+	snprintf(prefs[i].val, sizeof(prefs[i].val), "%s", val);
+	prefs_save();
+}
+
 static char **init_resources(void)
 {
 	char path[PATH_MAX * 2];
@@ -116,9 +188,11 @@ static void apply_overrides(void)
 #endif
 	nsoption_set_bool(core_select_menu, true);      /* we have no native <select> popup */
 	if (getenv("FLORENCE_FULL") == NULL) {
-		nsoption_set_bool(animate_images, false);
+		int mb = atoi(flo_pref_get("cache_mb", "8"));
+
+		nsoption_set_bool(animate_images, strcmp(flo_pref_get("animate", "0"), "1") == 0);
 		nsoption_set_bool(background_images, true);
-		nsoption_set_int(memory_cache_size, 8 * 1024 * 1024);
+		nsoption_set_int(memory_cache_size, (mb < 1 || mb > 64 ? 8 : mb) * 1024 * 1024);
 		nsoption_set_int(max_fetchers, 8);
 		nsoption_set_int(max_fetchers_per_host, 4);
 		nsoption_set_int(max_cached_fetch_handles, 4);
@@ -234,6 +308,7 @@ int flo_core_init(int argc, char **argv)
 		return -1;
 	}
 	nsoption_read(home_path(buf, sizeof(buf), "Choices"), nsoptions);
+	prefs_load();
 	apply_overrides();
 
 	if (filepath_sfind(respaths, buf, "Messages") == NULL ||
@@ -258,8 +333,14 @@ int flo_core_init(int argc, char **argv)
 
 void flo_core_fini(void)
 {
-	urldb_save(urls_path);
-	urldb_save_cookies(nsoption_charp(cookie_jar));
+	if (drop_history)
+		unlink(urls_path);
+	else
+		urldb_save(urls_path);
+	if (drop_cookies)
+		unlink(nsoption_charp(cookie_jar));
+	else
+		urldb_save_cookies(nsoption_charp(cookie_jar));
 	netsurf_exit();
 	gs_fetch_filetype_fin();
 	if (respaths != NULL) {
@@ -281,9 +362,14 @@ void flo_open_url(const char *url)
 
 	flo_trace("open_url");
 	if (url == NULL || *url == '\0') {
-		url = flo_startpage_url();        /* bookmarks and recent sites, like Safari's start page */
+		const char *home = nsoption_charp(homepage_url);
+
+		if (strcmp(flo_pref_get("newwin", "start"), "home") == 0 && home != NULL && *home != '\0')
+			url = home;
+		else
+			url = flo_startpage_url();        /* bookmarks and recent sites, like Safari's start page */
 		if (url == NULL)
-			url = nsoption_charp(homepage_url) != NULL ? nsoption_charp(homepage_url) : "about:welcome";
+			url = home != NULL ? home : "about:welcome";
 	}
 	if (nsurl_create(url, &u) != NSERROR_OK) {
 		flo_trace("open_url: nsurl_create failed");
@@ -351,6 +437,16 @@ void flo_opt_set_hide_ads(bool on)
 }
 bool flo_opt_dnt(void) { return nsoption_bool(do_not_track); }
 void flo_opt_set_dnt(bool on) { nsoption_set_bool(do_not_track, on); save_choices(); }
+bool flo_opt_referer(void) { return nsoption_bool(send_referer); }
+void flo_opt_set_referer(bool on) { nsoption_set_bool(send_referer, on); save_choices(); }
+const char *flo_opt_homepage(void) { return nsoption_charp(homepage_url) != NULL ? nsoption_charp(homepage_url) : ""; }
+void flo_opt_set_homepage(const char *url)
+{
+	nsoption_set_charp(homepage_url, url != NULL && *url != '\0' ? strdup(url) : NULL);
+	save_choices();
+}
+void flo_clear_cookies(void) { drop_cookies = true; unlink(nsoption_charp(cookie_jar)); }
+void flo_clear_history(void) { drop_history = true; unlink(urls_path); }
 int flo_opt_font_min(void) { return nsoption_int(font_min_size); }
 void flo_opt_set_font_min(int tenths) { nsoption_set_int(font_min_size, tenths); save_choices(); }
 

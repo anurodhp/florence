@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #import "FloBrowser.h"
 #import "FloStore.h"
+#import "FloPrefs.h"
 #include "gnustep/gs.h"
 
 static NSString *startURL;
@@ -334,6 +335,7 @@ static void refreshHistoryMenu(void) { fillStoreMenu(historyMenu, [FloStore hist
 }
 
 - (void)toggleHideAds:(id)s { flo_opt_set_hide_ads(!flo_opt_hide_ads()); [self reloadCurrent]; }
+- (void)showPrefs:(id)s { [[FloPrefs shared] show]; }
 - (void)toggleDNT:(id)s { flo_opt_set_dnt(!flo_opt_dnt()); }
 - (void)setMinFont:(id)item { flo_opt_set_font_min((int)[item tag]); [self reloadCurrent]; }
 
@@ -370,7 +372,7 @@ static void refreshHistoryMenu(void) { fillStoreMenu(historyMenu, [FloStore hist
 		[item setState:flo_opt_font_min() == [item tag] ? NSOnState : NSOffState];
 		return YES;
 	}
-	if (a == @selector(newWindow:) || a == @selector(terminate:) || a == @selector(openStored:) ||
+	if (a == @selector(newWindow:) || a == @selector(showPrefs:) || a == @selector(terminate:) || a == @selector(openStored:) ||
 	    a == @selector(clearHistory:))
 		return YES;
 	if (t == nil || t->gw == NULL)
@@ -411,6 +413,8 @@ static void buildMenus(FloApp *app)
 {
 	NSMenu *bar = [[[NSMenu alloc] initWithTitle:@"Florence"] autorelease];
 	NSMenu *m = addSubmenu(bar, @"Florence");
+	addItem(m, @"Preferences...", @selector(showPrefs:), @",", app);
+	[m addItem:[NSMenuItem separatorItem]];
 	addItem(m, @"Quit Florence", @selector(terminate:), @"q", NSApp);
 
 	m = addSubmenu(bar, @"File");

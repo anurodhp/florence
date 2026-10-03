@@ -22,6 +22,7 @@ NetSurf 3.11 (no JavaScript) with a GNUstep UI, for small machines (Raspberry Pi
 | `FloPage.m` | page view: paints only the dirty rect into one reusable buffer |
 | `FloTab.m` / `FloBrowser.m` | a tab (one NetSurf window) / a browser window: toolbar, tab strip, hover label |
 | `FloToolbar.m` | the Safari-like parts, drawn with vector icons: icon buttons, rounded address bar, tab strip, hover label |
+| `FloPrefs.m` | the Preferences window (Cmd-,): General, Privacy, Content Blocking, Advanced; own settings in `~/.netsurf/Florence.conf` |
 | `FloStore.m` | bookmark and history lists (`~/.netsurf/Bookmarks`, `History`) |
 | `FloUI.m` | scheduler pump, the `flo_ui_*` bridge, menus, `main()` |
 | `assets/` | the Florentine giglio icon (SVG; `tools/make_icon.sh` renders the PNG/TIFF); `assets/icons/` the toolbar glyphs (Lucide, ISC/MIT; `tools/make_toolbar_icons.sh`) |

@@ -2,6 +2,7 @@
 #import "FloBrowser.h"
 #include <math.h>
 #import "FloStore.h"
+#import "FloPrefs.h"
 
 NSString *const FloBookmarksChanged = @"FloBookmarksChanged";
 
@@ -24,10 +25,10 @@ NSString *FloURLFromInput(NSString *in)
 	if ([s rangeOfString:@" "].location == NSNotFound &&
 	    ([s rangeOfString:@"."].location != NSNotFound || [s hasPrefix:@"localhost"]))
 		return [@"http://" stringByAppendingString:s];
-	/* not an address: search (DuckDuckGo's HTML page is the light one) */
+	/* not an address: search with the engine chosen in Preferences */
 	NSMutableCharacterSet *ok = [[[NSCharacterSet alphanumericCharacterSet] mutableCopy] autorelease];
 	[ok addCharactersInString:@"-._~"];
-	return [@"https://html.duckduckgo.com/html/?q=" stringByAppendingString:
+	return [FloSearchURLPrefix() stringByAppendingString:
 		[s stringByAddingPercentEncodingWithAllowedCharacters:ok]];
 }
 
