@@ -6,7 +6,7 @@ NetSurf 3.11 engine and its full UI are on `master`). The target is the Raspberr
 the Darwin/XNU port in the sibling repo `xnu-iokit-pi3` ("the iokit port"); Pi builds are
 cross-compiled on a Mac. The engine and the glue also build and run on Linux (`scripts/build_*.sh
 host`), which is where they are developed and tested; nothing has been built for the Pi yet.
-README.md has the layout and status; `docs/webkit-port.md` has the design, the verified/unverified
+README.md has the layout and status; `docs/HANDOFF.md` is the state of play for resuming; `docs/webkit-port.md` has the design, the verified/unverified
 list and the dependency table the Pi build is waiting on.
 
 ## Read the iokit port before touching the build
