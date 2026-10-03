@@ -1701,10 +1701,13 @@ static bool cache_map(const char *path, uint64_t sig, const char *css_path)
 int flo_blocker_setup(const char *default_list, const char *dir, const char *css_path, const char *cache_path)
 {
 	static char names[MAX_SRC][NAME_MAX + 1];
-	char path[MAX_SRC + 1][PATH_MAX];
+	char (*path)[PATH_MAX] = malloc((size_t)(MAX_SRC + 1) * PATH_MAX);        /* 260 KB: not for the stack */
 	struct stat st;
 	uint64_t sig = 1469598103934665603ull;
 	int i, n = 0, nn, loaded = 0;
+
+	if (path == NULL)
+		return 0;
 
 	if (default_list != NULL && stat(default_list, &st) == 0)
 		snprintf(path[n++], PATH_MAX, "%s", default_list);
@@ -1726,14 +1729,17 @@ int flo_blocker_setup(const char *default_list, const char *dir, const char *css
 	}
 
 	flo_blocker_clear();
-	if (n > 0 && cache_path != NULL && cache_map(cache_path, sig, css_path))
+	if (n > 0 && cache_path != NULL && cache_map(cache_path, sig, css_path)) {
+		free(path);
 		return nrules;                          /* the compiled rules, as they were: nothing to parse */
+	}
 	for (i = 0; i < n; i++)
 		if (flo_blocker_load_file(path[i]) >= 0)
 			loaded++;
 	flo_blocker_finish(css_path);
 	if (loaded > 0 && cache_path != NULL && nrules > 0 && cache_write(cache_path, sig))
 		cache_map(cache_path, sig, css_path);   /* drop the heap copy for the mapped one; on failure keep it */
+	free(path);
 	return nrules;
 }
 

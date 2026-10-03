@@ -13,6 +13,9 @@
 #include <limits.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <dlfcn.h>
+#include <errno.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdint.h>
 #include <ucontext.h>
@@ -230,6 +233,47 @@ static void on_crash(int sig, siginfo_t *si, void *ctx)
 	signal(sig, SIG_DFL);    /* returning re-runs the faulting instruction: the usual death */
 }
 
+/* An X connection error ("fatal IO error 22") normally ends the process inside Xlib with no hint of
+ * who was talking to the server. Xlib lets us look first: say which thread and errno, and walk the
+ * frames (frame pointers; same address notes as the crash report above). XSetIOErrorHandler is found
+ * at run time because libX11 belongs to the gnustep-back bundle, not to this executable. */
+static int on_xio_error(void *display)
+{
+	int e = errno;
+	uintptr_t *f = (uintptr_t *)__builtin_frame_address(0);
+	int i;
+
+	fprintf(stderr, "florence: X IO error: errno %d (%s), %s thread\n", e, strerror(e),
+		pthread_main_np() ? "main" : "a secondary");
+	fprintf(stderr, "florence: flo_core_init is at %p (slide = this - nm address)\n", (void *)flo_core_init);
+	for (i = 0; i < 40 && f != NULL && ((uintptr_t)f & 7) == 0 && (uintptr_t)f > 0x10000; i++) {
+		fprintf(stderr, "florence:   #%d %p\n", i, (void *)f[1]);
+		if ((uintptr_t *)f[0] <= f)
+			break;
+		f = (uintptr_t *)f[0];
+	}
+	fflush(stderr);
+	_exit(1);
+}
+
+void flo_install_xio_handler(void)
+{
+	typedef void *(*set_fn)(int (*)(void *));
+	static const char *const libs[] = { "/usr/X11/lib/libX11.6.dylib", "/usr/lib/libX11.6.dylib", NULL };
+	set_fn set = (set_fn)dlsym(RTLD_DEFAULT, "XSetIOErrorHandler");
+	int i;
+
+	for (i = 0; set == NULL && libs[i] != NULL; i++) {
+		void *h = dlopen(libs[i], RTLD_LAZY | RTLD_NOLOAD);
+
+		if (h != NULL)
+			set = (set_fn)dlsym(h, "XSetIOErrorHandler");
+	}
+	if (set != NULL)
+		set(on_xio_error);
+	flo_trace(set != NULL ? "x11: IO error report installed" : "x11: libX11 not found, no IO error report");
+}
+
 static void install_crash_report(void)
 {
 	struct sigaction sa;
@@ -255,7 +299,7 @@ void flo_blocker_reload(void)
 	/* the compiled rules are kept in ~/.netsurf/blocklists.cache and mapped on later starts; they are
 	 * rebuilt whenever a list file is added, removed or changed */
 	flo_blocker_setup(filepath_sfind(respaths, list, "blocklist-default.json") != NULL ? list : NULL, dir,
-			  home_path(css, sizeof(css), "adblock.css"), home_path(cache, sizeof(cache), "blocklists.cache"));
+			  home_path(css, sizeof(css), "adblock.css"), getenv("FLORENCE_NOCACHE") != NULL ? NULL : home_path(cache, sizeof(cache), "blocklists.cache"));
 	flo_blocker_enable(nsoption_bool(block_advertisements));
 	if (getenv("FLORENCE_TRACE") != NULL)
 		fprintf(stderr, "florence: blocker: %d rules from %d files, %d cosmetic selectors, %s\n",
@@ -367,6 +411,8 @@ static void memory_check(void *unused)
  * callback that reported it, and no timer runs unless something happened. */
 void flo_memory_note(void)
 {
+	if (getenv("FLORENCE_NOMEM") != NULL)
+		return;
 	if (!memory_check_pending && flo_schedule(1500, memory_check, NULL) == NSERROR_OK)
 		memory_check_pending = true;
 }
@@ -461,6 +507,10 @@ bool flo_opt_dnt(void) { return nsoption_bool(do_not_track); }
 void flo_opt_set_dnt(bool on) { nsoption_set_bool(do_not_track, on); save_choices(); }
 void flo_lists_update(bool force)
 {
+	if (getenv("FLORENCE_NOUPDATE") != NULL) {              /* for finding which feature misbehaves on the target */
+		flo_trace("lists: update disabled by FLORENCE_NOUPDATE");
+		return;
+	}
 	gs_lists_start(home_dir, nsoption_charp(ca_bundle), force);
 }
 

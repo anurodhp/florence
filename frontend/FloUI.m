@@ -511,6 +511,7 @@ int main(int argc, char **argv)
 	flo_trace("main: gnustep initialised");
 	[NSApplication sharedApplication];
 	flo_trace("main: NSApplication");
+	flo_install_xio_handler();
 	loadIcon();
 	if (flo_core_init(argc, argv) != 0)
 		return 1;

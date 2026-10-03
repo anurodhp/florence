@@ -29,6 +29,7 @@ struct gui_window {
 /* ---- C glue, called by the UI ------------------------------------------- */
 int  flo_core_init(int argc, char **argv);      /* options, tables, netsurf_init */
 void flo_core_fini(void);
+void flo_install_xio_handler(void);             /* report who was running when the X connection failed */
 void flo_memory_note(void);                     /* memory just changed hands: check it soon, and drop unused cache if low */
 int  gs_memory_level(void);                     /* 0 fine (or unknown), 1 low */
 int  gs_memory_level_for(uint64_t avail_bytes, uint64_t total_bytes);
