@@ -82,6 +82,7 @@ other systems yet. What is portable, and how you would go about it:
 | `FloPage.m` | page view: paints only the dirty rect into one reusable buffer |
 | `FloTab.m` / `FloBrowser.m` | a tab (one NetSurf window) / a browser window: toolbar, tab strip, hover label |
 | `FloToolbar.m` | the Safari-like parts, drawn with vector icons: icon buttons, rounded address bar, tab strip, hover label |
+| `FloAbout.m` | the About window: icon, version (from `VERSION`), copyright |
 | `FloPrefs.m` | the Preferences window (Cmd-,): General, Privacy, Content Blocking, Advanced; own settings in `~/.netsurf/Florence.conf` |
 | `FloStore.m` | bookmark and history lists (`~/.netsurf/Bookmarks`, `History`) |
 | `FloUI.m` | scheduler pump, the `flo_ui_*` bridge, menus, `main()` |

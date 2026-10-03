@@ -10,4 +10,6 @@ cd "$(dirname "$0")/../frontend/assets"
 rsvg-convert -w 52 -h 52 florence.svg -o Florence.png
 convert Florence.png -background none -gravity center -extent 64x64 -alpha on Florence.png
 convert Florence.png -alpha on -compress none Florence.tiff
-echo "wrote $(pwd)/Florence.png and Florence.tiff"
+# the larger copy for the About window
+rsvg-convert -w 128 -h 128 florence.svg -o Florence-about.png
+echo "wrote $(pwd)/Florence.png, Florence.tiff and Florence-about.png"
