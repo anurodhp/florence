@@ -89,24 +89,50 @@ other systems yet. What is portable, and how you would go about it:
 
 ## Features
 
-A Safari-style toolbar (icon buttons, rounded address bar with reload/stop inside and a padlock only once an https page has loaded with its certificate checked (an orange warning mark if you chose to continue past a certificate error), a
-bookmark star, `+` for a new tab). Tabs (strip shown with two or more; Cmd-T / Cmd-W, Cmd-{ / Cmd-}), bookmarks (Cmd-D toggles) and history menus,
-downloads, an app icon. Bad certificates are handled by the core (`about:query/ssl`: Proceed / Back to safety).
-Optional JavaScript: run `scripts/enable_js.sh` (add `--deploy` to copy it to the Pi; `--check` lists what is missing).
-It fetches and builds the host tool nsgenbind (needs bison >= 3 and flex: `brew install bison flex` on a Mac), then
-does `FLO_JS=1 scripts/build_netsurf.sh gnustep` and checks the result contains Duktape. It stays off until **View > Enable JavaScript** (remembered
-in `~/.netsurf/Choices`, or `FLORENCE_JS=1`); expect it to be slow on a Pi 3 and sites that need a modern engine to still fail.
+**Browsing**
+* NetSurf 3.11 engine: HTML, CSS 2.1 and much of CSS 3, images (JPEG, PNG, GIF, SVG), forms, cookies, https
+  through libcurl and mbedTLS. No JavaScript by default (see below).
+* Tabs: strip shown with two or more, Cmd-T new, Cmd-W close tab, Shift-Cmd-W close window, Cmd-{ and Cmd-} to
+  switch. Multiple windows.
+* Back, forward, reload and stop; Cmd-L to the address bar. Anything that is not an address is a web search with
+  the engine chosen in Preferences (DuckDuckGo, Google, Bing, Startpage, Wikipedia).
+* Downloads: files the browser cannot show are saved to `~/Downloads` (or the folder you choose) with safe unique
+  names; progress on the status line.
+* Find in page (Cmd-F; Cmd-G and Shift-Cmd-G for next and previous), zoom (30 % to 300 %, Cmd-+, Cmd--, Cmd-0).
+* Right-click menu for links, images, text fields and selections; Cmd-click (Alt here) or middle-click opens a
+  link in a background tab (add Shift to bring it forward).
 
-### Page tools
+**Interface**
+* Safari-style toolbar: icon buttons, a rounded address bar with reload/stop inside, a bookmark star, and a `+`
+  for a new tab. Monochrome Lucide icons.
+* A start page of bookmark tiles and recently visited sites with their favicons, instead of an empty window.
+* Bookmarks (Cmd-D toggles) and History menus, remembered between runs.
+* A padlock that means something: it appears only once an https page has loaded with its certificate checked, and
+  turns into an orange warning mark if you chose to continue past a certificate error.
+* A Preferences window (Cmd-,): General (new-window behaviour, homepage, search engine, downloads folder,
+  minimum font size), Privacy (Do Not Track, Referer, clear history and cookies), Content Blocking, Advanced
+  (JavaScript, page-cache size, animated images).
+* A modern blue fleur-de-lis app icon.
 
-* **Right-click menu:** on a link (Open Link, Open Link in New Tab, Copy Link Address), an image (Open Image in New Tab,
-  Copy Image Address), a text field (Cut/Copy/Paste) or selected text (Copy), plus Back/Forward/Reload.
-* **Command-click** (Alt on this keyboard setup) or **middle-click** a link: opens it in a background tab
-  (add Shift to bring it to the front).
-* **Find in page** (Edit > Find..., Cmd-F; Cmd-G / Shift-Cmd-G for next / previous; Esc or Done closes).
-* **Zoom** (View > Zoom In / Out / Actual Size, steps of 10 %, 30 %..300 %).
-* **View > Block Ads and Trackers** (Safari-format JSON block lists and a weekly EasyList download, on by default, see `docs/content-blocking.md`), **Send Do Not Track**, **Minimum Font Size**. These are
-  remembered in `~/.netsurf/Choices`, which keeps only your own choices (the low-power defaults are not written).
+**Privacy and blocking**
+* Ad and tracker blocking on by default, using Safari content-blocker (WebKit rule-list) JSON; your own lists go
+  in `~/.netsurf/blocklists/`. Network requests are refused before they start. Details in `docs/content-blocking.md`.
+* EasyList downloaded on first run and then weekly in the background, converted to that format, and reloaded
+  without a restart. Update Now and Reload Lists buttons in Preferences.
+* Compiled rules are cached in a file and mapped on later starts: near-instant start and little memory.
+* Do Not Track and Referer controls, and clearing of history and cookies.
+* Bad certificates are handled by the core (`about:query/ssl`: Proceed / Back to safety).
+
+**Built for small machines**
+* Repaints only exposed rectangles into one reusable buffer; no polling timers; debounced resizes; capped caches
+  (see Low-power design below).
+* Checks free memory when a page finishes loading or a tab closes and drops unused cache when it runs low.
+* Optional JavaScript (Duktape): run `scripts/enable_js.sh` (add `--deploy` to copy it to the Pi; `--check` lists
+  what is missing). It stays off until **View > Enable JavaScript** or the Preferences checkbox; expect it to be
+  slow on a Pi 3 and sites that need a modern engine to still fail.
+
+Settings made in the View menu and Preferences are remembered: NetSurf's in `~/.netsurf/Choices` (only your own
+choices, not the low-power defaults) and Florence's in `~/.netsurf/Florence.conf`.
 
 ## Start page
 
