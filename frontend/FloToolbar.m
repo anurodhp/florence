@@ -263,10 +263,12 @@ static void drawIcon(FloIcon icon, NSPoint c, NSColor *colour)
 - (FloToolButton *)reloadButton { return reload; }
 - (void)editingChanged:(NSNotification *)n { [self setNeedsDisplay:YES]; }
 
-- (void)setSecure:(BOOL)s
+- (void)setSecurity:(int)s
 {
-	if (s != secure) {
-		secure = s;
+	if (s != security) {
+		security = s;
+		[self setToolTip:s == FloSecurityVerified ? @"Secure connection: the certificate was verified" :
+			s == FloSecurityOverridden ? @"Not verified: you chose to continue past a certificate error" : nil];
 		[self layoutInside];
 		[self setNeedsDisplay:YES];
 	}
@@ -275,7 +277,7 @@ static void drawIcon(FloIcon icon, NSPoint c, NSColor *colour)
 - (void)layoutInside
 {
 	NSRect b = [self bounds];
-	CGFloat x = secure ? 26 : 10;
+	CGFloat x = security != FloSecurityNone ? 26 : 10;
 	[field setFrame:NSMakeRect(x, (b.size.height - 18) / 2, b.size.width - x - 30, 18)];
 	[reload setFrame:NSMakeRect(b.size.width - 26, (b.size.height - 22) / 2, 22, 22)];
 }
@@ -293,7 +295,19 @@ static void drawIcon(FloIcon icon, NSPoint c, NSColor *colour)
 	[(focus ? [NSColor colorWithCalibratedRed:0.30 green:0.58 blue:0.96 alpha:1.0] : grey(0.80)) set];
 	[p setLineWidth:focus ? 2.0 : 1.0];
 	[p stroke];
-	if (secure && !drawImageAt(@"tb-lock", NSMakePoint(15, NSMidY(b)))) {   /* a small padlock */
+	if (security == FloSecurityOverridden) {         /* a warning triangle: the check was switched off for this site */
+		NSBezierPath *t = [NSBezierPath bezierPath];
+		CGFloat cy = NSMidY(b);
+		[t moveToPoint:NSMakePoint(15, cy + 6)];
+		[t lineToPoint:NSMakePoint(21, cy - 5)];
+		[t lineToPoint:NSMakePoint(9, cy - 5)];
+		[t closePath];
+		[[NSColor colorWithCalibratedRed:0.86 green:0.45 blue:0.05 alpha:1.0] set];
+		[t fill];
+		[[NSColor whiteColor] set];
+		NSRectFill(NSMakeRect(14.2, cy - 2, 1.6, 4));
+		NSRectFill(NSMakeRect(14.2, cy - 4, 1.6, 1.4));
+	} else if (security == FloSecurityVerified && !drawImageAt(@"tb-lock", NSMakePoint(15, NSMidY(b)))) {   /* a small padlock */
 		NSRect body = NSMakeRect(9, NSMidY(b) - 5, 9, 7);
 		NSBezierPath *sh = [NSBezierPath bezierPath];
 		[grey(0.40) set];

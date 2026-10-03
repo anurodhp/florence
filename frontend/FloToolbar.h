@@ -21,15 +21,17 @@ typedef enum { FloIconBack, FloIconForward, FloIconReload, FloIconStop, FloIconP
 @end
 
 /* the rounded address field with a lock for https and a reload/stop button inside it */
+enum { FloSecurityNone = 0, FloSecurityVerified = 1, FloSecurityOverridden = 2 };   /* matches flo_win_security() */
+
 @interface FloAddressBar : NSView {
 	NSTextField *field;
 	FloToolButton *reload;
-	BOOL secure;
+	int security;                   /* FloSecurity */
 }
 - (id)initWithTarget:(id)target goAction:(SEL)go reloadAction:(SEL)reloadAction;
 - (NSTextField *)field;
 - (FloToolButton *)reloadButton;
-- (void)setSecure:(BOOL)s;
+- (void)setSecurity:(int)s;      /* FloSecurity* */
 - (void)layoutInside;
 @end
 

@@ -340,7 +340,7 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 	[win setTitle:[current displayTitle]];
 	if ([urlField currentEditor] == nil)            /* not while the user is typing */
 		[urlField setStringValue:current->url];
-	[addr setSecure:[current->url hasPrefix:@"https://"]];
+	[addr setSecurity:current->loading ? FloSecurityNone : flo_win_security(current->gw)];   /* from the connection, not the address */
 	[backBtn setEnabled:flo_win_can_back(current->gw)];
 	[fwdBtn setEnabled:flo_win_can_forward(current->gw)];
 	[[addr reloadButton] setIcon:current->loading ? FloIconStop : FloIconReload];

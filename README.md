@@ -89,7 +89,7 @@ other systems yet. What is portable, and how you would go about it:
 
 ## Features
 
-A Safari-style toolbar (icon buttons, rounded address bar with a padlock for https and reload/stop inside, a
+A Safari-style toolbar (icon buttons, rounded address bar with reload/stop inside and a padlock only once an https page has loaded with its certificate checked (an orange warning mark if you chose to continue past a certificate error), a
 bookmark star, `+` for a new tab). Tabs (strip shown with two or more; Cmd-T / Cmd-W, Cmd-{ / Cmd-}), bookmarks (Cmd-D toggles) and history menus,
 downloads, an app icon. Bad certificates are handled by the core (`about:query/ssl`: Proceed / Back to safety).
 Optional JavaScript: run `scripts/enable_js.sh` (add `--deploy` to copy it to the Pi; `--check` lists what is missing).

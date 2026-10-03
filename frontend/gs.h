@@ -79,6 +79,9 @@ void flo_win_reload(struct gui_window *gw);
 void flo_win_stop(struct gui_window *gw);
 void flo_win_back(struct gui_window *gw);
 void flo_win_forward(struct gui_window *gw);
+/* what the address bar's padlock may claim: 0 nothing (not https), 1 https and the certificate check ran,
+ * 2 https but the user chose to continue past a failed check for this site */
+int  flo_win_security(struct gui_window *gw);
 bool flo_win_can_back(struct gui_window *gw);
 bool flo_win_can_forward(struct gui_window *gw);
 void flo_win_close(struct gui_window *gw);      /* the user closed the window */

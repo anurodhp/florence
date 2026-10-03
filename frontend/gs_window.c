@@ -20,6 +20,7 @@
 #include "netsurf/content.h"
 #include "netsurf/content_type.h"
 #include "desktop/search.h"
+#include "content/urldb.h"
 
 #include "desktop/browser_history.h"         /* browser_window_history_back/forward/..._available */
 
@@ -297,6 +298,16 @@ void flo_win_reload(struct gui_window *gw) { browser_window_reload(gw->bw, true)
 void flo_win_stop(struct gui_window *gw) { browser_window_stop(gw->bw); }
 void flo_win_back(struct gui_window *gw) { browser_window_history_back(gw->bw, false); }
 void flo_win_forward(struct gui_window *gw) { browser_window_history_forward(gw->bw, false); }
+int flo_win_security(struct gui_window *gw)
+{
+	struct nsurl *u = browser_window_access_url(gw->bw);
+
+	if (u == NULL || strncmp(nsurl_access(u), "https:", 6) != 0)
+		return 0;
+	/* libcurl verifies the peer unless this permission was granted (content/fetchers/curl.c) */
+	return urldb_get_cert_permissions(u) ? 2 : 1;
+}
+
 bool flo_win_can_back(struct gui_window *gw) { return browser_window_history_back_available(gw->bw); }
 bool flo_win_can_forward(struct gui_window *gw) { return browser_window_history_forward_available(gw->bw); }
 void flo_win_close(struct gui_window *gw) { browser_window_destroy(gw->bw); }
