@@ -7,7 +7,7 @@ NSString *FloSearchURLPrefix(void);             /* the chosen engine's URL up to
 
 @interface FloPrefs : NSObject <NSWindowDelegate, NSTextFieldDelegate> {
 	NSWindow *win;
-	NSButton *dntBox, *refBox, *adsBox, *jsBox, *animBox;
+	NSButton *dntBox, *refBox, *adsBox, *updBox, *jsBox, *animBox;
 	NSPopUpButton *newWinPop, *enginePop, *fontPop, *cachePop;
 	NSTextField *homeField, *dlField, *blockInfo, *privacyNote;
 }

@@ -1,12 +1,71 @@
 # Florence
 
-NetSurf 3.11 (no JavaScript) with a GNUstep UI, for small machines (Raspberry Pi 3, Darwin).
+A small web browser for small machines. It is [NetSurf](https://www.netsurf-browser.org/) 3.11 (the
+rendering engine, without JavaScript unless you opt in) with a native GNUstep user interface drawn through
+cairo: a Safari-style toolbar, tabs, bookmarks and history, a start page of bookmark and recent-site tiles,
+find in page, zoom, downloads, a Preferences window, and a built-in ad and tracker blocker that understands
+Safari content-blocker lists and downloads EasyList weekly.
 
-    ./setup_third_party.sh                 # fetch pinned sources
+The target is a **Raspberry Pi 3 running the Darwin/XNU port** in the sibling repository
+`xnu-iokit-pi3` ("the iokit port"). Everything is designed for 1 GB of RAM and a slow CPU: only exposed
+rectangles are repainted, nothing polls, caches are capped, resizes are debounced. It is licensed
+GPL-2.0-only (see `LICENSE`).
+
+## Building for the Raspberry Pi 3
+
+Florence is cross-compiled on a **Mac** and copied to the Pi; it does not build on the Pi or on Linux. The
+build reuses the iokit port's toolchain recipe and its own libc/GNUstep/cairo dylibs, so that port must be
+built first.
+
+**You need**
+
+* The iokit port checked out next to this repo (`../iokit`, or set `IOKIT_DIR`) with its userland built:
+  `libc_build/system` (libSystem and friends), cairo and the X11 dylibs, and GNUstep installed under
+  `libc_build/gnustep/root`.
+* Xcode 12 at `/Applications/Xcode-12.app` (clang and the iPhoneOS 14.4 SDK compile everything), plus the
+  everyday Xcode selected with `xcode-select` (its newer `ld` links).
+* `git`, `curl`, `make` and `perl` (Homebrew, MacPorts and pkg-config on the host are deliberately hidden from the build).
+* The Pi booted into the iokit image with an X server and Window Maker (that is where `openapp` runs it).
+
+**Steps**
+
+    ./setup_third_party.sh                       # fetch pinned sources (NetSurf and its libraries, curl, mbedTLS, libjpeg)
     scripts/build_mbedtls.sh && scripts/build_curl.sh && scripts/build_jpeg.sh
-    scripts/build_netsurf_libs.sh
-    scripts/build_netsurf.sh monkey        # headless smoke test (nsmonkey)
-    GNUSTEP_ROOT=/path/to/gnustep scripts/build_netsurf.sh gnustep   # -> usr/local/bin/nsgnustep
+    scripts/build_netsurf_libs.sh                # libcss, libdom, hubbub, ...
+    scripts/build_netsurf.sh monkey              # headless smoke test; if this fails the problem is below Florence
+    scripts/build_netsurf.sh gnustep             # the browser -> build/root/Applications/Florence.app
+    PI_HOST=<pi address> tools/deploy_to_pi.sh   # copies build/root to the Pi over ssh
+
+`tools/deploy_to_pi.sh` defaults to user `root`, password `darwin` (the test image's), host `10.0.0.142`;
+set `PI_HOST`, `PI_USER`, `PI_PASS` (empty for ssh keys). On the Pi, with an X server running:
+
+    openapp Florence [url]                       # from the serial console: set DISPLAY first
+    FLORENCE_TRACE=1 /Applications/Florence.app/Florence http://example.com    # start-up trace to stderr
+
+Optional JavaScript (Duktape, slow on a Pi 3): `scripts/enable_js.sh [--check] [--deploy]`.
+Logs are in `build/netsurf-<frontend>.log`. `FL_OPT=-Os` changes the optimisation level (default `-O2`).
+See `CLAUDE.md` for the toolchain rules and the lessons behind them.
+
+## Building for another platform
+
+The scripts above are specific to the iokit port's cross toolchain; there is no one-command build for
+other systems yet. What is portable, and how you would go about it:
+
+* The browser engine is stock NetSurf 3.11 plus its libraries; the glue (`frontend/gs_*.c`) is plain C
+  against NetSurf's frontend API; the UI (`frontend/Flo*.m`) is Objective-C on GNUstep's Foundation/AppKit
+  and cairo, and never includes NetSurf headers. The only crossing is `frontend/gs.h`.
+* On **Linux or another desktop with GNUstep**: install the GNUstep base/gui/back (cairo backend) packages,
+  cairo, libcurl, libjpeg, libpng and NetSurf 3.11's libraries; copy `frontend/` to `netsurf/frontends/gnustep/`
+  (the build script shows the two small build-copy edits NetSurf needs: registering `gnustep` in
+  `frontends/Makefile.hts`'s `VLDTARGET`, and the `fetch_start()` hook for the content blocker); build the C glue
+  with NetSurf's make; compile the `.m` files with `gcc -x objective-c $(gnustep-config --objc-flags)`;
+  link with `$(gnustep-config --gui-libs)`, cairo and NetSurf's objects. Take `scripts/build_netsurf.sh`
+  as the reference for the exact file list and flags.
+* What has been checked there: the UI (`FloUI.m`, `FloPage.m`, the preferences and so on) runs under Xvfb
+  on Linux against a fake core, and the C glue compiles against the real NetSurf 3.11 headers (Ubuntu's
+  `netsurf` source package is exactly 3.11). A full Linux build of the browser has not been done.
+* On a **different Darwin/XNU port or other cross target**: change `tools/common.sh` (compiler, SDK, target,
+  system dylibs) and `tools/gnustep_env.sh` (it takes the GNUstep link recipe from the iokit port).
 
 ## Layout of `frontend/` (copied to `netsurf/frontends/gnustep/`)
 
@@ -19,6 +78,7 @@ NetSurf 3.11 (no JavaScript) with a GNUstep UI, for small machines (Raspberry Pi
 | `gs_startpage.c` | the start page (bookmark and recent-site tiles; favicons saved as pages load) |
 | `gs_search.c` | page search (find in page): reports whether the last find matched |
 | `gs_download.c` | downloads: saved to `~/Downloads` (safe unique names, progress on the status line) |
+| `gs_blocker.c` / `gs_lists.c` | the content blocker (Safari rule lists) / the weekly EasyList download and its conversion |
 | `FloPage.m` | page view: paints only the dirty rect into one reusable buffer |
 | `FloTab.m` / `FloBrowser.m` | a tab (one NetSurf window) / a browser window: toolbar, tab strip, hover label |
 | `FloToolbar.m` | the Safari-like parts, drawn with vector icons: icon buttons, rounded address bar, tab strip, hover label |
@@ -45,7 +105,7 @@ in `~/.netsurf/Choices`, or `FLORENCE_JS=1`); expect it to be slow on a Pi 3 and
   (add Shift to bring it to the front).
 * **Find in page** (Edit > Find..., Cmd-F; Cmd-G / Shift-Cmd-G for next / previous; Esc or Done closes).
 * **Zoom** (View > Zoom In / Out / Actual Size, steps of 10 %, 30 %..300 %).
-* **View > Block Ads and Trackers** (Safari-format JSON block lists, see `docs/content-blocking.md`), **Send Do Not Track**, **Minimum Font Size**. These are
+* **View > Block Ads and Trackers** (Safari-format JSON block lists and a weekly EasyList download, on by default, see `docs/content-blocking.md`), **Send Do Not Track**, **Minimum Font Size**. These are
   remembered in `~/.netsurf/Choices`, which keeps only your own choices (the low-power defaults are not written).
 
 ## Start page

@@ -169,9 +169,12 @@ static NSString *pref(const char *key, const char *def)
 	adsBox = button(v, @"Block ads and trackers", NSSwitchButton, NSMakeRect(20, y, 400, 20), self, @selector(changed:));
 	y -= 40;
 	blockInfo = label(v, @"", NSMakeRect(20, y - 20, 400, 56), NSLeftTextAlignment);
-	y -= 80;
-	button(v, @"Reload Lists", NSMomentaryPushInButton, NSMakeRect(20, y, 110, 26), self, @selector(reloadLists:));
-	y -= 20;
+	y -= 56;
+	updBox = button(v, @"Update EasyList weekly (downloads from easylist.to)", NSSwitchButton, NSMakeRect(20, y + 4, 400, 20), self, @selector(changed:));
+	y -= 32;
+	button(v, @"Update Now", NSMomentaryPushInButton, NSMakeRect(20, y, 110, 26), self, @selector(updateNow:));
+	button(v, @"Reload Lists", NSMomentaryPushInButton, NSMakeRect(140, y, 110, 26), self, @selector(reloadLists:));
+	y -= 10;
 	{
 		NSTextField *t = label(v, @"Put Safari content-blocker lists (.json) in ~/.netsurf/blocklists/ and press Reload Lists. "
 			@"Element hiding from a list applies after a restart.", NSMakeRect(20, y - 70, 400, 74), NSLeftTextAlignment);
@@ -239,9 +242,17 @@ static int fontIndex(void)
 		[jsBox setTitle:@"Enable JavaScript (not in this build)"];
 	[cachePop selectItemAtIndex:cacheIndex()];
 	[animBox setState:strcmp(flo_pref_get("animate", "0"), "1") == 0 ? NSOnState : NSOffState];
-	[blockInfo setStringValue:[NSString stringWithFormat:
-		@"%d rules from %d lists (built in plus your own),\n%d element-hiding rules, %lu requests blocked this session.",
-		flo_blocker_rule_count(), flo_blocker_file_count() + 1, flo_blocker_css_count(), flo_blocker_blocked_count()]];
+	[updBox setState:strcmp(flo_pref_get("autoupdate", "1"), "1") == 0 ? NSOnState : NSOffState];
+	{
+		time_t when = flo_lists_updated();
+		NSString *st = flo_lists_busy() ? @"updating now..." :
+			when == 0 ? (flo_lists_last_result() < 0 ? @"last download failed" : @"EasyList not downloaded yet") :
+			[NSString stringWithFormat:@"EasyList updated %@",
+				[[NSDate dateWithTimeIntervalSince1970:(NSTimeInterval)when] descriptionWithCalendarFormat:@"%Y-%m-%d" timeZone:nil locale:nil]];
+		[blockInfo setStringValue:[NSString stringWithFormat:
+			@"%d rules from %d lists (built in plus downloaded and your own),\n%d element-hiding rules, %lu requests blocked this session.\n%@.",
+			flo_blocker_rule_count(), flo_blocker_file_count() + 1, flo_blocker_css_count(), flo_blocker_blocked_count(), st]];
+	}
 }
 
 - (void)show
@@ -272,6 +283,7 @@ static int fontIndex(void)
 	if (flo_js_available() && ([jsBox state] == NSOnState) != flo_js_enabled())
 		flo_js_set([jsBox state] == NSOnState);
 	flo_pref_set("cache_mb", caches[[cachePop indexOfSelectedItem]]);
+	flo_pref_set("autoupdate", [updBox state] == NSOnState ? "1" : "0");
 	flo_pref_set("animate", [animBox state] == NSOnState ? "1" : "0");
 	[self refresh];
 }
@@ -323,6 +335,12 @@ static int fontIndex(void)
 		return;
 	flo_clear_cookies();
 	[privacyNote setStringValue:@"Saved cookies deleted. Cookies of this session are discarded when Florence quits."];
+}
+
+- (void)updateNow:(id)sender
+{
+	flo_lists_update(true);
+	[self refresh];
 }
 
 - (void)reloadLists:(id)sender

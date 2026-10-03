@@ -322,6 +322,8 @@ int flo_core_init(int argc, char **argv)
 		return -1;
 	}
 	flo_blocker_reload();
+	if (strcmp(flo_pref_get("autoupdate", "1"), "1") == 0)
+		flo_lists_update(false);        /* first run, then weekly: a background thread */
 	flo_trace("core: urldb");
 	urldb_load(home_path(urls_path, sizeof(urls_path), "URLs"));
 	urldb_load_cookies(nsoption_charp(cookie_file));
@@ -437,6 +439,11 @@ void flo_opt_set_hide_ads(bool on)
 }
 bool flo_opt_dnt(void) { return nsoption_bool(do_not_track); }
 void flo_opt_set_dnt(bool on) { nsoption_set_bool(do_not_track, on); save_choices(); }
+void flo_lists_update(bool force)
+{
+	gs_lists_start(home_dir, nsoption_charp(ca_bundle), force);
+}
+
 bool flo_opt_referer(void) { return nsoption_bool(send_referer); }
 void flo_opt_set_referer(bool on) { nsoption_set_bool(send_referer, on); save_choices(); }
 const char *flo_opt_homepage(void) { return nsoption_charp(homepage_url) != NULL ? nsoption_charp(homepage_url) : ""; }

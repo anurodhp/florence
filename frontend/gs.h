@@ -121,6 +121,16 @@ int  flo_blocker_file_count(void);
 int  flo_blocker_css_count(void);
 unsigned long flo_blocker_blocked_count(void);
 
+/* EasyList (gs_lists.c): a weekly background download, converted to a content-blocker list */
+#include <time.h>
+long flo_abp_convert(const char *abp_in, const char *json_out);          /* rules written, or -1 */
+void gs_lists_start(const char *home, const char *ca_bundle, bool force);
+void flo_lists_update(bool force);              /* now if due (or forced); no-op while one runs */
+time_t flo_lists_updated(void);                 /* when the downloaded list was installed, 0 never */
+bool flo_lists_busy(void);
+int  flo_lists_last_result(void);               /* 0 none yet, 1 updated, -1 failed */
+void flo_ui_lists_updated(void);                /* UI, any thread: the blocker should reload */
+
 /* settings, remembered in ~/.netsurf/Choices */
 bool flo_opt_hide_ads(void);
 void flo_opt_set_hide_ads(bool on);
