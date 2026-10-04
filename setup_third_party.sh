@@ -45,6 +45,24 @@ if [ ! -d "$d" ]; then
     echo "  $(du -sh "$d" | cut -f1) checked out"
 fi
 
+# libc++ / libc++abi / libunwind for the Pi: WebKit 2.54 is C++23 and the iokit port ships LLVM 11's. LLVM 20.1.8
+# (close to the daily Xcode's clang 21, so the headers and the compiler agree). Sparse: only the runtimes.
+LLVM_TAG=llvmorg-20.1.8
+LLVM_COMMIT=87f0227cb60147a26a1eeb4fb06e3b505e9c7261
+d=third_party/llvm-project
+if [ -d "$d" ]; then
+    [ "$FORCE" = 1 ] && rm -rf "$d" || echo "= $d exists"
+fi
+if [ ! -d "$d" ]; then
+    echo "+ llvm-project @ $LLVM_TAG (runtimes only)"
+    git clone -q -c advice.detachedHead=false --depth 1 --filter=blob:none --no-checkout --branch "$LLVM_TAG" https://github.com/llvm/llvm-project.git "$d"
+    got="$(git -C "$d" rev-parse HEAD)"
+    [ "$got" = "$LLVM_COMMIT" ] || { echo "error: $LLVM_TAG is $got, expected $LLVM_COMMIT" >&2; rm -rf "$d"; exit 1; }
+    git -C "$d" sparse-checkout set --cone libcxx libcxxabi libunwind libc runtimes cmake llvm/cmake llvm/utils/llvm-lit third-party/benchmark
+    git -C "$d" checkout -q
+    echo "  $(du -sh "$d" | cut -f1) checked out"
+fi
+
 # release tarballs: name|url|sha256 (curl's configure only generates curl_config.h;
 # a git tag has no configure script)
 TARBALLS='

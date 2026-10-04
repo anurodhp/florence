@@ -5,6 +5,6 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 . tools/common.sh
 O="$BUILD/obj/compat"; rm -rf "$O"; mkdir -p "$O"
-fl_compile "$O" "$FL_DIR/compat/flo_compat.c"
+for f in "$FL_DIR"/compat/*.c; do fl_compile "$O" "$f"; done
 fl_compile_report compat
 fl_link_dylib flocompat 1:0:0 "$O"

@@ -38,3 +38,20 @@ static flo_u128 flo_udivmod128(flo_u128 n, flo_u128 d, flo_u128 *rem) {
 }
 flo_u128 __udivti3(flo_u128 n, flo_u128 d) { return flo_udivmod128(n, d, 0); }
 flo_u128 __umodti3(flo_u128 n, flo_u128 d) { flo_u128 r; flo_udivmod128(n, d, &r); return r; }
+
+/* __int128 signed division (compiler-rt divti3.c), same gap as __udivti3 above. */
+typedef __int128 flo_s128;
+flo_s128 __divti3(flo_s128 a, flo_s128 b) {
+    int neg = (a < 0) ^ (b < 0);
+    flo_u128 q = flo_udivmod128(a < 0 ? -(flo_u128)a : (flo_u128)a, b < 0 ? -(flo_u128)b : (flo_u128)b, 0);
+    return neg ? -(flo_s128)q : (flo_s128)q;
+}
+
+/* void *aligned_alloc(size_t alignment, size_t size): C11, absent from libsystem_malloc (only posix_memalign
+ * is exported). libc++'s operator new(size_t, align_val_t) needs it. aligned_alloc's contract is posix_memalign's
+ * with the error returned as NULL + errno. */
+extern int posix_memalign(void **, unsigned long, unsigned long);
+void *aligned_alloc(unsigned long alignment, unsigned long size) {
+    void *p = 0;
+    return posix_memalign(&p, alignment, size) == 0 ? p : 0;
+}
