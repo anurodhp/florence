@@ -28,6 +28,8 @@ FLO_SYSCALL(linkat, 471)        /* :744  */
 FLO_SYSCALL(unlinkat, 472)      /* :745  */
 FLO_SYSCALL(readlinkat, 473)    /* :746  */
 FLO_SYSCALL(symlinkat, 474)     /* :747  */
+FLO_SYSCALL(mincore, 78)        /* :131: mincore(addr, len, vec) */
+FLO_SYSCALL(shm_unlink, 267)    /* :413: shm_open (266, NO_SYSCALL_STUB) is exported by libsystem_kernel, its pair is not */
 
 /* utimensat: xnu-7195 has no such syscall (Apple's Libc builds it on setattrlistat). Over utimes() for the AT_FDCWD /
  * absolute-path case, microsecond resolution; a directory fd with a relative path is ENOSYS. UTIME_NOW/UTIME_OMIT

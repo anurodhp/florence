@@ -76,6 +76,7 @@ harfbuzz|https://github.com/harfbuzz/harfbuzz/releases/download/8.3.0/harfbuzz-8
 libsoup|https://download.gnome.org/sources/libsoup/3.4/libsoup-3.4.4.tar.xz|291c67725f36ed90ea43efff25064b69c5a2d1981488477c05c481a3b4b0c5aa
 nghttp2|https://github.com/nghttp2/nghttp2/releases/download/v1.58.0/nghttp2-1.58.0.tar.xz|4a68a3040da92fd9872c056d0f6b0cd60de8410de10b578f8ade9ecc14d297e0
 brotli|https://github.com/google/brotli/archive/refs/tags/v1.1.0.tar.gz|e720a6ca29428b803f4ad165371771f5398faba397edf6778837a18599ea13ff
+libjpeg-turbo|https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.0.1/libjpeg-turbo-3.0.1.tar.gz|22429507714ae147b3acacd299e82099fce5d9f456882fc28e252e4579ba2a75
 woff2|https://github.com/google/woff2/archive/refs/tags/v1.0.2.tar.gz|add272bb09e6384a4833ffca4896350fdb16e0ca22df68c0384773c67a175594
 libgpg-error|https://www.gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.47.tar.bz2|9e3c670966b96ecc746c28c2c419541e3bcb787d1a73930f5e5f5e1bcbbb9bdb
 libgcrypt|https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.10.3.tar.bz2|8b0870897ac5ac67ded568dcfadf45969cfa8a6beb0fd60af2a9eadc2a3272aa

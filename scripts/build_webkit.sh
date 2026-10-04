@@ -47,12 +47,13 @@ cross)
     export FL_CMAKE_C_CLANG=daily
     B="$BUILD/webkit-cross"; mkdir -p "$B"
     # compiler wrappers: WebKit adds GNU/ELF-only options (-fdebug-types-section: WebKitCompilerFlags.cmake:180, under
-    # NOT APPLE) that clang rejects for a Darwin target; they are dropped here instead of editing WebKit
+    # NOT APPLE) and the GNU-ld-only -Wl,--no-undefined (WebKitCompilerFlags.cmake:437, set again after any CMake variable we could
+    # set) that clang/ld64 reject for a Darwin target; they are dropped here instead of editing WebKit
     mkdir -p "$B/bin"
     for t in clang clang++; do
         cat >| "$B/bin/$t" <<WR
 #!/bin/bash
-a=(); for x in "\$@"; do case "\$x" in -fdebug-types-section|-fdebug-types-section=*) ;; *) a+=("\$x");; esac; done
+a=(); for x in "\$@"; do case "\$x" in -fdebug-types-section|-fdebug-types-section=*|-Wl,--no-undefined) ;; *) a+=("\$x");; esac; done
 exec "$NEWLD_BINDIR/$t" "\${a[@]}"
 WR
         chmod +x "$B/bin/$t"
@@ -70,6 +71,12 @@ set(ENABLED_COMPILER_SANITIZERS "none")
 # exported by the APPLE branch of WTF's CMake; the source tree has them, so the source root is on the include path.
 set(CMAKE_C_FLAGS "\${CMAKE_C_FLAGS} -I$WK/Source/WTF")
 set(CMAKE_CXX_FLAGS "\${CMAKE_CXX_FLAGS} -I$WK/Source/WTF")
+# Skia reads TARGET_OS_IPHONE (the SDK is iPhoneOS) as iOS and wants CoreFoundation; this port is Unix-like to it.
+add_compile_definitions(SK_BUILD_FOR_UNIX)
+# ld64 does not dead-strip by default (the ELF build uses --gc-sections): without it unused Skia/Cocoa-only code keeps
+# undefined references alive. libintl: GLib's proxy gettext (g_libintl_bindtextdomain ...).
+set(CMAKE_SHARED_LINKER_FLAGS "\${CMAKE_SHARED_LINKER_FLAGS} -Wl,-dead_strip $LIB/libintl.dylib")
+set(CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-dead_strip $LIB/libintl.dylib")
 AP
     ( cd "$B" && env PKG_CONFIG_LIBDIR="$FL_PKGCFG" PKG_CONFIG_PATH= cmake -GNinja -DPORT=WPE -DCMAKE_BUILD_TYPE=MinSizeRel \
         -DCMAKE_TOOLCHAIN_FILE="$B/toolchain.cmake" -DCMAKE_OSX_SYSROOT="$SDK" -DCMAKE_PROJECT_INCLUDE="$B/after_project.cmake" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
