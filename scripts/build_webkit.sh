@@ -40,30 +40,27 @@ host)
     echo "installed into $B/root; run Florence with WEBKIT_EXEC_PATH=$B/root/libexec/wpe-webkit-2.0 if it is not found"
     ;;
 cross)
+    # The Pi: clang 21 (C++23) against the iPhoneOS 14.4 SDK, the LLVM 20 libc++ and the dependency stack staged by
+    # scripts/build_*.sh in build/root (see docs/HANDOFF.md for the order). Configure only until the stack is complete.
     . tools/common.sh
-    DEPS="${FL_DEPS_ROOT:-$BUILD/depsroot}"    # glib, libsoup, ... for the target, in /usr/local layout
-    [ -d "$DEPS/lib/pkgconfig" ] || { echo "error: no target dependency tree at $DEPS (set FL_DEPS_ROOT); the port does not build glib, libsoup, sqlite, harfbuzz ... yet: docs/webkit-port.md lists them" >&2; exit 1; }
+    . tools/cmake_cross.sh
+    export FL_CMAKE_C_CLANG=daily
     B="$BUILD/webkit-cross"; mkdir -p "$B"
-    # The cross toolchain of tools/common.sh as a CMake toolchain file: Xcode 12's clang driven
-    # directly, the iPhoneOS 14.4 SDK, no pkg-config or Homebrew from the host.
-    cat > "$B/toolchain.cmake" <<TC
-set(CMAKE_SYSTEM_NAME Darwin)
-set(CMAKE_SYSTEM_PROCESSOR arm64)
-set(CMAKE_C_COMPILER "$CLANG")
-set(CMAKE_CXX_COMPILER "${CLANG}++")
-set(CMAKE_OSX_SYSROOT "$SDK")
-set(CMAKE_C_FLAGS_INIT "-target arm64-apple-ios14.4 -fno-builtin -fno-stack-protector -D_FORTIFY_SOURCE=0")
-set(CMAKE_CXX_FLAGS_INIT "-target arm64-apple-ios14.4 -fno-builtin -fno-stack-protector -D_FORTIFY_SOURCE=0")
-set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
-set(CMAKE_FIND_ROOT_PATH "$DEPS")
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-TC
-    ( cd "$B" && env PKG_CONFIG_LIBDIR="$DEPS/lib/pkgconfig" PKG_CONFIG_PATH= cmake -GNinja -DPORT=WPE -DCMAKE_BUILD_TYPE=MinSizeRel \
-        -DCMAKE_TOOLCHAIN_FILE="$B/toolchain.cmake" -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-        -C "$FL_DIR/config/webkit-options.cmake" "$WK" ) 2>&1 | tee "$B/configure.log" | tail -30
-    echo "configure done; the cross build itself (ninja) has not been attempted: see docs/webkit-port.md" >&2
+    fl_cmake_toolchain "$B/toolchain.cmake"
+    # WebKit's CMake reads APPLE as "a Cocoa port" (WebKitLegacy, Xcode SDK tools, Mach-O file lists ...); this is the
+    # toolkit-less port on a Darwin target, which is what its Linux branches describe. CMAKE_PROJECT_INCLUDE runs right
+    # after project(): clear APPLE for WebKit's own logic (the compiler, linker and flags were already chosen as Darwin's)
+    # and keep the GNU-ld-only --no-undefined from being added (WebKitCompilerFlags.cmake:437 skips it when this is set).
+    cat >| "$B/after_project.cmake" <<'AP'
+set(APPLE FALSE)
+set(ENABLED_COMPILER_SANITIZERS "none")
+AP
+    ( cd "$B" && env PKG_CONFIG_LIBDIR="$FL_PKGCFG" PKG_CONFIG_PATH= cmake -GNinja -DPORT=WPE -DCMAKE_BUILD_TYPE=MinSizeRel \
+        -DCMAKE_TOOLCHAIN_FILE="$B/toolchain.cmake" -DCMAKE_OSX_SYSROOT="$SDK" -DCMAKE_PROJECT_INCLUDE="$B/after_project.cmake" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+        -C "$FL_DIR/config/webkit-options.cmake" "$WK" ) > "$B/configure.log" 2>&1 \
+        || { grep -B2 -A12 "CMake Error" "$B/configure.log" | head -60 >&2; echo "error: configure failed (see $B/configure.log)" >&2; exit 1; }
+    echo "configure done ($B)"
+    [ "${2:-}" = build ] && ninja -C "$B" -j "${JOBS:-$(sysctl -n hw.ncpu)}" WebKit WPEWebProcess WPENetworkProcess
     ;;
 *) echo "usage: $0 host|cross" >&2; exit 2 ;;
 esac

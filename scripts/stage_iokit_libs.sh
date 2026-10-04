@@ -27,3 +27,12 @@ fl_pc pixman-1 0.42.2 "-L$SYS -lpixman-1" "-I$X11I/pixman-1"
 fl_pc cairo 1.18.4 "-L$SYS -lcairo" "-I$X11I/cairo" "pixman-1 fontconfig freetype2 libpng16 zlib"
 fl_pc cairo-ft 1.18.4 "" "" "cairo"
 echo "staged $(ls "$FL_PKGCFG" | wc -l) pkg-config files in $FL_PKGCFG"
+
+# CMake's find_library only looks under the staged roots; give it the port's own dylibs and headers there, as symlinks
+# (their install names, /usr/lib/... on the Pi, are what a link records). Kept apart from build/root so a deploy never ships them.
+IK="$BUILD/iokit/usr/local"; mkdir -p "$IK/lib" "$IK/include"
+for l in libz libpng16 libfreetype libfontconfig libexpat libffi libiconv libcairo libpixman-1; do ln -sf "$SYS/$l.dylib" "$IK/lib/$l.dylib"; done
+ln -sf "$SYS/libpng16.dylib" "$IK/lib/libpng.dylib"
+for h in png.h pngconf.h pnglibconf.h; do ln -sf "$X11I/$h" "$IK/include/$h"; done
+ln -sfn "$X11I/freetype2" "$IK/include/freetype2"; ln -sfn "$X11I/fontconfig" "$IK/include/fontconfig"
+ln -sf "$INC/zlib.h" "$IK/include/zlib.h"; ln -sf "$INC/zconf.h" "$IK/include/zconf.h"
