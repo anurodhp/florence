@@ -55,3 +55,14 @@ void *aligned_alloc(unsigned long alignment, unsigned long size) {
     void *p = 0;
     return posix_memalign(&p, alignment, size) == 0 ? p : 0;
 }
+
+/* close$NOCANCEL, read$NOCANCEL, write$NOCANCEL: the cancellation-point-free variants Darwin's libSystem exports
+ * (GLib 2.78 gspawn.c and the SDK headers' __DARWIN_ALIAS_C bind to them). libsystem_c exports only the plain ones;
+ * this port has no pthread cancellation, so the plain call is the same call. */
+int close(int); long read(int, void *, unsigned long); long write(int, const void *, unsigned long);
+int flo_close_nocancel(int fd) __asm__("_close$NOCANCEL");
+long flo_read_nocancel(int fd, void *b, unsigned long n) __asm__("_read$NOCANCEL");
+long flo_write_nocancel(int fd, const void *b, unsigned long n) __asm__("_write$NOCANCEL");
+int flo_close_nocancel(int fd) { return close(fd); }
+long flo_read_nocancel(int fd, void *b, unsigned long n) { return read(fd, b, n); }
+long flo_write_nocancel(int fd, const void *b, unsigned long n) { return write(fd, b, n); }

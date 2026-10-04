@@ -12,6 +12,9 @@ ICU_LIB="$IOKIT_DIR/tools/userland_staging/icu_build/target/lib"
 fl_stage_headers . "$IOKIT_LIBC/libffi_include/ffi.h" "$IOKIT_LIBC/libffi_include/ffitarget.h" "$IOKIT_LIBC/libffi_include/ffitarget_arm64.h"
 fl_stage_headers . "$IOKIT_LIBC/fontstack/usr_include/zlib.h" "$IOKIT_LIBC/fontstack/usr_include/zconf.h"
 fl_stage_headers . "$IOKIT_LIBC/fontstack/usr_include/expat.h" "$IOKIT_LIBC/fontstack/usr_include/expat_external.h"
+# libproc.h: GLib 2.78 gspawn uses proc_pidinfo (exported by libsystem_kernel) to close fds; the SDK has no libproc.h
+fl_stage_headers . "$FL_DIR/compat/include/libproc.h"
+fl_stage_headers sys "$FL_DIR/compat/include/sys/proc_info.h"
 mkdir -p "$INC/libxml"
 # ICU: not staged here; this branch builds its own 74 (scripts/build_icu.sh, headers + pkg-config files included)
 cp "$IOKIT_LIBC"/xml2_headers/libxml/*.h "$INC/libxml/"
