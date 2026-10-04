@@ -106,7 +106,11 @@ int main(int argc, char **argv)
 	double scale = getenv("SMOKE_SCALE") ? atof(getenv("SMOKE_SCALE")) : 1.0;
 	if (scale < 1.0) scale = 1.0;
 	page = flo_page_new(&ev, NULL, 800, 600);
-	snprintf(url, sizeof url, "file://%s", argv[1]);
+	/* a ready-made URL (about:, data:, http:) is used as is, a path becomes file:// */
+	if (strchr(argv[1], ':') != NULL && argv[1][0] != '/')
+		snprintf(url, sizeof url, "%s", argv[1]);
+	else
+		snprintf(url, sizeof url, "file://%s", argv[1]);
 	flo_page_load(page, url);
 
 	CHECK(pump_until(have_frame, 90), "a frame arrived (%d frames so far)", frames);
