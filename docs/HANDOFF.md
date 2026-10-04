@@ -123,3 +123,23 @@ is ours). That is how the libepoxy abort was located (stack: `NonCompositedFrame
   scratch is ~1 h. A repo-local `third_party/webkit` made by `setup_third_party.sh` is equivalent.
 * Not decided: the repo licence (GPL-2.0-only was chosen because of NetSurf, which is gone from this branch; WebKit is
   LGPL-2/BSD). Left unchanged and flagged in README.
+
+## Branch `claude/webkit-2.54-pi` (2026-10-04): the Pi, WPE 2.54.0, CPU rendering, no GL
+
+Forked from 8fac3c1, before the Safari-610 detour (kept on `claude/intelligent-einstein-pdi60i`: WebKit
+`Safari-610.4.3.1.7` pinned, glib 2.66 / harfbuzz / sqlite / epoxy / xkbcommon / psl built for the Pi; abandoned
+because that WebKit's WPE port cannot render without EGL + GLES, which the Pi lacks). 2.54 has the Skia CPU path
+(`docs/webkit-port.md`), so no GL. The 610-era sources and staged tree were moved aside
+(`third_party/_610`, `build/root-610`, both gitignored).
+
+Carried over from the other branch (version independent): `tools/meson_cross.sh` (Meson cross file, pkg-config
+staging, install-name fixing), `compat/` + `scripts/build_compat.sh` (`libflocompat.dylib`: libSystem exports the iokit
+port lacks; each has an urgent bug in the DarwinOS Plane project), `scripts/stage_iokit_libs.sh`, `scripts/deps_fixes.sh`,
+`scripts/build_pi_test.sh` + `tests/pi/`. The `build_glib/harfbuzz/sqlite/meson_lib` scripts are written for the 610-era
+versions (glib 2.66, harfbuzz 2.7.2, libsoup 2): bump the pins for 2.54 (glib >= 2.70, libsoup 3 + nghttp2,
+harfbuzz >= 2.7.4, ICU >= 70.1, libxml2 >= 2.9.13, C++23 so libc++ >= 19; see `iokit/docs/webkit-browser-feasibility.md`
+section 2 for the matrix and the Darwin hazards). Pi: `ssh root@10.0.0.142`, deploy with `tools/deploy_to_pi.sh`.
+
+Order: (1) libc++ >= 19 (side by side first, under its own install name, then system-wide after the audits; it is on
+the boot path), (2) ICU >= 70 and libxml2, (3) glib, libsoup 3, TLS, the leaf libraries, (4) WPE 2.54 compile with
+the Darwin compatibility header, (5) the existing glue and UI on the Pi.
