@@ -85,8 +85,8 @@ with a stated reason in the "Left on" list.
 * Licensing: the original code here is MIT (see `LICENSE`, `LICENSES/MIT.txt`; it was GPL-2.0-only while NetSurf was linked,
   and none of that is on this branch). Every original file carries `SPDX-License-Identifier: MIT`; new original files get it.
   Third-party and derived files keep their own licence and say so in their own header (never relabel them MIT):
-  `configs/curl/curl_config.h` (curl), `compat/include/epoxy/egl.h` (MacPorts stub), `tools/bind_audit.sh` (vendored from the
-  iokit repo), the Lucide icons, and the text `scripts/webkit_fixes.sh` patches into WebKit (WebKit's LGPL-2/BSD). The full
+  `configs/curl/curl_config.h` (curl), `compat/include/epoxy/egl.h` (MacPorts stub), the three Apple-derived `compat/include`
+  headers (`libproc.h`, `sys/proc_info.h`, `sys/random.h`: APSL-2.0), `tools/bind_audit.sh` (vendored from the iokit repo), the Lucide icons, and the text `scripts/webkit_fixes.sh` patches into WebKit (WebKit's LGPL-2/BSD). The full
   list is in `LICENSE`.
 
 ## Lessons learned the hard way
