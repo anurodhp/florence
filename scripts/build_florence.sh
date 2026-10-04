@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Builds the Florence application: frontend/flo_*.c (the engine glue, plain C against WPE WebKit and
 # GLib) and frontend/Flo*.m (the GNUstep UI), linked against the engine from scripts/build_webkit.sh.
 #

@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Helper for the build_*.sh scripts of CMake projects. SOURCED after tools/common.sh, never run.
 #   fl_cmake_build <name> <srcdir> [cmake options...]
 #     configure + build + install into $ROOT (DESTDIR) with the toolchain of tools/common.sh: Xcode 12's clang for C

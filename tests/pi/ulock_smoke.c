@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* What does the Pi's __ulock_wait2 / __ulock_wait return when a wait times out? libpthread's ulock condition variable
  * (pthread_cond.c:_pthread_ulock_cond_wait) expects -ETIMEDOUT with ULF_NO_ERRNO. */
 #include <errno.h>

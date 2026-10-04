@@ -2,7 +2,7 @@
  * Florence: a browser window, the bare minimum: back, forward, reload/stop, an address field, the
  * page, and a status line. One page per window; tabs, bookmarks, history and preferences are not
  * here yet (they were in the NetSurf UI: `git show master:frontend/FloBrowser.m`).
- * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #import <AppKit/AppKit.h>
 #import "FloPageView.h"

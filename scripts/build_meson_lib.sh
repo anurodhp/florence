@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Small Meson libraries WebKit needs, one invocation each (tools/meson_cross.sh):
 #   scripts/build_meson_lib.sh epoxy | xkbcommon | psl | soup
 set -euo pipefail

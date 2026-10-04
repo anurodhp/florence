@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Helper for the build_*.sh scripts of Meson projects. SOURCED after tools/common.sh, never run.
 #
 #   fl_meson_cross            writes $BUILD/meson-cross.ini: Xcode 12's clang driven directly (the

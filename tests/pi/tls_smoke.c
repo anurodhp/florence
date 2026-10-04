@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* Does C thread-local storage work on this Darwin? WebKit's WTF/JSC/bmalloc use thread_local everywhere. */
 #include <pthread.h>
 #include <stdio.h>

@@ -1,7 +1,7 @@
 /*
  * Florence: the page view. A flipped NSView that draws the engine's finished frame (BGRA in shared
  * memory) and sends it mouse, wheel and key input. Only the exposed rectangle is converted and
- * drawn, through one reusable buffer. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+ * drawn, through one reusable buffer. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #import <AppKit/AppKit.h>
 

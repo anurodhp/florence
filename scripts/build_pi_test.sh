@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Builds one small test program from tests/pi/ for the Pi into build/root/usr/local/bin and bind-audits it.
 #   scripts/build_pi_test.sh glib_smoke [extra link flags...]
 set -euo pipefail

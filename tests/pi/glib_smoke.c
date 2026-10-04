@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* Runs on the Pi: exercises what WebKit's UI process leans on in GLib/GIO. Prints PASS/FAIL per check. */
 #include <glib.h>
 #include <glib-object.h>

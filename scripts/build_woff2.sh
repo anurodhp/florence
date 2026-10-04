@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # woff2 1.0.2, decoder side only (libwoff2common, libwoff2dec): WebKit's USE_WOFF2 (web fonts) needs libwoff2dec.
 # C++17 against the LLVM 20 libc++; brotli from scripts/build_brotli.sh.
 set -euo pipefail

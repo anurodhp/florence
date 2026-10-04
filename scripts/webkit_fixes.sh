@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # The edits Florence needs in the pinned WebKit tree (third_party/webkit) so that the option set in
 # config/webkit-options.cmake compiles. Run by scripts/build_webkit.sh; idempotent; each edit asserts
 # that the text it changes is exactly what WPE 2.54.0 has (or already carries the edit), so a different

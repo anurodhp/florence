@@ -3,7 +3,7 @@
  * embedder supply its own WPEDisplay; ours has no GPU, no compositor and no native surface: a
  * view receives each finished frame as a shared-memory buffer and hands it to the engine glue,
  * which tells the GNUstep UI what changed.
- * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #ifndef FLORENCE_FLO_PLATFORM_H
 #define FLORENCE_FLO_PLATFORM_H

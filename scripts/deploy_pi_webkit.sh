@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Copies what the engine needs to the Pi: the dylibs of build/root/usr/local/lib, the WebKit helper processes and
 # data, and the test programs, symbol-stripped (strip -x keeps the exports and the fixup chains; libWPEWebKit goes
 # from 105 MB to 63 MB) into build/deploy, then tools/deploy_to_pi.sh streams that tree over ssh.

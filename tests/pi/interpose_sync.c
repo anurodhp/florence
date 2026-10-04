@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* DYLD_INSERT_LIBRARIES shim: logs every __ulock_wait2 / __ulock_wait / __psynch_cvwait call and result to stderr, to see
  * which kernel call libpthread's pthread_cond_timedwait makes on the Pi and what it returns. */
 #include <errno.h>

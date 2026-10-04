@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Proves that every option named in config/webkit-options.cmake is still defined by the pinned
 # WebKit tree. CMake does not complain about a -D for an option that no longer exists: it just
 # builds with the default, silently turning a "feature off" back on. Run by build_webkit.sh;

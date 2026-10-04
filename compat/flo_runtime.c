@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* More libSystem/compiler-rt/libmalloc entries WebKit 2.54 links against and the iokit port's libSystem does not
  * export (docs/HANDOFF.md, urgent DarwinOS bugs). Each is the documented behaviour over what the port does export.
  * Debt: they belong in libsystem_c / libsystem_malloc / compiler-rt; delete them as they land. */

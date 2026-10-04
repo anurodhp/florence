@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # SQLite 3.44.0 amalgamation as libsqlite3.dylib (WebKit: databases, HSTS/cookie stores via libsoup).
 set -euo pipefail
 cd "$(dirname "$0")/.."

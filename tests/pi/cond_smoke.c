@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* Which timed condition-variable waits work on the Pi's libpthread? GLib (g_cond_wait_until) uses the _relative_np one. */
 #include <errno.h>
 #include <pthread.h>

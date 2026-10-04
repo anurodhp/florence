@@ -1,4 +1,4 @@
-/* Florence: GLib's main context pumped from GNUstep's run loop. See FloGLib.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only */
+/* Florence: GLib's main context pumped from GNUstep's run loop. See FloGLib.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import <AppKit/AppKit.h>
 #import "FloGLib.h"
 #include <stdint.h>

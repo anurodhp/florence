@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* The iokit port's libsystem_pthread returned EINVAL, not ETIMEDOUT, when a pthread_cond_timedwait /
  * pthread_cond_timedwait_relative_np actually timed out (a wait that is signalled in time, and untimed waits, were fine:
  * tests/pi/cond_smoke.c). GLib (g_cond_wait_until -> g_thread_abort "Invalid argument") and everything built on timed

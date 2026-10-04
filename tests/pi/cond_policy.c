@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* Does the EINVAL on a timed-out pthread_cond_timedwait depend on the mutex policy (ulock vs psynch cond path)? */
 #include <errno.h>
 #include <pthread.h>

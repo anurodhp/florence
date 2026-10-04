@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* Filesystem calls the iokit port's libSystem does not export but its kernel implements: needed by libc++'s
  * std::filesystem (WebKit's WTF::FileSystem uses it) and by anything using the *at family. Each stub is the raw BSD
  * syscall: number in x16, svc #0x80, carry set = failure with errno in x0. Numbers are third_party/xnu-7195/

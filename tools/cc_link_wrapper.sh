@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # CC for autotools builds (scripts/build_autotools_lib.sh). libtool bakes CC in at configure time and silently drops
 # -nostdlib and bare dylib paths from LDFLAGS, so a shared-library link (-dynamiclib) gets the explicit dylib list
 # (owners first, libSystem.B last: the SDK's libSystem stub would win otherwise and fail the bind audit) appended

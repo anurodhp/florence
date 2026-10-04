@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* libm functions the iokit port's libsystem_m does not export and msun's versions cannot be compiled for here
  * (s_fmax.c wants FreeBSD's fpmath.h, s_lround.c sys/limits.h, s_lrintf.c a templated math.h clash). Each is the
  * C99 definition (n1570 7.12.12 fmax/fmin, 7.12.9 lrint/lround/llrint/llround, 7.12.6.6 ldexp) over functions

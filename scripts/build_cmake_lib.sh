@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Small CMake libraries for the WebKit 2.54 stack, one invocation each (tools/cmake_cross.sh):
 #   scripts/build_cmake_lib.sh libxml2 | nghttp2 | libwebp | libjpeg-turbo
 set -euo pipefail

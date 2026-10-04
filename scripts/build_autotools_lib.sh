@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Autotools libraries for the WebKit 2.54 stack, one invocation each:
 #   scripts/build_autotools_lib.sh libgpg-error | libgcrypt | libtasn1
 # Xcode 12's clang, the iPhoneOS 14.4 SDK, fixup chains with the newer ld (tools/common.sh), out-of-tree build in

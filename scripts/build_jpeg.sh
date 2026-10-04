@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Builds IJG libjpeg 9f (third_party/jpeg, jpegsrc.v9f) as /usr/local/lib/libjpeg.9.dylib.
 # Sources: Makefile.in's LIBSOURCES with jmemnobs.c as the memory manager
 # (configure's default MEMORYMGR, no temp-file backing store: fine for a browser,

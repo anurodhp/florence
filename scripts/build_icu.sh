@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # ICU 74.2 (WebKit 2.54 needs >= 70.1; the iokit port ships Apple's 66.1) as dylibs for the Pi, installed
 # next to the system ones: ICU's symbols carry the major version (u_foo_74), the files are libicu*.74.dylib,
 # so both load in one process. Same two-stage recipe as the iokit port's build_icu_host.sh/build_icu_target.sh

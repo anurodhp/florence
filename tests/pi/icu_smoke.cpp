@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+// SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 // Runs on the Pi: ICU 74 (scripts/build_icu.sh), data in libicudata.74, what WebKit needs from it.
 #include <cstdio>
 #include <memory>

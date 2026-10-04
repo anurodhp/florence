@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+// SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 // Runs on the Pi against the LLVM 20 libc++ (scripts/build_libcxx.sh): what WebKit's WTF/JSC lean on.
 #include <algorithm>
 #include <atomic>

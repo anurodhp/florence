@@ -121,8 +121,8 @@ is ours). That is how the libepoxy abort was located (stack: `NonCompositedFrame
 * Sandbox notes: scratch builds lived in `/tmp/claude-0/wk/` (WebKit checkout `t/third_party/webkit`, build dir `bld`), symlinked
   into the repo as `third_party/webkit` and `build/webkit-host` (both gitignored, gone in a new container). Rebuilding from
   scratch is ~1 h. A repo-local `third_party/webkit` made by `setup_third_party.sh` is equivalent.
-* Not decided: the repo licence (GPL-2.0-only was chosen because of NetSurf, which is gone from this branch; WebKit is
-  LGPL-2/BSD). Left unchanged and flagged in README.
+* Licence: decided. The original code is MIT (relicensed by its copyright holder once NetSurf, the reason for GPL-2.0-only, was
+  gone from this branch); third-party and derived files keep their own licences (`LICENSE` lists the exceptions).
 
 ## Branch `claude/webkit-2.54-pi` (2026-10-04): the Pi, WPE 2.54.0, CPU rendering, no GL
 

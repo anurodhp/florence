@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* POSIX unnamed semaphores (sem_init/sem_destroy/sem_post/sem_wait). Darwin does not implement them at all (only named
  * ones, sem_open), and its sem_t is a 4-byte int, too small to hold a mutex and condition variable; Skia's Unix
  * SkSemaphore (which WebKit's Skia selects, SK_BUILD_FOR_UNIX) embeds a sem_t and calls these. The int stores an index

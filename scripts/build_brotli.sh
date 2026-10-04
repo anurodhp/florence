@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Brotli 1.1.0 as libbrotlicommon / libbrotlidec / libbrotlienc dylibs (libsoup 3 content decoding, WOFF2 later).
 # Hand loop like the iokit port's libraries: its CMake file builds static archives here whatever BUILD_SHARED_LIBS says.
 set -euo pipefail

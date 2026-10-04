@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* libflocompat: symbols the iokit port's libSystem does not export yet but its kernel implements. Each entry
  * names the kernel source it rests on. Debt: they belong in the iokit port's libsystem_kernel wrapper set;
  * when they land there, delete the entry here. scripts/build_compat.sh runs the bind audit. */

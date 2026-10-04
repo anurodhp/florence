@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* GIO asynchronous file operations on the Pi: WebKit's glib port loads file:// URLs through libsoup/GIO (GTask worker threads).
  * Each operation must complete within a few seconds with the main loop running. */
 #include <gio/gio.h>

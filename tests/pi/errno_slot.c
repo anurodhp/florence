@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel) */
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel) */
 /* libpthread reads errno through thread-specific-data slot 1 (an int* the C library installs); the C library's errno is
  * *__error(). On Darwin they are the same int. Are they here, on the main thread and on a new thread? */
 #include <errno.h>

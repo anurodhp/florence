@@ -1,7 +1,7 @@
 /*
  * Florence: main(), the application delegate and the menus. GNUstep's run loop is the one loop of the
  * process; WebKit's GLib main context is pumped from it (FloGLib.m).
- * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #import <AppKit/AppKit.h>
 #include <stdlib.h>

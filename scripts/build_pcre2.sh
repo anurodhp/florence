@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # PCRE2 10.42 (GLib 2.78 needs it; GLib 2.66 carried its own PCRE 1) as libpcre2-8.dylib.
 set -euo pipefail
 cd "$(dirname "$0")/.."

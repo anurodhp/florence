@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel; copied from the xnu-iokit-pi3 repo, same author) */
 /* Copied from the iokit repo (tools/userland_staging/libcxx_wcstof_compat.c, same author); drop it when libSystem exports wcstod/wcstof/wcstold. */
 /* Real wcstod()/wcstof()/wcstold(), scoped around a genuine, already-
  * documented gap: third_party/Libc/locale/FreeBSD/{wcstod,wcstof,

@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # The few edits the dependency sources need on this target. Idempotent; each asserts its anchor, so a
 # different upstream stops the build instead of building something else (same pattern as webkit_fixes.sh).
 # Under the iokit port's rule these become commits in anurodhp/* forks.

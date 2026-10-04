@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Builds libcurl 8.15.0 (third_party/curl release tarball) as a real dylib,
 # /usr/local/lib/libcurl.4.dylib, with mbedTLS for https and zlib.
 #

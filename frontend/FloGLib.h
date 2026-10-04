@@ -1,7 +1,7 @@
 /*
  * Florence: drives GLib's main context from GNUstep's run loop, so WebKit's UI-process half runs
  * inside the one run loop the application already has (no thread, no polling timer). See flo.h.
- * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #import <Foundation/Foundation.h>
 

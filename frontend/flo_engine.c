@@ -6,7 +6,7 @@
  * idle (GLib's main context is driven from the UI's run loop and sleeps in it, see flo_glib_*),
  * frames are capped at 30 per second and arrive as damage rectangles, caches are the smallest
  * WebKit offers.
- * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #include "flo.h"
 #include "flo_platform.h"

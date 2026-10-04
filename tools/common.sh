@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Shared toolchain and helpers for Florence's build scripts. SOURCED, never run.
 #
 # Same recipe as the iokit repo's tools/userland_staging/x11_common.sh (read its

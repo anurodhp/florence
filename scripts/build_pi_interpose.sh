@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # tests/pi/interpose_sync.c as a DYLD_INSERT_LIBRARIES shim (build/root/usr/local/lib/libinterpose_sync.dylib) that logs
 # __ulock_wait2 / __psynch_cvwait calls: how libpthread's timed condition-variable wait behaves on the Pi.
 #   DYLD_INSERT_LIBRARIES=/usr/local/lib/libinterpose_sync.dylib /usr/local/bin/cond_policy

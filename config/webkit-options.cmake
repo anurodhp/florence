@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 #
 # WebKit build options for Florence: WPE WebKit 2.54.0, software rendering, as little of it as
 # will build. Passed to CMake as an initial cache (`cmake -C config/webkit-options.cmake ...`) by

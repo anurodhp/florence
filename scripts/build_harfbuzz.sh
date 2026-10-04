@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # HarfBuzz 8.3.0 (WebKit text shaping; ICU glue on, FreeType on, no Cairo/CoreText/Graphite).
 set -euo pipefail
 cd "$(dirname "$0")/.."

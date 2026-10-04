@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Builds WPE WebKit (third_party/webkit, pinned by setup_third_party.sh) with the option set in
 # config/webkit-options.cmake: the interpreter only, Skia on the CPU, no GPU, no media, no extras.
 #

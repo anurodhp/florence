@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Makes the libraries the iokit port already ships findable by pkg-config (the build scripts' only
 # way to find anything): headers into build/root/usr/local/include, a .pc file for each. Idempotent.
 set -euo pipefail

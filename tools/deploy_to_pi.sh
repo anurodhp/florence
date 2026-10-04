@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Copies build/root to the Pi's / over ssh (tar stream, nothing else is touched).
 #   PI_HOST (default 10.0.0.142), PI_USER (root); auth: PI_PASS (default "darwin", the test
 #   image's root password -- a test LAN only), or PI_PASS= (empty) to use an ssh key instead.

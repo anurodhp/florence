@@ -82,9 +82,12 @@ with a stated reason in the "Left on" list.
   scripted, idempotent and assert their anchors (`scripts/webkit_fixes.sh`, the same pattern as the two NetSurf
   edits on `master`): a different upstream stops the build instead of building something else. The iokit port's
   rule is a fork (`anurodhp/*`) instead of patches; WebKit's Darwin port will need that, and this file then goes away.
-* Licensing: the repo is GPL-2.0-only (see `LICENSE`; the reason was NetSurf, which is gone from this branch, and
-  whether to keep it is undecided). Every file has an SPDX line. New files get `SPDX-License-Identifier: GPL-2.0-only`.
-  Exceptions: `configs/curl/curl_config.h` (curl's licence) and the vendored `tools/bind_audit.sh`.
+* Licensing: the original code here is MIT (see `LICENSE`, `LICENSES/MIT.txt`; it was GPL-2.0-only while NetSurf was linked,
+  and none of that is on this branch). Every original file carries `SPDX-License-Identifier: MIT`; new original files get it.
+  Third-party and derived files keep their own licence and say so in their own header (never relabel them MIT):
+  `configs/curl/curl_config.h` (curl), `compat/include/epoxy/egl.h` (MacPorts stub), `tools/bind_audit.sh` (vendored from the
+  iokit repo), the Lucide icons, and the text `scripts/webkit_fixes.sh` patches into WebKit (WebKit's LGPL-2/BSD). The full
+  list is in `LICENSE`.
 
 ## Lessons learned the hard way
 

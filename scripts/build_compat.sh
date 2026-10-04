@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # libflocompat.dylib: the libSystem exports the iokit port lacks (compat/*.c), plus the libm functions its
 # libsystem_m does not export (about 80: expf, logf, log2, fmax, copysign, nearbyint, lrint ...), compiled from the
 # same unmodified FreeBSD msun 13.2 sources and with the same recipe as the iokit port's own build_libm_dylib.sh

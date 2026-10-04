@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Builds and runs tests/smoke_engine.c: the engine glue (flo_engine.c, flo_platform.c) end to end with no UI,
 # against the WebKit that scripts/build_webkit.sh host installed. Needs no X server and no GNUstep: it loads
 # tests/pages/first.html, checks the first frame's pixels and the title/address events, clicks a link, and

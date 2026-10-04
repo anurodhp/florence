@@ -2,7 +2,7 @@
  * Florence: the WPE platform. See flo_platform.h. Modelled on WebKit's own headless platform
  * (Source/WebKit/WPEPlatform/wpe/headless/, the pinned tree's reference for what a minimal
  * display must implement), with the frame timer replaced by a hand-over to the UI.
- * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #include "flo_platform.h"
 

@@ -5,7 +5,7 @@
  * The engine renders on the CPU into shared-memory buffers (WPE WebKit, Skia raster); the UI
  * asks for the pixels of a rectangle and draws them. There is no GPU path and no toolkit in
  * the engine: input comes in as plain numbers, pixels go out as BGRA.
- * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #ifndef FLORENCE_FLO_H
 #define FLORENCE_FLO_H

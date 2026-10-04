@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Builds tests/smoke_engine.c with the engine glue (flo_engine.c, flo_platform.c) for the Pi against the WebKit that
 # scripts/build_webkit.sh cross installed in build/root: the same end-to-end check scripts/test_host.sh runs on Linux
 # (a frame arrives with the right pixels, title/address events, a click, a wheel), no UI. Run it on the Pi:

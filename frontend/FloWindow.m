@@ -1,4 +1,4 @@
-/* Florence: a browser window. See FloWindow.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only */
+/* Florence: a browser window. See FloWindow.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloWindow.h"
 #include "flo.h"
 

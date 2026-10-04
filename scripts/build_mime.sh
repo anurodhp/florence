@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # The freedesktop shared-mime-info database (build/root/usr/local/share/mime/mime.cache and the XML) for the Pi. GIO decides
 # the content type of a file:// URL from it; without it every file is application/octet-stream and WebKit shows nothing.
 # update-mime-database is a build-host program, so this builds shared-mime-info natively (host glib and libxml2) into a scratch

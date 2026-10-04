@@ -6,7 +6,7 @@
  *   3. a mouse click on a link goes through WPE's input path and loads the second page
  *   4. the wheel scrolls the page (the red box leaves the top of the frame)
  * Exit status 0 only if all hold. Built and run by scripts/test_host.sh.
- * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #include "flo.h"
 

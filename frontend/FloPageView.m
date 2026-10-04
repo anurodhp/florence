@@ -1,4 +1,4 @@
-/* Florence: the page view. See FloPageView.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only */
+/* Florence: the page view. See FloPageView.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloPageView.h"
 #include <math.h>
 #include <stdlib.h>

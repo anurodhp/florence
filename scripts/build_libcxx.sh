@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # LLVM 20.1.8's libc++ and libc++abi for the Pi (WebKit 2.54 is C++23; the iokit port ships LLVM 11's).
 # Built SIDE BY SIDE first: install name /usr/local/lib/libc++.1.dylib, so nothing already on the Pi changes
 # (the system one is on the boot path: libSystem.B, libdyld, launchd link it). Swapping it in as /usr/lib/libc++.1.dylib is

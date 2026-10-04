@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # GLib 2.78.6 (WebKit 2.54 needs >= 2.70) as dylibs for the Pi:
 # libglib, libgobject, libgmodule, libgthread, libgio, plus the proxy libintl it needs.
 # Meson cross build (tools/meson_cross.sh); PCRE2 from scripts/build_pcre2.sh.

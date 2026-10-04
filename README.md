@@ -52,7 +52,7 @@ network stack is libsoup); `scripts/build_tests.sh` builds their smoke test.
 
 ## License
 
-The code in this repository is GPL-2.0-only (version 2 only, no "or later"), see `LICENSE` and
-`LICENSES/GPL-2.0-only.txt`. That choice was made because the NetSurf core was linked and some files derived from
-NetSurf's frontends; none of those files are on this branch. WebKit itself is under LGPL-2 and BSD licences (see
-`third_party/webkit` after setup); whether this repository's licence should change now is **not decided here**.
+The original code in this repository is MIT, see `LICENSE` and `LICENSES/MIT.txt`. It was GPL-2.0-only while the NetSurf core was
+linked; none of NetSurf, nor of the files derived from its frontends, is on this branch (the NetSurf-based UI on `master` keeps its GPL
+terms). Third-party code keeps its own licence: WebKit is LGPL-2 and BSD (linked as shared libraries, fetched by
+`setup_third_party.sh`), and the few vendored or derived files are listed under "Exceptions" in `LICENSE`.
