@@ -16,7 +16,8 @@ if [ -n "${PI_PASS:-}" ]; then
 else
     SSH+=(-o BatchMode=yes)
 fi
-[ -d "$FL_DIR/build/root" ] || { echo "error: nothing built (build/root missing)" >&2; exit 1; }
-cd "$FL_DIR/build/root"
+DEPLOY_ROOT="${DEPLOY_ROOT:-$FL_DIR/build/root}"   # scripts/deploy_pi_webkit.sh points this at a stripped copy
+[ -d "$DEPLOY_ROOT" ] || { echo "error: nothing built ($DEPLOY_ROOT missing)" >&2; exit 1; }
+cd "$DEPLOY_ROOT"
 paths=("$@"); [ "${#paths[@]}" -gt 0 ] || paths=(.)
 tar cf - "${paths[@]}" | "${SSH[@]}" "$PI_USER@$PI_HOST" 'tar xmf - -C / && echo deployed'
