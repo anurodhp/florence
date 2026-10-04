@@ -28,6 +28,8 @@ FLO_SYSCALL(linkat, 471)        /* :744  */
 FLO_SYSCALL(unlinkat, 472)      /* :745  */
 FLO_SYSCALL(readlinkat, 473)    /* :746  */
 FLO_SYSCALL(symlinkat, 474)     /* :747  */
+FLO_SYSCALL(mlock, 203)         /* :294: libgcrypt locks its secure memory */
+FLO_SYSCALL(munlock, 204)       /* :295  */
 FLO_SYSCALL(mincore, 78)        /* :131: mincore(addr, len, vec) */
 FLO_SYSCALL(shm_unlink, 267)    /* :413: shm_open (266, NO_SYSCALL_STUB) is exported by libsystem_kernel, its pair is not */
 

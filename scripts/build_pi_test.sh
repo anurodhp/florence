@@ -18,4 +18,4 @@ fi
 fl_compile "$O" "$FL_DIR/tests/pi/$name.c" -I "$INC/glib-2.0" -I "$INC/gio-unix-2.0" -I "$LIB/glib-2.0/include" \
     '-D__API_AVAILABLE_PLATFORM_iosmac(x)=macCatalyst,introduced=x' '-D__API_DEPRECATED_PLATFORM_iosmac(x,y)=macCatalyst,introduced=x,deprecated=y'
 fl_compile_report "$name"
-fl_link_exe "$ROOT$PREFIX/bin/$name" "$O" -L"$LIB" "$@" "${FL_NET_DYLIBS[@]}"
+fl_link_exe "$ROOT$PREFIX/bin/$name" "$O" -L"$LIB" "$@" ${FL_TEST_COMPAT:+-lflocompat} "${FL_NET_DYLIBS[@]}"

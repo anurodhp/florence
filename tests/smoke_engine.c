@@ -91,6 +91,7 @@ int main(int argc, char **argv)
 	char url[1024];
 	unsigned c;
 
+	setvbuf(stdout, NULL, _IONBF, 0);   /* progress is the point when the engine hangs (the first Pi run did) */
 	if (argc < 3) {
 		fprintf(stderr, "usage: %s first.html data-dir\n", argv[0]);
 		return 2;
