@@ -165,3 +165,20 @@ Open: TLS (glib-networking + OpenSSL), xkeyboard-config data, the glue and UI on
 (`ENABLE_JIT=OFF` + `ENABLE_C_LOOP=OFF` gives the asm interpreter on arm64, much faster than CLoop; options file says CLoop).
 libSystem bugs filed in the DarwinOS Plane project (all urgent): getfsstat, creat, gethostname, fsync, futimes/fsctl,
 compiler-rt, aligned_alloc/wcstod, filesystem syscalls, libm.
+
+### Pi status, end of 2026-10-04 session (read this first when resuming)
+
+* **WebKit 2.54 runs on the Pi.** `scripts/build_pi_smoke.sh && scripts/deploy_pi_webkit.sh` then, on the Pi,
+  `SMOKE_SCALE=30 smoke_engine /usr/local/share/florence/pages/first.html /tmp/flodata`: the UI process starts the network and web
+  processes, `a frame arrived`, the address event fires. **Not yet working:** the page never finishes loading (title empty, frame stays
+  white, all three processes idle with ~1 s CPU), so no pixels, click or scroll checks pass. Next: find where the load stalls
+  (file:// goes through WPENetworkProcess; suspects: AF_UNIX datagram IPC between the three processes, fontconfig/ICU first-run, the
+  GLib main loop wake-ups). `WEBKIT_DEBUG=all` is too much: **it hung the Pi** (no ping or ssh afterwards; probably log volume
+  filling the 1.1 GB root or RAM). Use a named channel (`WEBKIT_DEBUG=Loading,Process,IPC`) and write the log to a size-capped file;
+  the Pi needed a power cycle after the all-channels run, and `/tmp/smoke4.log` on it may be huge: delete it.
+* **Timed pthread waits:** the Pi's libpthread returned EINVAL for a timed-out `pthread_cond_timedwait` (errno was one global,
+  libpthread reads the per-thread TSD slot). Fixed in the iokit repo (anurodhp/xnu-iokit-pi3#19: `cerror_stub.c`), verified on the Pi by
+  loading the rebuilt `libsystem_kernel.dylib` with `DYLD_LIBRARY_PATH` (copy at /tmp/newlib on the Pi, may be gone). Until the image
+  carries it, run engine tests with `DYLD_LIBRARY_PATH=/tmp/newlib` (copy `iokit/tools/userland_staging/libc_build/system/libsystem_kernel.dylib`
+  there); the bridge `compat/flo_pthread.c` only helps images linked after it existed (glib etc. were not relinked).
+* `libflocompat` order matters: a library only binds to a flocompat symbol if flocompat exported it when that library was linked.

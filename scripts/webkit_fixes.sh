@@ -229,4 +229,12 @@ edit("Source/ThirdParty/skia/src/ports/SkMemory_malloc.cpp",
      "    #elif defined(SK_BUILD_FOR_UNIX)\n        completeSize = malloc_usable_size(addr);",
      "    #elif defined(SK_BUILD_FOR_UNIX) && !defined(__APPLE__) // Florence: Darwin without malloc_size: the requested size\n        completeSize = malloc_usable_size(addr);",
      "Florence: Darwin without malloc_size")
+
+# The web process creates an EGL display at startup (initializePlatformDisplayIfNeeded) and CRASH()es without one, even
+# though the non-composited renderer (WEBKIT_DISABLE_COMPOSITING_MODE, above) paints on the CPU into shared memory and never
+# needs it. The Pi has no EGL: carry on without a display (the MacPorts WebKitGTK patch, patch-egl-display-no-crash).
+edit("Source/WebKit/WebProcess/glib/WebProcessGLib.cpp",
+     '    WTFLogAlways("Could not create EGL display: no supported platform available. Aborting...");\n    CRASH();\n}',
+     '    // Florence: no EGL display is fine, the CPU renderer does not need one\n    return;\n}',
+     "Florence: no EGL display is fine")
 PY

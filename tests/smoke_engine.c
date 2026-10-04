@@ -102,13 +102,16 @@ int main(int argc, char **argv)
 		if (flo_engine_init(argv[2], cache) != 0) { printf("FAIL: engine init\n"); return 1; }
 	}
 	trace_frames = getenv("TRACE_FRAMES") != NULL;
+	/* SMOKE_SCALE=20 on a Pi 3: the first load (libraries, font cache) takes far longer than the 3 s a PC needs */
+	double scale = getenv("SMOKE_SCALE") ? atof(getenv("SMOKE_SCALE")) : 1.0;
+	if (scale < 1.0) scale = 1.0;
 	page = flo_page_new(&ev, NULL, 800, 600);
 	snprintf(url, sizeof url, "file://%s", argv[1]);
 	flo_page_load(page, url);
 
 	CHECK(pump_until(have_frame, 90), "a frame arrived (%d frames so far)", frames);
 	/* let the page settle: the first frame can be the blank one */
-	{ double end = now() + 3; while (now() < end) pump(50); }
+	{ double end = now() + 3 * scale; while (now() < end && strcmp(last_title, "Smoke") != 0) pump(50); }
 	CHECK(strcmp(last_title, "Smoke") == 0, "title event: \"%s\"", last_title);
 	CHECK(strstr(last_uri, "first.html") != NULL, "address event: %s", last_uri);
 	CHECK(px(20, 20, &c) == 0 && c == 0xff0000, "red box at (20,20): %06x in a %dx%d frame", c, last_w, last_h);
@@ -116,10 +119,10 @@ int main(int argc, char **argv)
 	CHECK(px(700, 20, &c) == 0 && c == 0xffffff, "white at (700,20): %06x", c);
 
 	flo_page_pointer_move(page, 0, 350, 300);
-	{ double end = now() + 0.3; while (now() < end) pump(20); }
+	{ double end = now() + 0.3 * scale; while (now() < end) pump(20); }
 	flo_page_pointer_button(page, 0, 1, true, 1, 350, 300);
 	flo_page_pointer_button(page, 0, 1, false, 1, 350, 300);
-	CHECK(pump_until(got_clicked, 30), "a click on the link loaded the second page (title now \"%s\")", last_title);
+	CHECK(pump_until(got_clicked, 30 * scale), "a click on the link loaded the second page (title now \"%s\")", last_title);
 
 	if (title_seen_clicked) {
 		/* the second page is tall: a wheel notch must move it */
