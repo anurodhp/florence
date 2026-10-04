@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
 # Small Meson libraries WebKit needs, one invocation each (tools/meson_cross.sh):
-#   scripts/build_meson_lib.sh epoxy | xkbcommon | wpe | psl | soup
+#   scripts/build_meson_lib.sh epoxy | xkbcommon | psl | soup
 set -euo pipefail
 cd "$(dirname "$0")/.."
 . tools/common.sh
@@ -11,11 +11,10 @@ scripts/deps_fixes.sh
 scripts/stage_iokit_libs.sh >/dev/null
 case "$which" in
 epoxy)      dir=libepoxy;     stems='epoxy.0';          opts=(-Degl=no -Dglx=no -Dx11=false -Dtests=false) ;;
-xkbcommon)  dir=libxkbcommon; stems='xkbcommon.0';      opts=(-Denable-wayland=false -Denable-x11=false -Denable-docs=false -Denable-xkbregistry=false -Dxkb-config-root=/usr/local/share/X11/xkb -Dx-locale-root=/usr/local/share/X11/locale) ;;
-wpe)        dir=libwpe;       stems='wpe-1.0.3';        opts=(-Dbuild-docs=false) ;;
-psl)        dir=libpsl;       stems='psl.5';            opts=(-Druntime=no -Dbuiltin=no) ;;
-soup)       dir=libsoup;      stems='soup-2.4.1';       opts=(-Dgssapi=disabled -Dntlm=disabled -Dbrotli=disabled -Dtls_check=false -Dintrospection=disabled -Dvapi=disabled -Dtests=false -Dsysprof=disabled -Dgnome=false -Dgtk_doc=false -Dinstalled_tests=false) ;;
-*) echo "usage: $0 epoxy|xkbcommon|wpe|psl|soup" >&2; exit 2 ;;
+xkbcommon)  dir=libxkbcommon; stems='xkbcommon.0';      opts=(-Denable-tools=false -Denable-wayland=false -Denable-x11=false -Denable-docs=false -Denable-xkbregistry=false -Denable-bash-completion=false -Dxkb-config-root=/usr/local/share/X11/xkb -Dx-locale-root=/usr/local/share/X11/locale) ;;
+psl)        dir=libpsl;       stems='psl.5';            opts=(-Druntime=libicu -Dbuiltin=true -Dtests=false -Ddocs=false) ;;
+soup)       dir=libsoup;      stems='soup-3.0.0';       opts=(-Dgssapi=disabled -Dntlm=disabled -Dbrotli=enabled -Dtls_check=false -Dintrospection=disabled -Dvapi=disabled -Ddocs=disabled -Ddoc_tests=false -Dtests=false -Dautobahn=disabled -Dinstalled_tests=false -Dsysprof=disabled -Dfuzzing=disabled -Dpkcs11_tests=disabled) ;;
+*) echo "usage: $0 epoxy | xkbcommon | psl | soup" >&2; exit 2 ;;
 esac
 SRC="$TP/$dir"; fl_require "$SRC/meson.build"
 rm -rf "$SRC/_cross"

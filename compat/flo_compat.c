@@ -66,3 +66,14 @@ long flo_write_nocancel(int fd, const void *b, unsigned long n) __asm__("_write$
 int flo_close_nocancel(int fd) { return close(fd); }
 long flo_read_nocancel(int fd, void *b, unsigned long n) { return read(fd, b, n); }
 long flo_write_nocancel(int fd, const void *b, unsigned long n) { return write(fd, b, n); }
+
+/* clock_t clock(void): processor time used, in CLOCKS_PER_SEC (1000000 on Darwin) units. Not exported by libsystem_c.
+ * ISO C 7.27.2.1; implemented over getrusage(RUSAGE_SELF) (user + system time). */
+struct flo_timeval { long tv_sec; int tv_usec; };
+struct flo_rusage { struct flo_timeval ru_utime, ru_stime; long rest[14]; };
+extern int getrusage(int, struct flo_rusage *);
+unsigned long clock(void) {
+    struct flo_rusage ru;
+    if (getrusage(0 /* RUSAGE_SELF */, &ru) != 0) return (unsigned long)-1;
+    return (unsigned long)((ru.ru_utime.tv_sec + ru.ru_stime.tv_sec) * 1000000L + ru.ru_utime.tv_usec + ru.ru_stime.tv_usec);
+}

@@ -44,7 +44,7 @@ fl_cmake_build() {
     local b="$BUILD/cmake-$name"; rm -rf "$b"; mkdir -p "$b"
     fl_cmake_toolchain "$b/toolchain.cmake"
     ( cd "$b" && env PKG_CONFIG_LIBDIR="$FL_PKGCFG" PKG_CONFIG_PATH= cmake -GNinja -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_TOOLCHAIN_FILE="$b/toolchain.cmake" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_POLICY_VERSION_MINIMUM=3.5 "$@" "$src" ) \
+        -DCMAKE_TOOLCHAIN_FILE="$b/toolchain.cmake" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_INSTALL_LIBDIR=lib ${FL_CMAKE_POLICY_MIN-"-DCMAKE_POLICY_VERSION_MINIMUM=3.5"} "$@" "$src" ) \
         > "$b/configure.log" 2>&1 || { tail -25 "$b/configure.log" >&2; echo "error: $name configure failed ($b/configure.log)" >&2; return 1; }
     ninja -C "$b" ${FL_NINJA_KEEP_GOING:+-k 0} > "$b/build.log" 2>&1 || [ -n "${FL_NINJA_KEEP_GOING:-}" ] || { grep -E "error:|FAILED|Undefined|^  \"_" "$b/build.log" | head -20 >&2; echo "error: $name build failed ($b/build.log)" >&2; return 1; }
     DESTDIR="$ROOT" cmake --install "$b" > "$b/install.log" 2>&1 || { tail -15 "$b/install.log" >&2; return 1; }

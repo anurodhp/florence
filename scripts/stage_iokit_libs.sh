@@ -15,13 +15,11 @@ fl_stage_headers . "$IOKIT_LIBC/fontstack/usr_include/expat.h" "$IOKIT_LIBC/font
 # libproc.h: GLib 2.78 gspawn uses proc_pidinfo (exported by libsystem_kernel) to close fds; the SDK has no libproc.h
 fl_stage_headers . "$FL_DIR/compat/include/libproc.h"
 fl_stage_headers sys "$FL_DIR/compat/include/sys/proc_info.h"
-mkdir -p "$INC/libxml"
 # ICU: not staged here; this branch builds its own 74 (scripts/build_icu.sh, headers + pkg-config files included)
-cp "$IOKIT_LIBC"/xml2_headers/libxml/*.h "$INC/libxml/"
 fl_pc libffi 3.4 "-L$SYS -lffi"
 fl_pc zlib 1.2.11 "-L$SYS -lz"
 fl_pc expat 2.2.8 "-L$SYS -lexpat"
-fl_pc libxml-2.0 2.9.4 "-L$SYS -lxml2" "-I$INC"
+# libxml2: this branch builds its own 2.9.14 (scripts/build_cmake_lib.sh libxml2); the iokit port has 2.9.4
 fl_pc libpng16 1.6.58 "-L$SYS -lpng16" "-I$X11I/libpng16 -I$X11I"
 fl_pc freetype2 24.1.18 "-L$SYS -lfreetype" "-I$X11I/freetype2"
 fl_pc fontconfig 2.17.1 "-L$SYS -lfontconfig" "-I$X11I" "freetype2 expat"
