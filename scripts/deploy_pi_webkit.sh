@@ -25,5 +25,6 @@ case "$what" in
 bin) sync_dir bin ;;
 all) sync_dir lib strip; sync_dir libexec strip; sync_dir bin; mkdir -p "$D$PREFIX/share"; rsync -a "$ROOT$PREFIX/share/wpe-webkit-2.0" "$D$PREFIX/share/"; [ -d "$ROOT$PREFIX/share/mime" ] && rsync -a --delete "$ROOT$PREFIX/share/mime" "$D$PREFIX/share/" ;;
 esac
+[ -d "$ROOT/Applications/Florence.app" ] && { mkdir -p "$D/Applications"; rsync -a --delete "$ROOT/Applications/Florence.app" "$D/Applications/"; }
 mkdir -p "$D$PREFIX/share/florence" && rsync -a tests/pages "$D$PREFIX/share/florence/"
-DEPLOY_ROOT="$D" tools/deploy_to_pi.sh $([ "$what" = bin ] && echo usr/local/bin usr/local/share/florence || echo usr/local/.)
+DEPLOY_ROOT="$D" tools/deploy_to_pi.sh $([ "$what" = bin ] && echo usr/local/bin usr/local/share/florence Applications/Florence.app || echo usr/local/. Applications/Florence.app)

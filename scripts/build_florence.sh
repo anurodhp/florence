@@ -6,9 +6,9 @@
 #   scripts/build_florence.sh host   # Linux: build/florence-host/florence, linked against build/webkit-host/root.
 #                                    # Needs gnustep-base/gui dev packages (gcc -x objective-c) and `host` WebKit built.
 #                                    # Run it under an X server (Xvfb is enough); see docs/webkit-port.md.
-#   scripts/build_florence.sh pi     # the iokit toolchain: build/root/Applications/Florence.app. NOT YET WORKING:
-#                                    # needs the engine for the Pi (scripts/build_webkit.sh cross). Written to the
-#                                    # recipe of the NetSurf build it replaces; never run.
+#   scripts/build_florence.sh pi     # the iokit toolchain: build/root/Applications/Florence.app, linked against the
+#                                    # engine of scripts/build_webkit.sh cross and the iokit port's GNUstep.
+#                                    # Deploy: scripts/deploy_pi_webkit.sh; run on the Pi: see docs/HANDOFF.md.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 FL_DIR="$PWD"
@@ -41,14 +41,20 @@ host)
     ;;
 pi)
     . tools/common.sh
-    DEPS="${FL_DEPS_ROOT:-$BUILD/depsroot}"
-    fl_require "$LIB/libWPEWebKit-2.0.dylib" "run scripts/build_webkit.sh cross"
-    # the engine's dylibs, owners first (the bind audit's rule): what flo_*.c and the UI call directly
-    FL_GS_OWNERS=("$LIB/libWPEWebKit-2.0.dylib" "$LIB/libglib-2.0.dylib" "$LIB/libgobject-2.0.dylib" "$LIB/libgio-2.0.dylib")
+    . tools/meson_cross.sh      # FL_PKGCFG
+    fl_require "$LIB/libWPEWebKit-2.0.dylib" "run scripts/build_webkit.sh cross (and cmake --install into build/root)"
+    # the engine's dylibs, owners first (the bind audit's rule): libflocompat first so its libSystem fill-ins win,
+    # then what flo_*.c and the UI call directly
+    FL_GS_OWNERS=("$LIB/libflocompat.dylib" "$LIB/libWPEWebKit-2.0.dylib" "$LIB/libglib-2.0.dylib" "$LIB/libgobject-2.0.dylib" "$LIB/libgio-2.0.dylib" "$LIB/libintl.dylib")
     . tools/gnustep_env.sh
+    sed -i '' "s#^prefix=$PREFIX\$#prefix=$ROOT$PREFIX#" "$FL_PKGCFG"/wpe-*.pc 2>/dev/null || true
+    WKINC="$(env PKG_CONFIG_LIBDIR="$FL_PKGCFG" PKG_CONFIG_PATH= pkg-config --cflags wpe-webkit-2.0 wpe-platform-2.0 glib-2.0 gobject-2.0 gio-2.0)"
     OBJ="$BUILD/obj/florence"; rm -rf "$OBJ"; mkdir -p "$OBJ"
-    WKINC="-I$DEPS/include/wpe-webkit-2.0 -I$DEPS/include/glib-2.0 -I$DEPS/lib/glib-2.0/include"
-    for c in "${CFILES[@]}"; do fl_compile "$OBJ" "$SRC/$c" $WKINC; done
+    for c in "${CFILES[@]}"; do
+        # shellcheck disable=SC2086
+        fl_compile "$OBJ" "$SRC/$c" $WKINC -I"$SRC" -std=gnu11 -Wno-everything \
+            '-D__API_AVAILABLE_PLATFORM_iosmac(x)=macCatalyst,introduced=x' '-D__API_DEPRECATED_PLATFORM_iosmac(x,y)=macCatalyst,introduced=x,deprecated=y'
+    done
     for m in "${MFILES[@]}"; do
         # shellcheck disable=SC2086
         fl_compile "$OBJ" "$SRC/$m" -I"$SRC" $FL_GS_OBJCFLAGS $FL_OPT

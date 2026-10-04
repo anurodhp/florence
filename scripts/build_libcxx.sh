@@ -14,7 +14,7 @@ SRC="$TP/llvm-project"; fl_require "$SRC/runtimes/CMakeLists.txt"
 B="$BUILD/libcxx"; mkdir -p "$B"
 NEWBIN="$NEWLD_BINDIR"
 CFL="-isysroot $SDK -target arm64-apple-ios14.4 -fno-stack-protector -D_FORTIFY_SOURCE=0 $FL_OPT -fno-common -Wno-nullability-completeness -Wno-deprecated-declarations"
-LFL="-isysroot $SDK -target arm64-apple-ios14.4 -nostdlib -B$NEWBIN -Wl,-fixup_chains ${FL_SYS_DYLIBS[0]} ${FL_SYS_DYLIBS[1]} ${FL_SYS_DYLIBS[2]} ${FL_SYS_DYLIBS[3]} ${FL_SYS_DYLIBS[4]} ${FL_SYS_DYLIBS[5]} -L$LIB -lflocompat $SYS/libunwind.dylib $SYS/libsystem_m.dylib ${FL_SYS_DYLIBS[6]}"
+LFL="-isysroot $SDK -target arm64-apple-ios14.4 -nostdlib -B$NEWBIN -Wl,-fixup_chains -L$LIB -lflocompat ${FL_SYS_DYLIBS[0]} ${FL_SYS_DYLIBS[1]} ${FL_SYS_DYLIBS[2]} ${FL_SYS_DYLIBS[3]} ${FL_SYS_DYLIBS[4]} ${FL_SYS_DYLIBS[5]} $SYS/libunwind.dylib $SYS/libsystem_m.dylib ${FL_SYS_DYLIBS[6]}"
 cat >| "$B/toolchain.cmake" <<TC
 set(CMAKE_SYSTEM_NAME Darwin)
 set(CMAKE_SYSTEM_PROCESSOR arm64)
