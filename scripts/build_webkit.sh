@@ -46,14 +46,30 @@ cross)
     . tools/cmake_cross.sh
     export FL_CMAKE_C_CLANG=daily
     B="$BUILD/webkit-cross"; mkdir -p "$B"
+    # compiler wrappers: WebKit adds GNU/ELF-only options (-fdebug-types-section: WebKitCompilerFlags.cmake:180, under
+    # NOT APPLE) that clang rejects for a Darwin target; they are dropped here instead of editing WebKit
+    mkdir -p "$B/bin"
+    for t in clang clang++; do
+        cat >| "$B/bin/$t" <<WR
+#!/bin/bash
+a=(); for x in "\$@"; do case "\$x" in -fdebug-types-section|-fdebug-types-section=*) ;; *) a+=("\$x");; esac; done
+exec "$NEWLD_BINDIR/$t" "\${a[@]}"
+WR
+        chmod +x "$B/bin/$t"
+    done
     fl_cmake_toolchain "$B/toolchain.cmake"
+    sed -i '' "s#^set(CMAKE_C_COMPILER .*#set(CMAKE_C_COMPILER \"$B/bin/clang\")#; s#^set(CMAKE_CXX_COMPILER .*#set(CMAKE_CXX_COMPILER \"$B/bin/clang++\")#" "$B/toolchain.cmake"
     # WebKit's CMake reads APPLE as "a Cocoa port" (WebKitLegacy, Xcode SDK tools, Mach-O file lists ...); this is the
     # toolkit-less port on a Darwin target, which is what its Linux branches describe. CMAKE_PROJECT_INCLUDE runs right
     # after project(): clear APPLE for WebKit's own logic (the compiler, linker and flags were already chosen as Darwin's)
     # and keep the GNU-ld-only --no-undefined from being added (WebKitCompilerFlags.cmake:437 skips it when this is set).
-    cat >| "$B/after_project.cmake" <<'AP'
+    cat >| "$B/after_project.cmake" <<AP
 set(APPLE FALSE)
 set(ENABLED_COMPILER_SANITIZERS "none")
+# The Apple-only WTF headers (wtf/spi/darwin/..., Assertions.h and others include them under OS(DARWIN)) are only
+# exported by the APPLE branch of WTF's CMake; the source tree has them, so the source root is on the include path.
+set(CMAKE_C_FLAGS "\${CMAKE_C_FLAGS} -I$WK/Source/WTF")
+set(CMAKE_CXX_FLAGS "\${CMAKE_CXX_FLAGS} -I$WK/Source/WTF")
 AP
     ( cd "$B" && env PKG_CONFIG_LIBDIR="$FL_PKGCFG" PKG_CONFIG_PATH= cmake -GNinja -DPORT=WPE -DCMAKE_BUILD_TYPE=MinSizeRel \
         -DCMAKE_TOOLCHAIN_FILE="$B/toolchain.cmake" -DCMAKE_OSX_SYSROOT="$SDK" -DCMAKE_PROJECT_INCLUDE="$B/after_project.cmake" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \

@@ -127,19 +127,41 @@ is ours). That is how the libepoxy abort was located (stack: `NonCompositedFrame
 ## Branch `claude/webkit-2.54-pi` (2026-10-04): the Pi, WPE 2.54.0, CPU rendering, no GL
 
 Forked from 8fac3c1, before the Safari-610 detour (kept on `claude/intelligent-einstein-pdi60i`: WebKit
-`Safari-610.4.3.1.7` pinned, glib 2.66 / harfbuzz / sqlite / epoxy / xkbcommon / psl built for the Pi; abandoned
-because that WebKit's WPE port cannot render without EGL + GLES, which the Pi lacks). 2.54 has the Skia CPU path
-(`docs/webkit-port.md`), so no GL. The 610-era sources and staged tree were moved aside
+`Safari-610.4.3.1.7` pinned; abandoned because that WebKit's WPE port cannot render without EGL + GLES, which the Pi
+lacks). 2.54 has the Skia CPU path, so no GL. The 610-era sources and staged tree were moved aside
 (`third_party/_610`, `build/root-610`, both gitignored).
 
-Carried over from the other branch (version independent): `tools/meson_cross.sh` (Meson cross file, pkg-config
-staging, install-name fixing), `compat/` + `scripts/build_compat.sh` (`libflocompat.dylib`: libSystem exports the iokit
-port lacks; each has an urgent bug in the DarwinOS Plane project), `scripts/stage_iokit_libs.sh`, `scripts/deps_fixes.sh`,
-`scripts/build_pi_test.sh` + `tests/pi/`. The `build_glib/harfbuzz/sqlite/meson_lib` scripts are written for the 610-era
-versions (glib 2.66, harfbuzz 2.7.2, libsoup 2): bump the pins for 2.54 (glib >= 2.70, libsoup 3 + nghttp2,
-harfbuzz >= 2.7.4, ICU >= 70.1, libxml2 >= 2.9.13, C++23 so libc++ >= 19; see `iokit/docs/webkit-browser-feasibility.md`
-section 2 for the matrix and the Darwin hazards). Pi: `ssh root@10.0.0.142`, deploy with `tools/deploy_to_pi.sh`.
+### Done, each built as dylibs into `build/root`, bind-audited, and (where marked) run on the Pi
 
-Order: (1) libc++ >= 19 (side by side first, under its own install name, then system-wide after the audits; it is on
-the boot path), (2) ICU >= 70 and libxml2, (3) glib, libsoup 3, TLS, the leaf libraries, (4) WPE 2.54 compile with
-the Darwin compatibility header, (5) the existing glue and UI on the Pi.
+| What | Script | On the Pi |
+|---|---|---|
+| libflocompat (libSystem/libm gaps: getfsstat, clock, aligned_alloc, wcstod, 128-bit division, ~45 libm functions, fenv, `$NOCANCEL`) | `scripts/build_compat.sh`, `compat/` | via the tests below |
+| LLVM 20.1.8 libc++ + libc++abi, side by side (`/usr/local/lib/libc++.1.dylib`) | `scripts/build_libcxx.sh` | `tests/pi/cxx_smoke.cpp` 15/15 (C++23, exceptions, threads, thread_local dtors) |
+| ICU 74.2 (system ICU 66 untouched, versioned symbols) | `scripts/build_icu.sh` | `tests/pi/icu_smoke.cpp` 8/8 |
+| PCRE2 10.42, GLib 2.78.6 | `build_pcre2.sh`, `build_glib.sh` | `tests/pi/glib_smoke.c` 13/13 |
+| libxml2 2.9.14, nghttp2, libwebp 1.3.2 | `build_cmake_lib.sh` | not run |
+| brotli 1.1.0, woff2 1.0.2 (decoder), sqlite 3.44, libjpeg 9f | `build_brotli.sh`, `build_woff2.sh`, `build_sqlite.sh`, `build_jpeg.sh` | not run |
+| harfbuzz 8.3, libpsl 0.21.5, libepoxy 1.5.4, libxkbcommon 1.6, libsoup 3.4.4 | `build_harfbuzz.sh`, `build_meson_lib.sh` | not run |
+| libgpg-error 1.47, libgcrypt 1.10.3, libtasn1 4.19 | `build_autotools_lib.sh` | not run |
+
+Helpers: `tools/meson_cross.sh`, `tools/cmake_cross.sh`, `tools/cc_link_wrapper.sh` (autotools: libtool drops -nostdlib and dylib paths),
+`scripts/stage_iokit_libs.sh` (pkg-config + symlinks for what the iokit port ships: freetype, fontconfig, cairo, png, zlib ...).
+Pi: `ssh root@10.0.0.142`; `tools/deploy_to_pi.sh <subpaths>` then run over ssh (875 MB free on `/`).
+
+Recipe lessons (each cost time): ld64 resolves a symbol to the SDK's libSystem stub unless every dylib is listed explicitly,
+owners first and libSystem.B last (bind audit fails otherwise); libtool and CMake drop such flags, hence the wrappers; CMake's
+`BUILD_SHARED_LIBS` is ignored by brotli here (hand loop instead); ICU needs its host tools built first and a DATASUBDIR edit.
+
+### WebKit 2.54 (the engine) -- in progress
+
+`scripts/build_webkit.sh cross` **configures** (103 options; USE_WOFF2 on; no TLS yet). Tricks it needs, all in that script:
+`CMAKE_OSX_SYSROOT` on the command line (WebKitXcodeSDK.cmake), `CMAKE_PROJECT_INCLUDE` clearing `APPLE` after project() (the
+Cocoa ports read APPLE as "WebKitLegacy, Xcode tools, Mach-O file lists"; this port wants its Linux branches while compiling for
+Darwin), compiler wrappers dropping `-fdebug-types-section`. First compile: see the end of this section for results. MacPorts' patch
+set for WebKitGTK on Darwin (`third_party/macports-webkit`, from macports-ports www/webkit2-gtk) is the reference for what the
+Darwin side of the source needs (IPC sockets: AF_UNIX DGRAM buffers 256 KB and no SOCK_SEQPACKET, bmalloc, case-insensitive FS
+collisions `ArgumentCodersGlib.h`/`GLib.h` and `jsc/JSC`, OS(DARWIN) Mach exception pieces for Darwin 20).
+Open: TLS (glib-networking + OpenSSL), xkeyboard-config data, the glue and UI on the Pi, LLInt instead of CLoop
+(`ENABLE_JIT=OFF` + `ENABLE_C_LOOP=OFF` gives the asm interpreter on arm64, much faster than CLoop; options file says CLoop).
+libSystem bugs filed in the DarwinOS Plane project (all urgent): getfsstat, creat, gethostname, fsync, futimes/fsctl,
+compiler-rt, aligned_alloc/wcstod, filesystem syscalls, libm.

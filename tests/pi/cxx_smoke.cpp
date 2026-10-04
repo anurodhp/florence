@@ -7,6 +7,8 @@
 #include <cstdio>
 #include <exception>
 #include <expected>
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <future>
 #include <map>
@@ -42,5 +44,17 @@ int main() {
     { std::thread w([] { (void)&tls_obj; }); w.join(); } CHECK(dtor_runs == 1);
     std::shared_ptr<int> up = std::make_shared<int>(5); std::function<int()> fn = [p = up] { return *p; }; CHECK(fn() == 5);
     CHECK(std::chrono::steady_clock::now().time_since_epoch().count() > 0);
+    namespace fs = std::filesystem;
+    fs::path dir = fs::temp_directory_path() / "flo_fs_smoke"; std::error_code ec; fs::remove_all(dir, ec);
+    CHECK(fs::create_directories(dir / "a" / "b"));
+    { std::ofstream(dir / "a" / "f.txt") << "hello"; }
+    CHECK(fs::file_size(dir / "a" / "f.txt") == 5);
+    fs::create_symlink("f.txt", dir / "a" / "link"); CHECK(fs::is_symlink(dir / "a" / "link") && fs::read_symlink(dir / "a" / "link") == "f.txt");
+    CHECK(fs::canonical(dir / "a" / "b" / ".." / "link") == fs::canonical(dir / "a" / "f.txt"));
+    fs::resize_file(dir / "a" / "f.txt", 2); CHECK(fs::file_size(dir / "a" / "f.txt") == 2);
+    fs::permissions(dir / "a" / "f.txt", fs::perms::owner_read | fs::perms::owner_write); CHECK((fs::status(dir / "a" / "f.txt").permissions() & fs::perms::owner_read) != fs::perms::none);
+    fs::last_write_time(dir / "a" / "f.txt", fs::file_time_type::clock::now() - std::chrono::hours(1)); CHECK(true);
+    int n2 = 0; for (auto &e : fs::recursive_directory_iterator(dir)) { (void)e; n2++; } CHECK(n2 == 4);
+    CHECK(fs::remove_all(dir) == 5);
     std::printf(fails ? "RESULT FAIL %d\n" : "RESULT OK\n", fails); return fails != 0;
 }
