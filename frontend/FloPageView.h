@@ -13,6 +13,7 @@ struct flo_page;
 	size_t rgbCap;
 	NSSize sentSize;                /* the size the engine was last told */
 	int clipTries;
+	int frameW, frameH;             /* the size of the last frame drawn from */
 	id owner;                       /* the FloTab; not retained. Answers hoverLink, openHoverLinkInBackground, contextMenu */
 }
 - (void)setPage:(struct flo_page *)p;

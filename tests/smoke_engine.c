@@ -161,6 +161,18 @@ int main(int argc, char **argv)
 		CHECK(before == 0xff0000 && after != 0xff0000, "wheel scrolled the tall page: top-left %06x -> %06x", before, after);
 	}
 
+	/* resize: the frame follows the viewport, in both directions */
+	{
+		int sizes[][2] = { { 1000, 700 }, { 640, 400 } }, k;
+		double end;
+		for (k = 0; k < 2; k++) {
+			unsigned v;
+			flo_page_resize(page, sizes[k][0], sizes[k][1]);
+			end = now() + 8 * scale;
+			while (now() < end) { pump(50); px(0, 0, &v); if (last_w == sizes[k][0] && last_h == sizes[k][1]) break; }
+			CHECK(last_w == sizes[k][0] && last_h == sizes[k][1], "resize to %dx%d: frame is %dx%d", sizes[k][0], sizes[k][1], last_w, last_h);
+		}
+	}
 	/* copy: select everything on the page and see the clipboard change */
 	{
 		int64_t c0 = flo_clipboard_count();

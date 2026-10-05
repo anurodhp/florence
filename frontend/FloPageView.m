@@ -65,6 +65,16 @@
 
 - (void)frameChangedX:(int)x y:(int)y w:(int)w h:(int)h
 {
+	int fw = 0, fh = 0, stride = 0;
+
+	/* After a resize the engine's damage can be smaller than the new frame, while the view still shows white where the
+	 * frame used to end (a gap right and below, and scroll bars that are not at the window's edge): repaint it all once. */
+	if (page != NULL && flo_page_pixels(page, &fw, &fh, &stride) != NULL && (fw != frameW || fh != frameH)) {
+		frameW = fw;
+		frameH = fh;
+		[self setNeedsDisplay:YES];
+		return;
+	}
 	[self setNeedsDisplayInRect:NSMakeRect(x, y, w, h)];
 }
 
