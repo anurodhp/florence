@@ -327,6 +327,18 @@ int main(int argc, char **argv)
 	FloApp *app;
 	int i;
 
+	/* There is no terminal to read when Florence is started from the file manager or openapp, and the reports below (and NSLog)
+	 * go to stderr: keep them in ~/.florence/florence.log, the last run's only. FLORENCE_STDERR=1 leaves stderr alone. */
+	if (getenv("FLORENCE_STDERR") == NULL) {
+		char dir[1024], log[1100];
+
+		snprintf(dir, sizeof dir, "%s/.florence", home != NULL ? home : "/tmp");
+		make_dirs(dir);
+		snprintf(log, sizeof log, "%s/florence.log", dir);
+		freopen(log, "w", stderr);
+		setvbuf(stderr, NULL, _IOLBF, 0);
+	}
+	flo_install_crash_report();
 	for (i = 1; i < argc; i++) {
 		if (argv[i][0] != '-') {
 			startURL = [FloURLFromInput([NSString stringWithUTF8String:argv[i]]) retain];
@@ -339,6 +351,7 @@ int main(int argc, char **argv)
 	{ extern char **environ; GSInitializeProcess(argc, argv, environ); }
 #endif
 	[NSApplication sharedApplication];
+	flo_install_xio_handler();
 	loadIcon();
 	snprintf(data, sizeof data, "%s/.florence/data", home != NULL ? home : "/tmp");
 	snprintf(cache, sizeof cache, "%s/.florence/cache", home != NULL ? home : "/tmp");

@@ -35,6 +35,10 @@ void flo_glib_dispatch(void);                     /* a descriptor or the timeout
 /* Other threads wake the context with g_main_context_wakeup(), which is a descriptor in the list
  * above: no separate waker is needed. Call prepare, wait, dispatch, prepare... never two prepares. */
 
+/* Diagnostics (flo_diag.c): report who was running when the X connection failed, then exit */
+void flo_install_xio_handler(void);
+void flo_install_crash_report(void);          /* a fatal signal prints where it happened, then dies as usual */
+
 /* ---- engine ----------------------------------------------------------------------------------- */
 int  flo_engine_init(const char *data_dir, const char *cache_dir);   /* 0 ok; sets the low-power environment first */
 void flo_engine_fini(void);
