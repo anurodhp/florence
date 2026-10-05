@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 
 static int frames, title_seen_clicked, uri_events;
 static char last_title[256], last_uri[512];
@@ -139,6 +140,7 @@ int main(int argc, char **argv)
 		printf("      frames in 3 s of idle: %d\n", frames - f0);
 		f0 = frames;
 		flo_page_pointer_move(page, 0, 400, 300);
+		{ struct timeval tv; gettimeofday(&tv, NULL); fprintf(stderr, "%ld.%03d ### wheel sent\n", (long)(tv.tv_sec % 1000), (int)(tv.tv_usec / 1000)); }
 		flo_page_scroll(page, 0, 0, 5, 400, 300);
 		{ double end = now() + 3; while (now() < end) pump(50); }
 		px(20, 20, &after);
