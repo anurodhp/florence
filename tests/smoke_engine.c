@@ -23,7 +23,9 @@ static char last_title[256], last_uri[512];
 static int last_w, last_h;
 
 static int trace_frames;
-static void changed(void *ui, int x, int y, int w, int h) { (void)ui; frames++; if (trace_frames && frames % 20 == 0) printf("      frame %d: damage %dx%d at %d,%d\n", frames, w, h, x, y); }
+static double last_frame_at;
+static double now(void);
+static void changed(void *ui, int x, int y, int w, int h) { (void)ui; frames++; last_frame_at = now(); if (trace_frames && frames % 20 == 0) printf("      frame %d: damage %dx%d at %d,%d\n", frames, w, h, x, y); }
 static void title(void *ui, const char *t) { (void)ui; snprintf(last_title, sizeof last_title, "%s", t != NULL ? t : ""); if (strcmp(last_title, "Clicked") == 0) title_seen_clicked = 1; }
 static void uri(void *ui, const char *u) { (void)ui; uri_events++; snprintf(last_uri, sizeof last_uri, "%s", u != NULL ? u : ""); }
 static void progress(void *ui, double p) { (void)ui; (void)p; }
@@ -157,8 +159,10 @@ int main(int argc, char **argv)
 		f0 = frames;
 		flo_page_pointer_move(page, 0, 400, 300);
 		{ struct timeval tv; gettimeofday(&tv, NULL); fprintf(stderr, "%ld.%03d ### wheel sent\n", (long)(tv.tv_sec % 1000), (int)(tv.tv_usec / 1000)); }
+		{ double t_wheel = now();
 		flo_page_scroll(page, 0, 0, -5, 400, 300);   /* WPE/WebCore: negative is "down" */
 		{ double end = now() + 3; while (now() < end) pump(50); }
+		printf("      scroll settled %.0f ms after the wheel (%d frames)\n", (last_frame_at - t_wheel) * 1000, frames - f0); }
 		px(20, 20, &after);
 		printf("      frames during the scroll: %d\n", frames - f0);
 		if (getenv("TRY_KEYS")) {
