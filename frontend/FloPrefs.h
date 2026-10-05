@@ -1,4 +1,4 @@
-/* Florence: the Preferences window. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only */
+/* Florence: the Preferences window. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import <AppKit/AppKit.h>
 
 /* search engines: the address bar searches with the chosen one (preference "search") */
@@ -7,9 +7,9 @@ NSString *FloSearchURLPrefix(void);             /* the chosen engine's URL up to
 
 @interface FloPrefs : NSObject <NSWindowDelegate, NSTextFieldDelegate> {
 	NSWindow *win;
-	NSButton *dntBox, *refBox, *adsBox, *updBox, *jsBox, *animBox;
-	NSPopUpButton *newWinPop, *enginePop, *fontPop, *cachePop;
-	NSTextField *homeField, *dlField, *blockInfo, *privacyNote;
+	NSButton *adsBox, *jsBox;
+	NSPopUpButton *enginePop, *fontPop;
+	NSTextField *homeField, *dlField, *privacyNote;
 }
 + (FloPrefs *)shared;
 - (void)show;

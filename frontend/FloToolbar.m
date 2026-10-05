@@ -1,4 +1,4 @@
-/* Florence: Safari-like toolbar parts. See FloToolbar.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only */
+/* Florence: Safari-like toolbar parts. See FloToolbar.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloToolbar.h"
 #import "FloBrowser.h"
 #include <math.h>
@@ -414,8 +414,7 @@ static NSString *fitted(NSString *s, NSDictionary *attrs, CGFloat width)
 		return;
 	FloTab *t = [browser->tabs objectAtIndex:i];
 	if (p.x - i * tw < 26) {        /* the close mark */
-		if (t->gw != NULL)
-			flo_win_close(t->gw);
+		[browser removeTab:t];
 	} else {
 		[browser selectTab:t];
 	}

@@ -1,15 +1,16 @@
 /*
  * Florence: a browser window: toolbar, tab strip (shown only with two or more tabs),
- * the current tab's page and a status line. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+ * the current tab's page and a status line. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #import <AppKit/AppKit.h>
 #import "FloTab.h"
 #import "FloToolbar.h"
 
 NSString *FloURLFromInput(NSString *input);     /* address, or a search for anything else */
-NSImage *FloAppIcon(void);                      /* defined by FloUI.m */
+NSImage *FloAppIcon(void);                      /* defined by FloMain.m */
 
 extern NSString *const FloBookmarksChanged;      /* posted when the bookmark list changes */
+extern NSString *const FloHistoryChanged;        /* and when a page is added to the history */
 
 @interface FloBrowser : NSObject <NSWindowDelegate> {
 @public
@@ -31,6 +32,8 @@ extern NSString *const FloBookmarksChanged;      /* posted when the bookmark lis
 }
 + (NSMutableArray *)all;                /* every live browser window */
 + (FloBrowser *)key;                    /* the key window's browser, if any */
++ (FloBrowser *)openWindowWithAddress:(NSString *)address;   /* nil: the homepage, else the start page */
+- (FloTab *)openTabWithAddress:(NSString *)address select:(BOOL)select;
 - (void)relayout;
 - (void)layoutStrip;
 - (void)rebuildStrip;

@@ -1,10 +1,12 @@
-/* Florence: a browser window with tabs. See FloBrowser.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only */
+/* Florence: a browser window with tabs. See FloBrowser.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloBrowser.h"
 #include <math.h>
 #import "FloStore.h"
 #import "FloPrefs.h"
+#import "FloStartPage.h"
 
 NSString *const FloBookmarksChanged = @"FloBookmarksChanged";
+NSString *const FloHistoryChanged = @"FloHistoryChanged";
 
 #define BAR_H 38.0
 #define BTN_W 28.0
@@ -24,7 +26,7 @@ NSString *FloURLFromInput(NSString *in)
 		return s;
 	if ([s rangeOfString:@" "].location == NSNotFound &&
 	    ([s rangeOfString:@"."].location != NSNotFound || [s hasPrefix:@"localhost"]))
-		return [@"http://" stringByAppendingString:s];
+		return [@"https://" stringByAppendingString:s];       /* https first, as a modern browser does */
 	/* not an address: search with the engine chosen in Preferences */
 	NSMutableCharacterSet *ok = [[[NSCharacterSet alphanumericCharacterSet] mutableCopy] autorelease];
 	[ok addCharactersInString:@"-._~"];
@@ -156,7 +158,6 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 
 - (void)showWindow
 {
-	flo_trace("ui: show window");
 	[win makeKeyAndOrderFront:nil];
 	if (current != nil)
 		[win makeFirstResponder:current->page];
@@ -200,7 +201,7 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 		}
 	}
 	if (current != nil)
-		[current->scroll setFrame:[container bounds]];
+		[current->page setFrame:[container bounds]];
 	[strip setNeedsDisplay:YES];
 }
 
@@ -216,9 +217,9 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 {
 	t->browser = self;
 	[tabs addObject:t];
-	[container addSubview:t->scroll];
-	[t->scroll setFrame:[container bounds]];       /* a valid size before the core first asks for it */
-	[t->scroll setHidden:YES];
+	[container addSubview:t->page];
+	[t->page setFrame:[container bounds]];
+	[t->page setHidden:YES];
 	[container addSubview:status positioned:NSWindowAbove relativeTo:nil];   /* the hover label stays on top */
 	if (current == nil || select)
 		[self selectTab:t];
@@ -233,12 +234,11 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 	if (t == nil || ![tabs containsObject:t])
 		return;
 	if (current != nil && current != t)
-		[current->scroll setHidden:YES];
+		[current->page setHidden:YES];
 	current = t;
 	[status setText:nil];
-	[t->scroll setFrame:[container bounds]];
-	[t->scroll setHidden:NO];
-	[t applyResize];
+	[t->page setFrame:[container bounds]];
+	[t->page setHidden:NO];
 	[win makeFirstResponder:t->page];
 	[self relayout];
 	[self rebuildStrip];
@@ -252,7 +252,7 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 		return;
 	[t retain];
 	[tabs removeObjectAtIndex:i];
-	[t->scroll removeFromSuperview];
+	[t teardown];
 	t->browser = nil;
 	if (current == t) {
 		current = nil;
@@ -279,8 +279,32 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 
 - (void)closeCurrentTab
 {
-	if (current != nil && current->gw != NULL)
-		flo_win_close(current->gw);
+	if (current != nil)
+		[self removeTab:current];
+}
+
+/* a tab for `address` (nil: a blank page) */
+- (FloTab *)openTabWithAddress:(NSString *)address select:(BOOL)select
+{
+	FloTab *t = [[[FloTab alloc] initWithAddress:address] autorelease];
+	[self addTab:t select:select || current == nil];
+	if (FloIsStartPageURL(address) && (select || current == t))     /* a new page: ready to type an address */
+		[self performSelector:@selector(focusLocation) withObject:nil afterDelay:0.05];
+	return t;
+}
+
+/* what a new tab or window opens: the homepage if the user set one, else the start page */
+static NSString *newPageAddress(void)
+{
+	const char *h = flo_opt_homepage();
+	return h[0] != '\0' ? [NSString stringWithUTF8String:h] : FloStartPageURL();
+}
+
++ (FloBrowser *)openWindowWithAddress:(NSString *)address
+{
+	FloBrowser *b = [[[FloBrowser alloc] init] autorelease];     /* the browsers list keeps it */
+	[b openTabWithAddress:address != nil ? address : newPageAddress() select:YES];
+	return b;
 }
 
 - (void)nextTab:(int)delta
@@ -292,11 +316,7 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 	[self selectTab:[tabs objectAtIndex:(i + n + delta) % n]];
 }
 
-- (void)newTab
-{
-	if (current != nil && current->gw != NULL)
-		flo_win_new_tab(current->gw, NULL);
-}
+- (void)newTab { [self openTabWithAddress:newPageAddress() select:YES]; }
 
 - (void)newTabAction:(id)s { [self newTab]; }
 
@@ -310,11 +330,8 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 	closing = YES;
 	[[self retain] autorelease];
 	all = [[tabs copy] autorelease];
-	for (i = 0; i < [all count]; i++) {
-		FloTab *t = [all objectAtIndex:i];
-		if (t->gw != NULL)
-			flo_win_close(t->gw);   /* the core calls back flo_ui_window_free -> removeTab */
-	}
+	for (i = 0; i < [all count]; i++)
+		[self removeTab:[all objectAtIndex:i]];
 	[[FloBrowser all] removeObject:self];
 	if ([[FloBrowser all] count] == 0)
 		[NSApp terminate:nil];
@@ -335,21 +352,21 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 - (void)refreshChrome
 {
 	chromePending = NO;
-	if (current == nil || current->gw == NULL || closing)
+	if (current == nil || current->fp == NULL || closing)
 		return;
 	[win setTitle:[current displayTitle]];
 	if ([urlField currentEditor] == nil)            /* not while the user is typing */
 		[urlField setStringValue:current->url];
-	[addr setSecurity:current->loading ? FloSecurityNone : flo_win_security(current->gw)];   /* from the connection, not the address */
-	[backBtn setEnabled:flo_win_can_back(current->gw)];
-	[fwdBtn setEnabled:flo_win_can_forward(current->gw)];
+	[addr setSecurity:current->loading ? FloSecurityNone : flo_page_security(current->fp)];   /* from the connection, not the address */
+	[backBtn setEnabled:current->canBack];
+	[fwdBtn setEnabled:current->canForward];
 	[[addr reloadButton] setIcon:current->loading ? FloIconStop : FloIconReload];
 	[starBtn setIcon:[[FloStore bookmarks] contains:current->url] ? FloIconStarFilled : FloIconStar];
 	[starBtn setEnabled:[current->url length] > 0];
 	[strip setNeedsDisplay:YES];
 }
 
-/* the hover label: shows what the core reports, then fades after a few seconds */
+/* the hover label: shows the link under the pointer, then fades after a few seconds */
 - (void)setStatusText:(NSString *)s
 {
 	[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(hideStatus) object:nil];
@@ -392,8 +409,8 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 	if (!findVisible)
 		return;
 	findVisible = NO;
-	if (current != nil && current->gw != NULL)
-		flo_win_find_clear(current->gw);
+	if (current != nil && current->fp != NULL)
+		flo_page_find_clear(current->fp);
 	[findStatus setStringValue:@""];
 	[self relayout];
 	if (current != nil)
@@ -403,11 +420,11 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 - (void)runFind:(BOOL)forwards
 {
 	NSString *t = [findField stringValue];
-	if (current == nil || current->gw == NULL)
+	if (current == nil || current->fp == NULL)
 		return;
 	if ([t length] == 0)
 		[findStatus setStringValue:@""];
-	flo_win_find(current->gw, [t UTF8String], forwards, NO);
+	flo_page_find(current->fp, [t UTF8String], forwards, false);
 }
 
 - (void)findNextAction:(id)s { [self runFind:YES]; }
@@ -431,8 +448,8 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 
 - (void)zoom:(int)step
 {
-	if (current != nil && current->gw != NULL)
-		flo_win_zoom(current->gw, step);
+	if (current != nil && current->fp != NULL)
+		flo_page_zoom(current->fp, step);
 }
 
 - (void)focusLocation
@@ -444,21 +461,21 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 - (void)go:(id)sender
 {
 	NSString *u = FloURLFromInput([urlField stringValue]);
-	if (u != nil && current != nil && current->gw != NULL) {
-		flo_win_navigate(current->gw, [u UTF8String]);
+	if (u != nil && current != nil && current->fp != NULL) {
+		flo_page_load(current->fp, [u UTF8String]);
 		[win makeFirstResponder:current->page];
 	}
 }
-- (void)goBack:(id)s { if (current && current->gw) flo_win_back(current->gw); }
-- (void)goForward:(id)s { if (current && current->gw) flo_win_forward(current->gw); }
+- (void)goBack:(id)s { if (current && current->fp) flo_page_back(current->fp); }
+- (void)goForward:(id)s { if (current && current->fp) flo_page_forward(current->fp); }
 - (void)reloadOrStop:(id)s
 {
-	if (current == nil || current->gw == NULL)
+	if (current == nil || current->fp == NULL)
 		return;
 	if (current->loading)
-		flo_win_stop(current->gw);
+		flo_page_stop(current->fp);
 	else
-		flo_win_reload(current->gw);
+		flo_page_reload(current->fp);
 }
 
 @end

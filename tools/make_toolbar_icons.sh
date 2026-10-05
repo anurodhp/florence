@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Renders the Lucide SVGs in frontend/assets/icons/src into the TIFFs the toolbar draws, one per colour
 # state (normal / disabled / pressed) and, for the star, the filled bookmarked look. TIFF because every
 # GNUstep reads it. Needs rsvg-convert (librsvg) and ImageMagick's convert; the outputs are committed,

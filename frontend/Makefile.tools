@@ -1,3 +1,0 @@
-# SPDX-License-Identifier: GPL-2.0-only (derived from NetSurf's monkey frontend Makefiles)
-# -*- mode: makefile-gmake -*-
-PKG_CONFIG := pkg-config

@@ -1,7 +1,7 @@
 /*
  * Florence: Safari-like toolbar parts: flat icon
  * buttons (Lucide glyphs from the bundle's Resources, vector fallback), the rounded address field, the toolbar band, the tab strip and the hover-status
- * label. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+ * label. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  */
 #import <AppKit/AppKit.h>
 
@@ -21,7 +21,7 @@ typedef enum { FloIconBack, FloIconForward, FloIconReload, FloIconStop, FloIconP
 @end
 
 /* the rounded address field with a lock for https and a reload/stop button inside it */
-enum { FloSecurityNone = 0, FloSecurityVerified = 1, FloSecurityOverridden = 2 };   /* matches flo_win_security() */
+enum { FloSecurityNone = 0, FloSecurityVerified = 1, FloSecurityOverridden = 2 };   /* matches flo_page_security() (which never says 2) */
 
 @interface FloAddressBar : NSView {
 	NSTextField *field;

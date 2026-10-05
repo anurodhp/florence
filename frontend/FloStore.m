@@ -1,4 +1,4 @@
-/* Florence: bookmark and history lists. See FloStore.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only */
+/* Florence: bookmark and history lists. See FloStore.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloStore.h"
 #include <stdlib.h>
 
@@ -24,10 +24,10 @@
 {
 	if ((self = [super init]) == nil)
 		return nil;
-	/* $HOME, as the C core uses for ~/.netsurf (NSHomeDirectory can differ from it) */
+	/* $HOME, as the engine glue uses for ~/.florence (NSHomeDirectory can differ from it) */
 	const char *h = getenv("HOME");
 	NSString *home = h != NULL ? [NSString stringWithUTF8String:h] : NSHomeDirectory();
-	NSString *dir = [home stringByAppendingPathComponent:@".netsurf"];
+	NSString *dir = [home stringByAppendingPathComponent:@".florence"];
 	[[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES
 		attributes:nil error:NULL];
 	path = [[dir stringByAppendingPathComponent:name] retain];

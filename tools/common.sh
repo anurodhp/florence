@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
 # Shared toolchain and helpers for Florence's build scripts. SOURCED, never run.
 #
 # Same recipe as the iokit repo's tools/userland_staging/x11_common.sh (read its
@@ -31,7 +31,7 @@ SDK="$XCODE12/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
 NEWLD_BINDIR="$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/bin"
 [ -x "$NEWLD_BINDIR/ld" ] || { echo "error: no usable ld under $(xcode-select -p)" >&2; exit 1; }
 
-# The one optimisation level for everything built here (libraries, NetSurf, the glue, the UI):
+# The one optimisation level for everything built here (libraries, the glue, the UI):
 # override with FL_OPT=-O3 (or -Os) in the environment; the default is -O2.
 FL_OPT="${FL_OPT:--O2}"
 export FL_OPT

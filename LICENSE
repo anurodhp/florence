@@ -1,19 +1,48 @@
-Florence is licensed under the GNU General Public License, version 2 only (GPL-2.0-only).
-The full text is in LICENSES/GPL-2.0-only.txt. There is no "or any later version" clause.
+MIT License
 
-Why version 2 only: Florence is a frontend for NetSurf, whose core is GPL-2.0-only, and the browser
-is a single executable that links it; several files here are also derived from NetSurf's own
-frontends (frontend/gs_schedule.*, gs_filetype.*, gs_fetch.*, gs_core.c, gs_plot.c, Makefile*), whose
-copyright holders are NetSurf's contributors.
+Copyright (c) 2026 Anurodh Pokharel
 
-Copyright (c) 2026 Anurodh Pokharel for the files that carry no other copyright notice.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+----------------------------------------------------------------------------------------------------
+
+This file applies to the original code in this repository: the sources, scripts, tests and documents
+that carry "SPDX-License-Identifier: MIT". Copyright (c) 2026 Anurodh Pokharel. Each file's SPDX line
+is authoritative for that file. The full text is also in LICENSES/MIT.txt.
+
+History: the code was GPL-2.0-only while the browser linked the earlier engine (GPL-2.0-only) and had files
+derived from its frontends. None of that is on this branch (the earlier UI lives on `master` and keeps its GPL
+terms there), so the original code here is relicensed by its copyright holder.
 
 Exceptions, which keep their own terms:
   frontend/assets/icons/        the Lucide icons (ISC; chevrons, x, plus and lock also MIT via Feather):
                                 see frontend/assets/icons/LICENSE-lucide.txt, which must travel with them
-  configs/curl/curl_config.h   curl's licence (it is curl's configuration header)
-  tools/bind_audit.sh          vendored from the xnu-iokit-pi3 port; its licence is that repo's
+  compat/include/epoxy/egl.h    a stub header taken from the MacPorts webkit2-gtk port (macports-ports,
+                                BSD-licensed); see the note at the top of the file
+  compat/include/libproc.h,     small interface declarations (struct layouts, constants, prototypes) modelled on
+  compat/include/sys/           Apple's XNU / macOS headers: APSL-2.0 (LICENSES/APSL-2.0.txt), as their SPDX lines say
+    proc_info.h, random.h
+  tools/bind_audit.sh           vendored from the xnu-iokit-pi3 port; its licence is that repo's
+  scripts/webkit_fixes.sh       the file is MIT, but the edits it applies to the WebKit tree (and the one
+                                small source file it writes into it) become part of WebKit and are under
+                                WebKit's licences (LGPL-2 and BSD-2-Clause)
 
-Third-party sources that setup_third_party.sh fetches (NetSurf and its libraries, mbedTLS, curl,
-libjpeg, nsgenbind, the CA bundle) keep their own licences. Each source file carries an
-SPDX-License-Identifier line that is authoritative for that file.
+Third-party sources that setup_third_party.sh fetches (WebKit, GLib, ICU, LLVM's libc++, libsoup, OpenSSL,
+libjpeg-turbo, the CA bundle and the other libraries) keep their own licences; Florence links the
+LGPL ones as shared libraries and does not copy them into this repository.

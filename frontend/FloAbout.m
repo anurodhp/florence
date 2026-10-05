@@ -1,8 +1,8 @@
 /* Florence: the About window, laid out like a Mac app's: icon, name, version, credits, copyright.
- * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only */
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloAbout.h"
 #import "FloBrowser.h"
-#include "gnustep/gs.h"
+#include "flo.h"
 
 #define ABOUT_W 320.0
 #define ABOUT_H 330.0
@@ -72,14 +72,15 @@ static NSString *version(void)
 	y -= 20;
 	line(v, [NSString stringWithFormat:@"Version %@", version()], y, 16, [NSFont systemFontOfSize:12], grey);
 	y -= 28;
-	line(v, flo_js_available() ? @"Web engine: NetSurf 3.11, JavaScript available" : @"Web engine: NetSurf 3.11",
-		y, 16, small, grey);
+	line(v, @"Web engine: WPE WebKit 2.54", y, 16, small, grey);
 	y -= 30;
 	line(v, @"Copyright © 2026 Anurodh Pokharel", y, 16, small, [NSColor blackColor]);
 	y -= 17;
-	line(v, @"Licensed under the GNU GPL, version 2 only.", y, 16, small, grey);
+	line(v, @"Released under the MIT licence.", y, 16, small, grey);
 	y -= 17;
-	line(v, @"Includes NetSurf, © the NetSurf developers.", y, 16, small, grey);
+	line(v, @"Includes WebKit, © Apple Inc. and others", y, 16, small, grey);
+	y -= 17;
+	line(v, @"(LGPL and BSD licences).", y, 16, small, grey);
 }
 
 - (void)show

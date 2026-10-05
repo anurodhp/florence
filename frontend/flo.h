@@ -1,0 +1,132 @@
+/*
+ * Florence: the line between the GNUstep user interface (Objective-C, Flo*.m) and the engine
+ * (plain C, flo_*.c, which alone includes WebKit and GLib headers). Nothing else crosses it.
+ *
+ * The engine renders on the CPU into shared-memory buffers (WPE WebKit, Skia raster); the UI
+ * asks for the pixels of a rectangle and draws them. There is no GPU path and no toolkit in
+ * the engine: input comes in as plain numbers, pixels go out as BGRA.
+ * Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
+ */
+#ifndef FLORENCE_FLO_H
+#define FLORENCE_FLO_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ---- the GLib main loop, driven by the UI's run loop -------------------------------------------
+ * WebKit's UI-process half lives on GLib's default main context. The UI does not poll it: it asks
+ * what to wait for (file descriptors and a timeout), sleeps in its own run loop, and calls
+ * flo_glib_dispatch() when one of them fires. See FloGLib.m. */
+#define FLO_GLIB_MAX_FDS 64
+struct flo_glib_wait {
+	int  n;                         /* descriptors to watch */
+	int  fd[FLO_GLIB_MAX_FDS];
+	bool read[FLO_GLIB_MAX_FDS];    /* watch for readable */
+	bool write[FLO_GLIB_MAX_FDS];   /* watch for writable */
+	int  timeout_ms;                /* -1 none, 0 something is ready now */
+};
+bool flo_glib_prepare(struct flo_glib_wait *w);   /* what to wait for; false: nothing can ever wake us */
+void flo_glib_dispatch(void);                     /* a descriptor or the timeout fired: run what is ready */
+/* Other threads wake the context with g_main_context_wakeup(), which is a descriptor in the list
+ * above: no separate waker is needed. Call prepare, wait, dispatch, prepare... never two prepares. */
+
+/* Diagnostics (flo_diag.c): report who was running when the X connection failed, then exit */
+void flo_install_xio_handler(void);
+void flo_install_crash_report(void);          /* a fatal signal prints where it happened, then dies as usual */
+
+/* ---- engine ----------------------------------------------------------------------------------- */
+int  flo_engine_init(const char *data_dir, const char *cache_dir);   /* 0 ok; sets the low-power environment first */
+void flo_engine_fini(void);
+bool flo_engine_javascript(void);               /* off until the user opts in */
+void flo_engine_set_javascript(bool on);        /* every page, now and later; remembered (flo_prefs) */
+
+/* Settings, remembered in one small key=value file (flo_prefs.c). Without flo_prefs_init() they live in memory only. */
+void flo_prefs_init(const char *path);
+const char *flo_pref_get(const char *key, const char *def);    /* valid until the next flo_pref_set of that key */
+void flo_pref_set(const char *key, const char *val);
+bool flo_opt_hide_ads(void);                    /* the content blocker: on by default */
+void flo_opt_set_hide_ads(bool on);             /* takes effect on the next load of a page */
+int  flo_opt_font_min(void);                    /* tenths of a point: 85 = WebKit's default, no minimum */
+void flo_opt_set_font_min(int tenths);
+const char *flo_opt_homepage(void);             /* "" when none */
+void flo_opt_set_homepage(const char *url);
+void flo_clear_cookies(void);                   /* cookies and other site data, now */
+/* The content blocker's rules: a Safari content-blocker JSON file, compiled once by WebKit and cached under the data directory. */
+void flo_engine_set_blocklist(const char *json_path);
+
+/* Downloads: a response WebKit cannot show, or one the server marks as an attachment, is saved to the "downloads" setting
+ * (default ~/Downloads) under its suggested name, never overwriting. Not tied to a page: one handler for all. */
+enum { FLO_DOWNLOAD_STARTED = 0, FLO_DOWNLOAD_PROGRESS, FLO_DOWNLOAD_FINISHED, FLO_DOWNLOAD_FAILED };
+typedef void (*flo_download_func)(void *ctx, int state, const char *name, double fraction);
+void flo_engine_set_download_handler(flo_download_func func, void *ctx);
+
+/* The clipboard WebKit's pages copy to and paste from; the UI mirrors it to the system's. A copy reaches it a moment after
+ * flo_page_edit(): the web process writes it through IPC, so watch flo_clipboard_count() rise (a few one-shot checks, no polling). */
+int64_t flo_clipboard_count(void);
+char *flo_clipboard_text(void);                 /* malloc'd UTF-8, or NULL */
+void flo_clipboard_set_text(const char *text);
+
+/* ---- one page (a web view) ---------------------------------------------------------------------- */
+struct flo_page;
+
+struct flo_page_events {
+	void (*changed)(void *ui, int x, int y, int w, int h);   /* pixels changed (page coordinates) */
+	void (*title)(void *ui, const char *title);
+	void (*uri)(void *ui, const char *uri);
+	void (*progress)(void *ui, double fraction);             /* 0..1; 1 when done */
+	void (*nav_state)(void *ui, bool can_back, bool can_forward);
+	void (*hover)(void *ui, const char *link);               /* link under the pointer, or NULL */
+	void (*loading)(void *ui, bool loading);                 /* a load started / ended (finished, failed or stopped) */
+	void (*found)(void *ui, bool found);                     /* the last find matched / did not */
+	void (*open_tab)(void *ui, const char *uri);             /* the page asked for a new window (target=_blank): not opened by the engine */
+};
+
+/* What is under the pointer, as of the last mouse move (WebKit's own context menu is not implemented for WPE: the UI builds one).
+ * The strings are valid until the next pointer move into the page. */
+struct flo_hit { const char *link, *image; bool editable, selection; };
+enum flo_edit { FLO_EDIT_CUT = 1, FLO_EDIT_COPY, FLO_EDIT_PASTE, FLO_EDIT_SELECT_ALL };
+
+struct flo_page *flo_page_new(const struct flo_page_events *ev, void *ui, int w, int h);
+void flo_page_free(struct flo_page *p);
+void flo_page_load(struct flo_page *p, const char *uri);
+void flo_page_reload(struct flo_page *p);
+void flo_page_stop(struct flo_page *p);
+void flo_page_back(struct flo_page *p);
+void flo_page_forward(struct flo_page *p);
+void flo_page_resize(struct flo_page *p, int w, int h);  /* the viewport, in pixels */
+bool flo_page_loading(struct flo_page *p);
+/* what the address bar's padlock may claim: 0 nothing (not https), 1 https and the certificate verified */
+int  flo_page_security(struct flo_page *p);
+void flo_page_find(struct flo_page *p, const char *text, bool forwards, bool case_sensitive);
+void flo_page_find_clear(struct flo_page *p);
+void flo_page_hit(struct flo_page *p, struct flo_hit *h);
+void flo_page_edit(struct flo_page *p, int edit);       /* enum flo_edit, on the focused element */
+int  flo_page_zoom(struct flo_page *p, int step);        /* step +1/-1 (10 %), 0 resets to 100 %; returns the new percentage */
+
+/* The newest finished frame: BGRA, premultiplied, rows top-down. Valid until the next call into
+ * the engine; NULL before the first frame. */
+const uint8_t *flo_page_pixels(struct flo_page *p, int *w, int *h, int *stride);
+
+/* ---- input (coordinates in page pixels, origin top left) -------------------------------------- */
+enum { FLO_MOD_SHIFT = 1, FLO_MOD_CTRL = 2, FLO_MOD_ALT = 4, FLO_MOD_META = 8 };
+void flo_page_pointer_move(struct flo_page *p, int mods, double x, double y);
+void flo_page_pointer_button(struct flo_page *p, int mods, int button, bool down, int clicks, double x, double y);
+void flo_page_scroll(struct flo_page *p, int mods, double dx, double dy, double x, double y);   /* wheel notches, WebCore's convention: + is up/left, - is down/right */
+void flo_page_key(struct flo_page *p, int mods, uint32_t codepoint, bool down);   /* printable key */
+enum flo_special_key {
+	FLO_KEY_ENTER = 1, FLO_KEY_TAB, FLO_KEY_BACKSPACE, FLO_KEY_DELETE, FLO_KEY_ESCAPE,
+	FLO_KEY_LEFT, FLO_KEY_RIGHT, FLO_KEY_UP, FLO_KEY_DOWN,
+	FLO_KEY_HOME, FLO_KEY_END, FLO_KEY_PAGE_UP, FLO_KEY_PAGE_DOWN
+};
+void flo_page_special_key(struct flo_page *p, int mods, int key, bool down);
+void flo_page_focus(struct flo_page *p, bool focused);
+
+#ifdef __cplusplus
+}
+#endif
+#endif

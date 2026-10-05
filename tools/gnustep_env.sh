@@ -1,7 +1,7 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-2.0-only (Copyright (c) 2026 Anurodh Pokharel)
-# GNUstep side of the cross build. SOURCED by scripts/build_netsurf.sh gnustep
-# after tools/common.sh -- never run.
+# SPDX-License-Identifier: MIT (Copyright (c) 2026 Anurodh Pokharel)
+# GNUstep side of the cross build. SOURCED by scripts/build_florence.sh pi
+# after tools/common.sh, with FL_GS_OWNERS already set -- never run.
 #
 # The iokit port (xnu-iokit-pi3) already knows how to compile and link against its
 # GNUstep: tools/userland_staging/gnustep_common.sh (gs_setup_link, GS_BASE_SYSLIBS).
@@ -19,11 +19,10 @@ fl_require "$FL_GS_TOOLS/bind_target_audit.sh"
 GSL="$IOKIT_LIBC/gnustep/root/usr/GNUstep/System/Library"
 fl_require "$GSL/Libraries/libgnustep-gui.dylib" "run the iokit repo's build_gnustep_{host_tools,base,gui,back}.sh"
 fl_require "$GSL/Libraries/libgnustep-base.dylib" "run the iokit repo's build_gnustep_base.sh"
-fl_require "$SYS/libcairo.dylib" "run the iokit repo's build_cairo.sh"
 
-# direct dependencies of the executable besides the libSystem tier, owners first
-FL_GS_OWNERS=("$LIB/libcurl.dylib" "$LIB/libjpeg.dylib" "$SYS/libcairo.dylib" "$SYS/libpixman-1.dylib"
-              "$SYS/libpng16.dylib" "$SYS/libexpat.dylib" "$SYS/libcopyfile.dylib" "$SYS/libremovefile.dylib")
+# direct dependencies of the executable besides the libSystem tier, owners first: the caller lists them
+# (the WebKit and GLib dylibs the glue calls), because which ones there are depends on the engine.
+[ "${#FL_GS_OWNERS[@]}" -gt 0 ] || { echo "error: FL_GS_OWNERS (the engine's dylibs) must be set before sourcing tools/gnustep_env.sh" >&2; exit 1; }
 eval "$(cd "$FL_GS_TOOLS" && bash -c '
     . ./gnustep_common.sh
     gs_setup_link "$@" "${GS_BASE_SYSLIBS[@]}"
@@ -34,14 +33,12 @@ eval "$(cd "$FL_GS_TOOLS" && bash -c '
 # Compiler flags. The Objective-C flags are asked of the port's own installed gnustep-config,
 # exactly as build_foundation_smoketest.sh does (runtime defines, -fconstant-string-class=
 # NSConstantString so @"..." is an NSConstantString, exceptions, blocks); never hand-written.
-# FL_GS_CFLAGS is what the plain C glue needs (cairo headers) and is safe on C files.
 GSDIR="$IOKIT_LIBC/gnustep"
 fl_require "$GSDIR/GNUstep-build.conf" "run the iokit repo's build_gnustep_*.sh (an app build writes it)"
 FL_GS_OBJCFLAGS="$(GNUSTEP_CONFIG_FILE="$GSDIR/GNUstep-build.conf" GNUSTEP_MAKEFILES="$GSDIR/root/usr/GNUstep/System/Library/Makefiles" \
     "$GSDIR/root/usr/GNUstep/System/Tools/gnustep-config" --objc-flags | sed 's/-MMD -MP //')"
 [ -n "$FL_GS_OBJCFLAGS" ] || { echo "error: gnustep-config --objc-flags returned nothing" >&2; exit 1; }
-FL_GS_OBJCFLAGS="$FL_GS_OBJCFLAGS -D_FORTIFY_SOURCE=0 -I$FL_GS_HEADERS -I$FL_GS_OBJC4 -I$X11INC/cairo -I$X11INC -I$X11INC/freetype2"
-FL_GS_CFLAGS="-I$X11INC/cairo -I$X11INC -I$X11INC/freetype2"
+FL_GS_OBJCFLAGS="$FL_GS_OBJCFLAGS -D_FORTIFY_SOURCE=0 -I$FL_GS_HEADERS -I$FL_GS_OBJC4"
 
 # fl_link_gs_exe <out> <objdir> [libs...]: the recipe the port uses for its GNUstep apps
 # (gs_build_app): -nostdlib against owner dylibs, no Csu start files (ld gives LC_MAIN),

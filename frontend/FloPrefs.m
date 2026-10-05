@@ -1,10 +1,10 @@
-/* Florence: the Preferences window. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: GPL-2.0-only
+/* Florence: the Preferences window. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  *
  * Plain AppKit controls laid out by hand: four tabs in one small window, nothing running while it is
  * closed. Settings take effect as they are changed; the few that need a restart say so. */
 #import "FloPrefs.h"
 #import "FloStore.h"
-#include "gnustep/gs.h"
+#include "flo.h"
 
 static const struct { const char *name, *prefix; } engines[] = {
 	{ "DuckDuckGo", "https://html.duckduckgo.com/html/?q=" },       /* the light page */
@@ -125,11 +125,8 @@ static NSString *pref(const char *key, const char *def)
 	/* General */
 	v = [self pane];
 	y = h - 30;
-	label(v, @"New windows open with:", NSMakeRect(0, y, LABEL_W, 18), NSRightTextAlignment);
-	newWinPop = popup(v, [NSArray arrayWithObjects:@"Start Page", @"Homepage", nil], NSMakeRect(FIELD_X, y - 3, 160, 24), self, @selector(changed:));
-	y -= 36;
-	label(v, @"Homepage:", NSMakeRect(0, y, LABEL_W, 18), NSRightTextAlignment);
-	homeField = field(v, NSMakeRect(FIELD_X, y - 2, 270, 22), self);
+	label(v, @"Homepage (blank: the start page):", NSMakeRect(0, y, LABEL_W + 60, 18), NSRightTextAlignment);
+	homeField = field(v, NSMakeRect(FIELD_X + 70, y - 2, 200, 22), self);
 	y -= 36;
 	label(v, @"Search engine:", NSMakeRect(0, y, LABEL_W, 18), NSRightTextAlignment);
 	enginePop = popup(v, FloSearchEngineNames(), NSMakeRect(FIELD_X, y - 3, 160, 24), self, @selector(changed:));
@@ -149,10 +146,6 @@ static NSString *pref(const char *key, const char *def)
 	/* Privacy */
 	v = [self pane];
 	y = h - 30;
-	dntBox = button(v, @"Ask sites not to track me (Do Not Track)", NSSwitchButton, NSMakeRect(20, y, 400, 20), self, @selector(changed:));
-	y -= 28;
-	refBox = button(v, @"Tell sites which page I came from (Referer)", NSSwitchButton, NSMakeRect(20, y, 400, 20), self, @selector(changed:));
-	y -= 50;
 	button(v, @"Clear History...", NSMomentaryPushInButton, NSMakeRect(20, y, 130, 26), self, @selector(clearHistory:));
 	button(v, @"Clear Cookies...", NSMomentaryPushInButton, NSMakeRect(160, y, 130, 26), self, @selector(clearCookies:));
 	y -= 34;
@@ -168,16 +161,9 @@ static NSString *pref(const char *key, const char *def)
 	y = h - 30;
 	adsBox = button(v, @"Block ads and trackers", NSSwitchButton, NSMakeRect(20, y, 400, 20), self, @selector(changed:));
 	y -= 40;
-	blockInfo = label(v, @"", NSMakeRect(20, y - 20, 400, 56), NSLeftTextAlignment);
-	y -= 56;
-	updBox = button(v, @"Update EasyList weekly (downloads from easylist.to)", NSSwitchButton, NSMakeRect(20, y + 4, 400, 20), self, @selector(changed:));
-	y -= 32;
-	button(v, @"Update Now", NSMomentaryPushInButton, NSMakeRect(20, y, 110, 26), self, @selector(updateNow:));
-	button(v, @"Reload Lists", NSMomentaryPushInButton, NSMakeRect(140, y, 110, 26), self, @selector(reloadLists:));
-	y -= 10;
 	{
-		NSTextField *t = label(v, @"Put Safari content-blocker lists (.json) in ~/.netsurf/blocklists/ and press Reload Lists. "
-			@"Element hiding from a list applies after a restart.", NSMakeRect(20, y - 70, 400, 74), NSLeftTextAlignment);
+		NSTextField *t = label(v, @"The rules are Safari content-blocker lists, compiled by WebKit. Turning this on or off applies to pages "
+			@"as they load.", NSMakeRect(20, y - 40, 400, 54), NSLeftTextAlignment);
 		[t setTextColor:[NSColor darkGrayColor]];
 	}
 	ti = [[[NSTabViewItem alloc] initWithIdentifier:@"blocking"] autorelease];
@@ -190,26 +176,15 @@ static NSString *pref(const char *key, const char *def)
 	y = h - 30;
 	jsBox = button(v, @"Enable JavaScript", NSSwitchButton, NSMakeRect(20, y, 400, 20), self, @selector(changed:));
 	y -= 40;
-	label(v, @"Page cache:", NSMakeRect(0, y, LABEL_W, 18), NSRightTextAlignment);
-	cachePop = popup(v, [NSArray arrayWithObjects:@"4 MB", @"8 MB", @"16 MB", @"32 MB", nil], NSMakeRect(FIELD_X, y - 3, 100, 24), self, @selector(changed:));
-	y -= 32;
-	animBox = button(v, @"Play animated images", NSSwitchButton, NSMakeRect(20, y, 400, 20), self, @selector(changed:));
-	y -= 36;
 	{
-		NSTextField *t = label(v, @"The cache size and animation use memory and CPU; they apply the next time Florence starts. "
-			@"JavaScript applies to pages as they load.", NSMakeRect(20, y - 60, 400, 74), NSLeftTextAlignment);
+		NSTextField *t = label(v, @"JavaScript applies to pages as they load. It costs memory and CPU on a small machine, so it is off until you turn it on.",
+			NSMakeRect(20, y - 30, 400, 54), NSLeftTextAlignment);
 		[t setTextColor:[NSColor darkGrayColor]];
 	}
 	ti = [[[NSTabViewItem alloc] initWithIdentifier:@"advanced"] autorelease];
 	[ti setLabel:@"Advanced"];
 	[ti setView:v];
 	[tabs addTabViewItem:ti];
-}
-
-static int cacheIndex(void)
-{
-	int mb = atoi(flo_pref_get("cache_mb", "8"));
-	return mb <= 4 ? 0 : mb <= 8 ? 1 : mb <= 16 ? 2 : 3;
 }
 
 static int fontIndex(void)
@@ -224,35 +199,15 @@ static int fontIndex(void)
 
 - (void)refresh
 {
-	[newWinPop selectItemAtIndex:strcmp(flo_pref_get("newwin", "start"), "home") == 0 ? 1 : 0];
 	[homeField setStringValue:[NSString stringWithUTF8String:flo_opt_homepage()]];
-	[homeField setEnabled:[newWinPop indexOfSelectedItem] == 1];
 	[enginePop selectItemWithTitle:pref("search", "DuckDuckGo")];
 	if ([enginePop indexOfSelectedItem] < 0)
 		[enginePop selectItemAtIndex:0];
 	[dlField setStringValue:pref("downloads", "")];
 	[[dlField cell] setPlaceholderString:@"~/Downloads"];
 	[fontPop selectItemAtIndex:fontIndex()];
-	[dntBox setState:flo_opt_dnt() ? NSOnState : NSOffState];
-	[refBox setState:flo_opt_referer() ? NSOnState : NSOffState];
 	[adsBox setState:flo_opt_hide_ads() ? NSOnState : NSOffState];
-	[jsBox setState:flo_js_enabled() ? NSOnState : NSOffState];
-	[jsBox setEnabled:flo_js_available()];
-	if (!flo_js_available())
-		[jsBox setTitle:@"Enable JavaScript (not in this build)"];
-	[cachePop selectItemAtIndex:cacheIndex()];
-	[animBox setState:strcmp(flo_pref_get("animate", "0"), "1") == 0 ? NSOnState : NSOffState];
-	[updBox setState:strcmp(flo_pref_get("autoupdate", "1"), "1") == 0 ? NSOnState : NSOffState];
-	{
-		time_t when = flo_lists_updated();
-		NSString *st = flo_lists_busy() ? @"updating now..." :
-			when == 0 ? (flo_lists_last_result() < 0 ? @"last download failed" : @"EasyList not downloaded yet") :
-			[NSString stringWithFormat:@"EasyList updated %@",
-				[[NSDate dateWithTimeIntervalSince1970:(NSTimeInterval)when] descriptionWithCalendarFormat:@"%Y-%m-%d" timeZone:nil locale:nil]];
-		[blockInfo setStringValue:[NSString stringWithFormat:
-			@"%d rules from %d lists (built in plus downloaded and your own),\n%d element-hiding rules, %lu requests blocked this session.\n%@.",
-			flo_blocker_rule_count(), flo_blocker_file_count(), flo_blocker_css_count(), flo_blocker_blocked_count(), st]];
-	}
+	[jsBox setState:flo_engine_javascript() ? NSOnState : NSOffState];
 }
 
 - (void)show
@@ -270,21 +225,13 @@ static int fontIndex(void)
 - (void)changed:(id)sender
 {
 	static const int sizes[] = { 85, 100, 120, 140, 160 };
-	static const char *caches[] = { "4", "8", "16", "32" };
 
-	flo_pref_set("newwin", [newWinPop indexOfSelectedItem] == 1 ? "home" : "start");
-	[homeField setEnabled:[newWinPop indexOfSelectedItem] == 1];
 	flo_pref_set("search", [[enginePop titleOfSelectedItem] UTF8String]);
 	flo_opt_set_font_min(sizes[[fontPop indexOfSelectedItem]]);
-	flo_opt_set_dnt([dntBox state] == NSOnState);
-	flo_opt_set_referer([refBox state] == NSOnState);
 	if (([adsBox state] == NSOnState) != flo_opt_hide_ads())
 		flo_opt_set_hide_ads([adsBox state] == NSOnState);
-	if (flo_js_available() && ([jsBox state] == NSOnState) != flo_js_enabled())
-		flo_js_set([jsBox state] == NSOnState);
-	flo_pref_set("cache_mb", caches[[cachePop indexOfSelectedItem]]);
-	flo_pref_set("autoupdate", [updBox state] == NSOnState ? "1" : "0");
-	flo_pref_set("animate", [animBox state] == NSOnState ? "1" : "0");
+	if (([jsBox state] == NSOnState) != flo_engine_javascript())
+		flo_engine_set_javascript([jsBox state] == NSOnState);
 	[self refresh];
 }
 
@@ -325,7 +272,6 @@ static int fontIndex(void)
 	if (![self confirm:@"Clear browsing history?"])
 		return;
 	[[FloStore history] clear];
-	flo_clear_history();
 	[privacyNote setStringValue:@"History cleared."];
 }
 
@@ -334,19 +280,7 @@ static int fontIndex(void)
 	if (![self confirm:@"Clear cookies?"])
 		return;
 	flo_clear_cookies();
-	[privacyNote setStringValue:@"Saved cookies deleted. Cookies of this session are discarded when Florence quits."];
-}
-
-- (void)updateNow:(id)sender
-{
-	flo_lists_update(true);
-	[self refresh];
-}
-
-- (void)reloadLists:(id)sender
-{
-	flo_blocker_reload();
-	[self refresh];
+	[privacyNote setStringValue:@"Cookies and other site data deleted."];
 }
 
 @end
