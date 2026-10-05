@@ -1,5 +1,6 @@
 /* Florence: the page view. See FloPageView.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloPageView.h"
+#import "FloCairo.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -112,6 +113,10 @@
 		NSRectFill(dirty);
 	x0 = (int)floor(NSMinX(r)); y0 = (int)floor(NSMinY(r));
 	w = (int)ceil(NSMaxX(r)) - x0; h = (int)ceil(NSMaxY(r)) - y0;
+	/* The engine's buffer is what cairo wants: blit the exposed rectangle straight from it (FloCairo.h). The conversion path below
+	 * stays as the fallback for a gnustep-back that does not look as expected. */
+	if (FloCairoDraw(px, stride, fw, fh, NSMakeRect(x0, y0, w, h)))
+		return;
 	if ((size_t)w * h * 3 > rgbCap) {
 		unsigned char *n = realloc(rgb, (size_t)w * h * 3);
 		if (n == NULL)

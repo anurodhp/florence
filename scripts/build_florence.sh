@@ -15,7 +15,7 @@ FL_DIR="$PWD"
 MODE="${1:-host}"
 SRC="$FL_DIR/frontend"
 CFILES=(flo_engine.c flo_platform.c flo_prefs.c flo_diag.c)
-MFILES=(FloGLib.m FloPageView.m FloTab.m FloStore.m FloStartPage.m FloToolbar.m FloPrefs.m FloAbout.m FloBrowser.m FloMain.m)
+MFILES=(FloGLib.m FloPageView.m FloCairo.m FloTab.m FloStore.m FloStartPage.m FloToolbar.m FloPrefs.m FloAbout.m FloBrowser.m FloMain.m)
 
 case "$MODE" in
 host)
