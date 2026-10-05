@@ -18,4 +18,4 @@ for f in tests/smoke_engine.c frontend/flo_engine.c frontend/flo_platform.c fron
         '-D__API_AVAILABLE_PLATFORM_iosmac(x)=macCatalyst,introduced=x' '-D__API_DEPRECATED_PLATFORM_iosmac(x,y)=macCatalyst,introduced=x,deprecated=y'
 done
 fl_compile_report pi_smoke
-fl_link_exe "$ROOT$PREFIX/bin/smoke_engine" "$O" -L"$LIB" -lWPEWebKit-2.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0 -lintl -lflocompat "${FL_NET_DYLIBS[@]}"
+fl_link_exe "$ROOT$PREFIX/bin/smoke_engine" "$O" -L"$LIB" -lWPEWebKit-2.0 -lsoup-3.0 -lgio-2.0 -lgobject-2.0 -lglib-2.0 -lintl -lflocompat "${FL_NET_DYLIBS[@]}"

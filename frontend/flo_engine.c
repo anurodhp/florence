@@ -77,6 +77,8 @@ static char *data_path;
 
 static void setdefault(const char *name, const char *value) { setenv(name, value, 0); }
 
+static void on_download_started(WebKitNetworkSession *s, WebKitDownload *d, gpointer data);
+
 static void apply_font_min(void)
 {
 	int tenths = flo_opt_font_min();
@@ -109,6 +111,7 @@ int flo_engine_init(const char *data_dir, const char *cache_dir)
 	wpe_display_set_primary(display);
 
 	session = webkit_network_session_new(data_dir, cache_dir);
+	g_signal_connect(session, "download-started", G_CALLBACK(on_download_started), NULL);
 	context = webkit_web_context_new();
 	/* the smallest memory footprint WebKit has a name for: no page cache, minimal resource caches */
 	webkit_web_context_set_cache_model(context, WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER);
@@ -174,6 +177,116 @@ void flo_clear_cookies(void)
 	if (session != NULL)
 		webkit_website_data_manager_clear(webkit_network_session_get_website_data_manager(session),
 			WEBKIT_WEBSITE_DATA_COOKIES, 0, NULL, NULL, NULL);
+}
+
+/* ---- the clipboard ------------------------------------------------------------------------------- */
+
+int64_t flo_clipboard_count(void)
+{
+	WPEClipboard *c = display != NULL ? wpe_display_get_clipboard(display) : NULL;
+	return c != NULL ? wpe_clipboard_get_change_count(c) : 0;
+}
+
+char *flo_clipboard_text(void)
+{
+	WPEClipboard *c = display != NULL ? wpe_display_get_clipboard(display) : NULL;
+	gsize size = 0;
+	char *t = c != NULL ? wpe_clipboard_read_text(c, "text/plain;charset=utf-8", &size) : NULL;
+	char *out = t != NULL ? strdup(t) : NULL;
+
+	g_free(t);
+	return out;
+}
+
+void flo_clipboard_set_text(const char *text)
+{
+	WPEClipboard *c = display != NULL ? wpe_display_get_clipboard(display) : NULL;
+	WPEClipboardContent *content;
+
+	if (c == NULL || text == NULL)
+		return;
+	content = wpe_clipboard_content_new();
+	wpe_clipboard_content_set_text(content, text);
+	wpe_clipboard_set_content(c, content);
+	wpe_clipboard_content_unref(content);
+}
+
+/* ---- downloads ------------------------------------------------------------------------------------ */
+
+static flo_download_func download_func;
+static void *download_ctx;
+
+void flo_engine_set_download_handler(flo_download_func func, void *ctx)
+{
+	download_func = func;
+	download_ctx = ctx;
+}
+
+static const char *download_name(WebKitDownload *d)
+{
+	const char *dest = webkit_download_get_destination(d);
+	const char *slash = dest != NULL ? strrchr(dest, '/') : NULL;
+	return slash != NULL ? slash + 1 : (dest != NULL ? dest : "");
+}
+
+static gboolean on_decide_destination(WebKitDownload *d, const char *suggested, gpointer data)
+{
+	const char *pref = flo_pref_get("downloads", "");
+	char *dir = pref[0] != '\0' ? g_strdup(pref) : g_build_filename(g_get_home_dir(), "Downloads", NULL);
+	char *base = g_path_get_basename(suggested != NULL && suggested[0] != '\0' ? suggested : "download");
+	char *path;
+	int n = 0;
+	(void)data;
+
+	g_mkdir_with_parents(dir, 0755);
+	path = g_build_filename(dir, base, NULL);
+	while (g_file_test(path, G_FILE_TEST_EXISTS)) {          /* never overwrite: name (2).ext */
+		char *dot = strrchr(base, '.'), *name;
+		g_free(path);
+		name = dot != NULL && dot != base
+			? g_strdup_printf("%.*s (%d)%s", (int)(dot - base), base, ++n + 1, dot)
+			: g_strdup_printf("%s (%d)", base, ++n + 1);
+		path = g_build_filename(dir, name, NULL);
+		g_free(name);
+	}
+	webkit_download_set_destination(d, path);
+	g_free(path);
+	g_free(base);
+	g_free(dir);
+	return TRUE;
+}
+
+static void on_download_progress(GObject *o, GParamSpec *spec, gpointer data)
+{
+	WebKitDownload *d = WEBKIT_DOWNLOAD(o);
+	(void)spec; (void)data;
+	if (download_func != NULL)
+		download_func(download_ctx, FLO_DOWNLOAD_PROGRESS, download_name(d), webkit_download_get_estimated_progress(d));
+}
+
+static void on_download_finished(WebKitDownload *d, gpointer data)
+{
+	(void)data;
+	if (download_func != NULL)
+		download_func(download_ctx, FLO_DOWNLOAD_FINISHED, download_name(d), 1.0);
+}
+
+static void on_download_failed(WebKitDownload *d, GError *error, gpointer data)
+{
+	(void)error; (void)data;
+	if (download_func != NULL)
+		download_func(download_ctx, FLO_DOWNLOAD_FAILED, download_name(d), 0.0);
+}
+
+static void on_download_started(WebKitNetworkSession *s, WebKitDownload *d, gpointer data)
+{
+	(void)s; (void)data;
+	g_signal_connect(d, "decide-destination", G_CALLBACK(on_decide_destination), NULL);
+	g_signal_connect(d, "notify::estimated-progress", G_CALLBACK(on_download_progress), NULL);
+	g_signal_connect(d, "finished", G_CALLBACK(on_download_finished), NULL);
+	g_signal_connect(d, "failed", G_CALLBACK(on_download_failed), NULL);
+	if (download_func != NULL)
+		download_func(download_ctx, FLO_DOWNLOAD_STARTED, "", 0.0);
 }
 
 /* ---- the content blocker ------------------------------------------------------------------------- */
@@ -253,6 +366,8 @@ struct flo_page {
 	void *ui;
 	unsigned buttons;               /* pointer buttons held, as WPE modifier bits */
 	double zoom;
+	char *hit_link, *hit_image;     /* the last mouse-target-changed */
+	bool hit_editable, hit_selection;
 	char *find_text;                /* the text of the search in progress, to tell "next" from "a new search" */
 	bool find_cs;
 };
@@ -332,8 +447,14 @@ static void on_mouse_target(WebKitWebView *web, WebKitHitTestResult *hit, guint 
 {
 	struct flo_page *p = data;
 	(void)web; (void)modifiers;
+	g_free(p->hit_link);
+	g_free(p->hit_image);
+	p->hit_link = webkit_hit_test_result_context_is_link(hit) ? g_strdup(webkit_hit_test_result_get_link_uri(hit)) : NULL;
+	p->hit_image = webkit_hit_test_result_context_is_image(hit) ? g_strdup(webkit_hit_test_result_get_image_uri(hit)) : NULL;
+	p->hit_editable = webkit_hit_test_result_context_is_editable(hit);
+	p->hit_selection = webkit_hit_test_result_context_is_selection(hit);
 	if (p->ev.hover != NULL)
-		p->ev.hover(p->ui, webkit_hit_test_result_context_is_link(hit) ? webkit_hit_test_result_get_link_uri(hit) : NULL);
+		p->ev.hover(p->ui, p->hit_link);
 }
 
 /* A link that wants a new window (target=_blank, a middle click) is handed to the UI as a new tab. window.open() from a script
@@ -342,6 +463,18 @@ static gboolean on_decide_policy(WebKitWebView *web, WebKitPolicyDecision *decis
 {
 	struct flo_page *p = data;
 	(void)web;
+	if (type == WEBKIT_POLICY_DECISION_TYPE_RESPONSE) {
+		WebKitResponsePolicyDecision *rd = WEBKIT_RESPONSE_POLICY_DECISION(decision);
+		WebKitURIResponse *resp = webkit_response_policy_decision_get_response(rd);
+		SoupMessageHeaders *headers = webkit_uri_response_get_http_headers(resp);
+		const char *disp = headers != NULL ? soup_message_headers_get_one(headers, "Content-Disposition") : NULL;
+
+		if (!webkit_response_policy_decision_is_mime_type_supported(rd) || (disp != NULL && g_ascii_strncasecmp(disp, "attachment", 10) == 0)) {
+			webkit_policy_decision_download(decision);
+			return TRUE;
+		}
+		return FALSE;
+	}
 	if (type == WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION) {
 		WebKitNavigationAction *a = webkit_navigation_policy_decision_get_navigation_action(WEBKIT_NAVIGATION_POLICY_DECISION(decision));
 		WebKitURIRequest *r = webkit_navigation_action_get_request(a);
@@ -407,6 +540,8 @@ void flo_page_free(struct flo_page *p)
 	g_signal_handlers_disconnect_by_data(webkit_web_view_get_find_controller(p->web), p);
 	g_object_unref(p->web);
 	g_free(p->find_text);
+	g_free(p->hit_link);
+	g_free(p->hit_image);
 	g_free(p);
 }
 
@@ -464,6 +599,23 @@ int flo_page_zoom(struct flo_page *p, int step)
 	p->zoom = (int)(z * 10 + 0.5) / 10.0;
 	webkit_web_view_set_zoom_level(p->web, p->zoom);
 	return (int)(p->zoom * 100 + 0.5);
+}
+
+void flo_page_hit(struct flo_page *p, struct flo_hit *h)
+{
+	h->link = p->hit_link;
+	h->image = p->hit_image;
+	h->editable = p->hit_editable;
+	h->selection = p->hit_selection;
+}
+
+void flo_page_edit(struct flo_page *p, int edit)
+{
+	static const char *const command[] = { NULL, WEBKIT_EDITING_COMMAND_CUT, WEBKIT_EDITING_COMMAND_COPY,
+					       WEBKIT_EDITING_COMMAND_PASTE_AS_PLAIN_TEXT, WEBKIT_EDITING_COMMAND_SELECT_ALL };
+
+	if (edit > 0 && (size_t)edit < sizeof command / sizeof command[0])
+		webkit_web_view_execute_editing_command(p->web, command[edit]);
 }
 
 void flo_page_resize(struct flo_page *p, int w, int h) { flo_view_set_size(p->view, w, h); }

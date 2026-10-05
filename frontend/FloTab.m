@@ -92,6 +92,7 @@ static const struct flo_page_events events = { ev_changed, ev_title, ev_uri, ev_
 	[page setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
 	fp = flo_page_new(&events, self, 800, 560);     /* callbacks may arrive from here on */
 	[page setPage:fp];
+	[page setOwner:self];
 	if (address != nil)
 		flo_page_load(fp, [address UTF8String]);
 	return self;
@@ -111,6 +112,7 @@ static const struct flo_page_events events = { ev_changed, ev_title, ev_uri, ev_
 {
 	if (fp == NULL)
 		return;
+	[page setOwner:nil];
 	[page setPage:NULL];
 	flo_page_free(fp);
 	fp = NULL;
@@ -128,6 +130,88 @@ SETTER(setStatus, status)
 	if ([title length] > 0)
 		return title;
 	return [url length] > 0 ? url : @"New Tab";
+}
+
+- (NSString *)hoverLink { return [status length] > 0 ? status : nil; }
+
+- (void)openHoverLinkInBackground
+{
+	NSString *l = [self hoverLink];
+	if (l != nil)
+		[browser openTabWithAddress:l select:NO];
+}
+
+/* ---- the context menu ---------------------------------------------------------------------------- */
+
+- (void)openLink:(id)s { [browser openTabWithAddress:[s representedObject] select:NO]; }
+
+- (void)copyText:(id)s
+{
+	NSPasteboard *pb = [NSPasteboard generalPasteboard];
+	[pb declareTypes:[NSArray arrayWithObject:NSStringPboardType] owner:nil];
+	[pb setString:[s representedObject] forType:NSStringPboardType];
+}
+
+- (void)goBack:(id)s { if (fp != NULL) flo_page_back(fp); }
+- (void)goForward:(id)s { if (fp != NULL) flo_page_forward(fp); }
+- (void)reload:(id)s { if (fp != NULL) flo_page_reload(fp); }
+
+- (NSMenuItem *)item:(NSString *)title action:(SEL)a target:(id)t object:(id)o menu:(NSMenu *)m
+{
+	NSMenuItem *i = [m addItemWithTitle:title action:a keyEquivalent:@""];
+	[i setTarget:t];
+	[i setRepresentedObject:o];
+	return i;
+}
+
+- (NSMenu *)contextMenu
+{
+	struct flo_hit h;
+	NSMenu *m = [[[NSMenu alloc] initWithTitle:@""] autorelease];
+	NSString *link, *image;
+
+	if (fp == NULL)
+		return nil;
+	flo_page_hit(fp, &h);
+	link = h.link != NULL ? [NSString stringWithUTF8String:h.link] : nil;
+	image = h.image != NULL ? [NSString stringWithUTF8String:h.image] : nil;
+	if (link != nil) {
+		[self item:@"Open Link in New Tab" action:@selector(openLink:) target:self object:link menu:m];
+		[self item:@"Copy Link Address" action:@selector(copyText:) target:self object:link menu:m];
+	}
+	if (image != nil) {
+		if (link != nil)
+			[m addItem:[NSMenuItem separatorItem]];
+		[self item:@"Open Image in New Tab" action:@selector(openLink:) target:self object:image menu:m];
+		[self item:@"Copy Image Address" action:@selector(copyText:) target:self object:image menu:m];
+	}
+	if (h.editable) {
+		if ([m numberOfItems] > 0)
+			[m addItem:[NSMenuItem separatorItem]];
+		[self item:@"Cut" action:@selector(cut:) target:page object:nil menu:m];
+		[self item:@"Copy" action:@selector(copy:) target:page object:nil menu:m];
+		[self item:@"Paste" action:@selector(paste:) target:page object:nil menu:m];
+		[self item:@"Select All" action:@selector(selectAll:) target:page object:nil menu:m];
+	} else if (link == nil && image == nil) {
+		if (h.selection)
+			[self item:@"Copy" action:@selector(copy:) target:page object:nil menu:m];
+		[self item:@"Back" action:@selector(goBack:) target:self object:nil menu:m];
+		[self item:@"Forward" action:@selector(goForward:) target:self object:nil menu:m];
+		[self item:@"Reload" action:@selector(reload:) target:self object:nil menu:m];
+		[m addItem:[NSMenuItem separatorItem]];
+		[self item:@"Select All" action:@selector(selectAll:) target:page object:nil menu:m];
+	}
+	return m;
+}
+
+- (BOOL)validateMenuItem:(NSMenuItem *)i
+{
+	SEL a = [i action];
+	if (a == @selector(goBack:))
+		return canBack;
+	if (a == @selector(goForward:))
+		return canForward;
+	return YES;
 }
 
 @end

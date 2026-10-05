@@ -149,8 +149,11 @@ The UI is the earlier one (`FloBrowser`, `FloToolbar`, `FloStore`, `FloPrefs`, `
 model (`FloTab` owns a `flo_page`). In: tabs, bookmarks, history, find (`WebKitFindController`), zoom, preferences, the
 content blocker (`flo_engine_set_blocklist`: `WebKitUserContentFilterStore`, compiled once and cached under the data
 directory), links that open a new tab, the start page (`FloStartPage.m`: HTML and CSS tiles written from the bookmark and
-history files). Not in yet: downloads (`WebKitDownload`), the context menu (`WebKitContextMenu`), favicons
-(`WebKitFaviconDatabase`), scroll bars. WebKit has no switch for Do Not Track, Referer, a cache size or image animation, so
-the UI does not offer them, and the EasyList updater (a child process on `master`) is not ported. Keyboard events carry a keyval
+history files), downloads (`WebKitNetworkSession::download-started`, saved under the "downloads" setting, shown in the status
+label), a context menu and Cmd-click (WebKit's own context menu is not implemented for WPE, so the UI builds one from the last
+`mouse-target-changed`), and the clipboard (the page's copy and paste go through WPE's clipboard, mirrored to GNUstep's pasteboard
+by `FloPageView`). Scroll bars are WebCore's overlay ones, drawn into the frame after a scroll. Not in: favicons (the WPE API has
+no getter in this build), and WebKit has no switch for Do Not Track, Referer, a cache size or image animation, so the UI does not
+offer them; the EasyList updater (a child process on `master`) is not ported. Keyboard events carry a keyval
 but no hardware keycode, so `KeyboardEvent.code` is empty; popups are refused; the clipboard is WPE's
 in-process one.

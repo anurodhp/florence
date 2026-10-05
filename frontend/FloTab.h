@@ -20,4 +20,7 @@
 - (id)initWithAddress:(NSString *)address;      /* loads it when not nil */
 - (void)teardown;                       /* free the engine page; the tab is finished */
 - (NSString *)displayTitle;             /* title, else address, else "New Tab" */
+- (NSString *)hoverLink;                /* the link under the pointer, or nil */
+- (void)openHoverLinkInBackground;
+- (NSMenu *)contextMenu;                /* for what is under the pointer; nil if the tab is gone */
 @end

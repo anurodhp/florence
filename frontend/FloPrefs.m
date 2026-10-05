@@ -131,6 +131,10 @@ static NSString *pref(const char *key, const char *def)
 	label(v, @"Search engine:", NSMakeRect(0, y, LABEL_W, 18), NSRightTextAlignment);
 	enginePop = popup(v, FloSearchEngineNames(), NSMakeRect(FIELD_X, y - 3, 160, 24), self, @selector(changed:));
 	y -= 36;
+	label(v, @"Save downloads to:", NSMakeRect(0, y, LABEL_W, 18), NSRightTextAlignment);
+	dlField = field(v, NSMakeRect(FIELD_X, y - 2, 200, 22), self);
+	button(v, @"Choose...", NSMomentaryPushInButton, NSMakeRect(FIELD_X + 206, y - 4, 70, 26), self, @selector(chooseFolder:));
+	y -= 36;
 	label(v, @"Minimum font size:", NSMakeRect(0, y, LABEL_W, 18), NSRightTextAlignment);
 	fontPop = popup(v, [NSArray arrayWithObjects:@"Default (8.5 pt)", @"10 pt", @"12 pt", @"14 pt", @"16 pt", nil],
 		NSMakeRect(FIELD_X, y - 3, 160, 24), self, @selector(changed:));
@@ -199,6 +203,8 @@ static int fontIndex(void)
 	[enginePop selectItemWithTitle:pref("search", "DuckDuckGo")];
 	if ([enginePop indexOfSelectedItem] < 0)
 		[enginePop selectItemAtIndex:0];
+	[dlField setStringValue:pref("downloads", "")];
+	[[dlField cell] setPlaceholderString:@"~/Downloads"];
 	[fontPop selectItemAtIndex:fontIndex()];
 	[adsBox setState:flo_opt_hide_ads() ? NSOnState : NSOffState];
 	[jsBox setState:flo_engine_javascript() ? NSOnState : NSOffState];
@@ -239,6 +245,20 @@ static int fontIndex(void)
 			s = [@"http://" stringByAppendingString:s];
 		flo_opt_set_homepage([s UTF8String]);
 		[homeField setStringValue:s];
+	} else if (f == dlField) {
+		flo_pref_set("downloads", [[[dlField stringValue] stringByExpandingTildeInPath] UTF8String]);
+	}
+}
+
+- (void)chooseFolder:(id)sender
+{
+	NSOpenPanel *p = [NSOpenPanel openPanel];
+	[p setCanChooseFiles:NO];
+	[p setCanChooseDirectories:YES];
+	[p setCanCreateDirectories:YES];
+	if ([p runModal] == NSOKButton && [[p URLs] count] > 0) {
+		flo_pref_set("downloads", [[[[p URLs] objectAtIndex:0] path] UTF8String]);
+		[self refresh];
 	}
 }
 

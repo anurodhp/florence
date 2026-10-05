@@ -12,6 +12,7 @@
 
 #include <poll.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -67,6 +68,8 @@ static bool pump_until(bool (*done)(void), double seconds)
 }
 
 static struct flo_page *page;
+static int download_state = -1;
+static void download_event(void *ctx, int state, const char *name, double fraction) { (void)ctx; (void)name; (void)fraction; download_state = state; }
 
 static bool have_frame(void) { int w, h, s; return flo_page_pixels(page, &w, &h, &s) != NULL && frames > 0; }
 static bool got_clicked(void) { return title_seen_clicked != 0; }
@@ -125,6 +128,7 @@ int main(int argc, char **argv)
 
 	flo_page_pointer_move(page, 0, 350, 300);
 	{ double end = now() + 0.3 * scale; while (now() < end) pump(20); }
+	{ struct flo_hit hit; flo_page_hit(page, &hit); CHECK(hit.link != NULL && strstr(hit.link, "second.html") != NULL, "hit test under the pointer: link %s", hit.link ? hit.link : "(none)"); }
 	flo_page_pointer_button(page, 0, 1, true, 1, 350, 300);
 	flo_page_pointer_button(page, 0, 1, false, 1, 350, 300);
 	CHECK(pump_until(got_clicked, 30 * scale), "a click on the link loaded the second page (title now \"%s\")", last_title);
@@ -152,7 +156,44 @@ int main(int argc, char **argv)
 			printf("      after Page Down:\n");
 		}
 		{ int y, first = -1, last = -1; unsigned v; for (y = 0; y < 600; y++) if (px(20, y, &v) == 0 && v == 0xff0000) { if (first < 0) first = y; last = y; } printf("      red rows in column 20: %d..%d\n", first, last); }
+		{ int x, y, n = 0; unsigned v; for (x = last_w - 20; x < last_w; x++) for (y = 0; y < last_h; y++) if (px(x, y, &v) == 0 && v != 0xffffff) n++;
+		  printf("      non-white pixels in the right-most 20 columns (a scroll bar): %d\n", n); }
 		CHECK(before == 0xff0000 && after != 0xff0000, "wheel scrolled the tall page: top-left %06x -> %06x", before, after);
+	}
+
+	/* copy: select everything on the page and see the clipboard change */
+	{
+		int64_t c0 = flo_clipboard_count();
+		double end;
+		char *t;
+		flo_page_focus(page, true);
+		flo_page_edit(page, FLO_EDIT_SELECT_ALL);
+		{ end = now() + 1; while (now() < end) pump(50); }
+		flo_page_edit(page, FLO_EDIT_COPY);
+		end = now() + 3 * scale;
+		while (now() < end && flo_clipboard_count() == c0) pump(50);
+		t = flo_clipboard_text();
+		CHECK(flo_clipboard_count() > c0 && t != NULL && t[0] != '\0', "copy reached the clipboard: %.30s", t ? t : "(none)");
+		free(t);
+		flo_clipboard_set_text("pasted text");
+		t = flo_clipboard_text();
+		CHECK(t != NULL && strcmp(t, "pasted text") == 0, "clipboard set and read back: %s", t ? t : "(none)");
+		free(t);
+	}
+	/* download: a file WebKit cannot show is saved under the downloads setting */
+	{
+		char dir[1100], file[1200], blob[1100];
+		struct stat st;
+		double end;
+		snprintf(dir, sizeof dir, "%s/dl", argv[2]);
+		snprintf(file, sizeof file, "%s/blob.bin", dir);
+		snprintf(blob, sizeof blob, "file://%.*s/blob.bin", (int)(strrchr(argv[1], '/') - argv[1]), argv[1]);
+		flo_pref_set("downloads", dir);
+		flo_engine_set_download_handler(download_event, NULL);
+		flo_page_load(page, blob);
+		end = now() + 20 * scale;
+		while (now() < end && download_state != FLO_DOWNLOAD_FINISHED && download_state != FLO_DOWNLOAD_FAILED) pump(50);
+		CHECK(download_state == FLO_DOWNLOAD_FINISHED && stat(file, &st) == 0 && st.st_size > 0, "download saved %s (state %d)", file, download_state);
 	}
 
 	flo_page_free(page);

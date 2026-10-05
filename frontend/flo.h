@@ -55,6 +55,18 @@ void flo_clear_cookies(void);                   /* cookies and other site data, 
 /* The content blocker's rules: a Safari content-blocker JSON file, compiled once by WebKit and cached under the data directory. */
 void flo_engine_set_blocklist(const char *json_path);
 
+/* Downloads: a response WebKit cannot show, or one the server marks as an attachment, is saved to the "downloads" setting
+ * (default ~/Downloads) under its suggested name, never overwriting. Not tied to a page: one handler for all. */
+enum { FLO_DOWNLOAD_STARTED = 0, FLO_DOWNLOAD_PROGRESS, FLO_DOWNLOAD_FINISHED, FLO_DOWNLOAD_FAILED };
+typedef void (*flo_download_func)(void *ctx, int state, const char *name, double fraction);
+void flo_engine_set_download_handler(flo_download_func func, void *ctx);
+
+/* The clipboard WebKit's pages copy to and paste from; the UI mirrors it to the system's. A copy reaches it a moment after
+ * flo_page_edit(): the web process writes it through IPC, so watch flo_clipboard_count() rise (a few one-shot checks, no polling). */
+int64_t flo_clipboard_count(void);
+char *flo_clipboard_text(void);                 /* malloc'd UTF-8, or NULL */
+void flo_clipboard_set_text(const char *text);
+
 /* ---- one page (a web view) ---------------------------------------------------------------------- */
 struct flo_page;
 
@@ -70,6 +82,11 @@ struct flo_page_events {
 	void (*open_tab)(void *ui, const char *uri);             /* the page asked for a new window (target=_blank): not opened by the engine */
 };
 
+/* What is under the pointer, as of the last mouse move (WebKit's own context menu is not implemented for WPE: the UI builds one).
+ * The strings are valid until the next pointer move into the page. */
+struct flo_hit { const char *link, *image; bool editable, selection; };
+enum flo_edit { FLO_EDIT_CUT = 1, FLO_EDIT_COPY, FLO_EDIT_PASTE, FLO_EDIT_SELECT_ALL };
+
 struct flo_page *flo_page_new(const struct flo_page_events *ev, void *ui, int w, int h);
 void flo_page_free(struct flo_page *p);
 void flo_page_load(struct flo_page *p, const char *uri);
@@ -83,6 +100,8 @@ bool flo_page_loading(struct flo_page *p);
 int  flo_page_security(struct flo_page *p);
 void flo_page_find(struct flo_page *p, const char *text, bool forwards, bool case_sensitive);
 void flo_page_find_clear(struct flo_page *p);
+void flo_page_hit(struct flo_page *p, struct flo_hit *h);
+void flo_page_edit(struct flo_page *p, int edit);       /* enum flo_edit, on the focused element */
 int  flo_page_zoom(struct flo_page *p, int step);        /* step +1/-1 (10 %), 0 resets to 100 %; returns the new percentage */
 
 /* The newest finished frame: BGRA, premultiplied, rows top-down. Valid until the next call into

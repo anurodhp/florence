@@ -45,7 +45,7 @@ pi)
     fl_require "$LIB/libWPEWebKit-2.0.dylib" "run scripts/build_webkit.sh cross (and cmake --install into build/root)"
     # the engine's dylibs, owners first (the bind audit's rule): libflocompat first so its libSystem fill-ins win,
     # then what flo_*.c and the UI call directly
-    FL_GS_OWNERS=("$LIB/libflocompat.dylib" "$LIB/libWPEWebKit-2.0.dylib" "$LIB/libglib-2.0.dylib" "$LIB/libgobject-2.0.dylib" "$LIB/libgio-2.0.dylib" "$LIB/libintl.dylib")
+    FL_GS_OWNERS=("$LIB/libflocompat.dylib" "$LIB/libWPEWebKit-2.0.dylib" "$LIB/libsoup-3.0.dylib" "$LIB/libglib-2.0.dylib" "$LIB/libgobject-2.0.dylib" "$LIB/libgio-2.0.dylib" "$LIB/libintl.dylib")
     . tools/gnustep_env.sh
     sed -i '' "s#^prefix=$PREFIX\$#prefix=$ROOT$PREFIX#" "$FL_PKGCFG"/wpe-*.pc 2>/dev/null || true
     WKINC="$(env PKG_CONFIG_LIBDIR="$FL_PKGCFG" PKG_CONFIG_PATH= pkg-config --cflags wpe-webkit-2.0 wpe-platform-2.0 glib-2.0 gobject-2.0 gio-2.0)"

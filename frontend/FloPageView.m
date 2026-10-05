@@ -15,11 +15,13 @@
 
 - (void)dealloc
 {
+	[NSObject cancelPreviousPerformRequestsWithTarget:self];
 	free(rgb);
 	[super dealloc];
 }
 
 - (void)setPage:(struct flo_page *)p { page = p; }
+- (void)setOwner:(id)o { owner = o; }
 - (BOOL)isFlipped { return YES; }
 - (BOOL)isOpaque { return YES; }
 - (BOOL)acceptsFirstResponder { return YES; }
@@ -152,12 +154,87 @@ static int mods_of(NSEvent *e)
 		flo_page_pointer_button(page, mods_of(e), b, down, (int)[e clickCount], p.x, p.y);
 }
 
-- (void)mouseDown:(NSEvent *)e { [[self window] makeFirstResponder:self]; [self button:1 down:YES event:e]; }
-- (void)mouseUp:(NSEvent *)e { [self button:1 down:NO event:e]; }
+/* Cmd-click on a link opens it in a background tab; the page does not see the click */
+- (BOOL)isCmdClick:(NSEvent *)e { return ([e modifierFlags] & NSCommandKeyMask) != 0 && [owner hoverLink] != nil; }
+
+- (void)mouseDown:(NSEvent *)e
+{
+	[[self window] makeFirstResponder:self];
+	if ([self isCmdClick:e])
+		return;
+	[self button:1 down:YES event:e];
+}
+
+- (void)mouseUp:(NSEvent *)e
+{
+	if ([self isCmdClick:e]) {
+		[owner openHoverLinkInBackground];
+		return;
+	}
+	[self button:1 down:NO event:e];
+}
 - (void)otherMouseDown:(NSEvent *)e { [self button:2 down:YES event:e]; }
 - (void)otherMouseUp:(NSEvent *)e { [self button:2 down:NO event:e]; }
-- (void)rightMouseDown:(NSEvent *)e { [self button:3 down:YES event:e]; }
+/* WebKit's own context menu is not implemented for WPE: the owner builds one from what is under the pointer */
+- (void)rightMouseDown:(NSEvent *)e
+{
+	NSMenu *m = [owner contextMenu];
+
+	[[self window] makeFirstResponder:self];
+	[self button:3 down:YES event:e];
+	if (m != nil)
+		[NSMenu popUpContextMenu:m withEvent:e forView:self];
+}
+
 - (void)rightMouseUp:(NSEvent *)e { [self button:3 down:NO event:e]; }
+
+/* ---- the edit commands, and the clipboard mirrored to the system's -------------------------------- */
+
+- (void)selectAll:(id)s { if (page != NULL) flo_page_edit(page, FLO_EDIT_SELECT_ALL); }
+
+- (void)paste:(id)s
+{
+	NSString *t = [[NSPasteboard generalPasteboard] stringForType:NSStringPboardType];
+
+	if (page == NULL || t == nil)
+		return;
+	flo_clipboard_set_text([t UTF8String]);
+	flo_page_edit(page, FLO_EDIT_PASTE);
+}
+
+/* The page's copy reaches WebKit's clipboard through IPC a moment later: look a few times, one-shot, until it changed */
+- (void)clipCheck:(NSNumber *)before
+{
+	int64_t was = (int64_t)[before longLongValue];
+
+	if (flo_clipboard_count() > was) {
+		char *t = flo_clipboard_text();
+		if (t != NULL) {
+			NSPasteboard *pb = [NSPasteboard generalPasteboard];
+			[pb declareTypes:[NSArray arrayWithObject:NSStringPboardType] owner:nil];
+			[pb setString:[NSString stringWithUTF8String:t] forType:NSStringPboardType];
+			free(t);
+		}
+		return;
+	}
+	if (++clipTries < 8)
+		[self performSelector:@selector(clipCheck:) withObject:before afterDelay:0.06];
+}
+
+- (void)copyOrCut:(int)cmd
+{
+	NSNumber *before = [NSNumber numberWithLongLong:(long long)flo_clipboard_count()];
+
+	if (page == NULL)
+		return;
+	flo_page_edit(page, cmd);
+	clipTries = 0;
+	[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(clipCheck:) object:nil];
+	[self performSelector:@selector(clipCheck:) withObject:before afterDelay:0.06];
+}
+
+- (void)copy:(id)s { [self copyOrCut:FLO_EDIT_COPY]; }
+- (void)cut:(id)s { [self copyOrCut:FLO_EDIT_CUT]; }
 
 - (void)scrollWheel:(NSEvent *)e
 {

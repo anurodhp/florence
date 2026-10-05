@@ -17,6 +17,29 @@
 #include "flo.h"
 
 static NSString *startURL;
+
+/* downloads (the engine saves them; this only says so, in the status label of the window that has the keyboard) */
+static void download_event(void *ctx, int state, const char *name, double fraction)
+{
+	static int last = -1;
+	FloBrowser *b = [FloBrowser key];
+	NSString *n = [NSString stringWithUTF8String:name != NULL ? name : ""];
+	NSString *msg = nil;
+
+	(void)ctx;
+	switch (state) {
+	case FLO_DOWNLOAD_STARTED: last = -1; msg = @"Downloading..."; break;
+	case FLO_DOWNLOAD_PROGRESS:
+		if ((int)(fraction * 100) == last)
+			return;
+		last = (int)(fraction * 100);
+		msg = [NSString stringWithFormat:@"Downloading %@ %d%%", n, last];
+		break;
+	case FLO_DOWNLOAD_FINISHED: msg = [NSString stringWithFormat:@"Downloaded %@", n]; break;
+	case FLO_DOWNLOAD_FAILED: msg = [NSString stringWithFormat:@"Download of %@ failed", n]; break;
+	}
+	[b setStatusText:msg];
+}
 static NSImage *appIcon;                /* the Florentine giglio, from the bundle's Resources */
 
 NSImage *FloAppIcon(void) { return appIcon; }
@@ -71,6 +94,7 @@ static void fillStoreMenu(NSMenu *m, FloStore *st, NSUInteger fixed, NSUInteger 
 	NSString *list = [[NSBundle mainBundle] pathForResource:@"blocklist-default" ofType:@"json"];
 
 	[[FloGLib shared] start];
+	flo_engine_set_download_handler(download_event, NULL);
 	if (list != nil)
 		flo_engine_set_blocklist([list UTF8String]);
 	[FloBrowser openWindowWithAddress:startURL];

@@ -12,7 +12,10 @@ struct flo_page;
 	unsigned char *rgb;             /* the exposed rectangle as 24-bit RGB, grown never shrunk */
 	size_t rgbCap;
 	NSSize sentSize;                /* the size the engine was last told */
+	int clipTries;
+	id owner;                       /* the FloTab; not retained. Answers hoverLink, openHoverLinkInBackground, contextMenu */
 }
 - (void)setPage:(struct flo_page *)p;
+- (void)setOwner:(id)o;
 - (void)frameChangedX:(int)x y:(int)y w:(int)w h:(int)h;   /* the engine drew: repaint that rectangle */
 @end

@@ -9,7 +9,7 @@ NSString *FloSearchURLPrefix(void);             /* the chosen engine's URL up to
 	NSWindow *win;
 	NSButton *adsBox, *jsBox;
 	NSPopUpButton *enginePop, *fontPop;
-	NSTextField *homeField, *privacyNote;
+	NSTextField *homeField, *dlField, *privacyNote;
 }
 + (FloPrefs *)shared;
 - (void)show;
