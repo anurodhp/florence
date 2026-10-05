@@ -32,7 +32,7 @@ extern NSString *const FloHistoryChanged;        /* and when a page is added to 
 }
 + (NSMutableArray *)all;                /* every live browser window */
 + (FloBrowser *)key;                    /* the key window's browser, if any */
-+ (FloBrowser *)openWindowWithAddress:(NSString *)address;   /* nil: the homepage, else a blank page */
++ (FloBrowser *)openWindowWithAddress:(NSString *)address;   /* nil: the homepage, else the start page */
 - (FloTab *)openTabWithAddress:(NSString *)address select:(BOOL)select;
 - (void)relayout;
 - (void)layoutStrip;

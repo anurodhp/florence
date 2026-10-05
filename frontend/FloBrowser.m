@@ -3,6 +3,7 @@
 #include <math.h>
 #import "FloStore.h"
 #import "FloPrefs.h"
+#import "FloStartPage.h"
 
 NSString *const FloBookmarksChanged = @"FloBookmarksChanged";
 NSString *const FloHistoryChanged = @"FloHistoryChanged";
@@ -282,21 +283,21 @@ static FloToolButton *makeButton(FloIcon icon, id target, SEL action, NSView *in
 		[self removeTab:current];
 }
 
-/* a tab for `address` (nil: a blank one with the address bar focused) */
+/* a tab for `address` (nil: a blank page) */
 - (FloTab *)openTabWithAddress:(NSString *)address select:(BOOL)select
 {
 	FloTab *t = [[[FloTab alloc] initWithAddress:address] autorelease];
 	[self addTab:t select:select || current == nil];
-	if (address == nil && (select || current == t))
+	if (FloIsStartPageURL(address) && (select || current == t))     /* a new page: ready to type an address */
 		[self performSelector:@selector(focusLocation) withObject:nil afterDelay:0.05];
 	return t;
 }
 
-/* what a new tab or window opens: the homepage if the user set one, else a blank page */
+/* what a new tab or window opens: the homepage if the user set one, else the start page */
 static NSString *newPageAddress(void)
 {
 	const char *h = flo_opt_homepage();
-	return h[0] != '\0' ? [NSString stringWithUTF8String:h] : nil;
+	return h[0] != '\0' ? [NSString stringWithUTF8String:h] : FloStartPageURL();
 }
 
 + (FloBrowser *)openWindowWithAddress:(NSString *)address

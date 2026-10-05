@@ -148,7 +148,9 @@ each with the source line that reads it.
 The UI is the earlier one (`FloBrowser`, `FloToolbar`, `FloStore`, `FloPrefs`, `FloAbout`, from `master`) on a new tab
 model (`FloTab` owns a `flo_page`). In: tabs, bookmarks, history, find (`WebKitFindController`), zoom, preferences, the
 content blocker (`flo_engine_set_blocklist`: `WebKitUserContentFilterStore`, compiled once and cached under the data
-directory), links that open a new tab. Not in yet: the start page, downloads (`WebKitDownload`), the EasyList updater, the
-context menu (`WebKitContextMenu`), favicons (`WebKitFaviconDatabase`), Do Not Track and Referer switches, scroll bars. Keyboard events carry a keyval
+directory), links that open a new tab, the start page (`FloStartPage.m`: HTML and CSS tiles written from the bookmark and
+history files). Not in yet: downloads (`WebKitDownload`), the context menu (`WebKitContextMenu`), favicons
+(`WebKitFaviconDatabase`), scroll bars. WebKit has no switch for Do Not Track, Referer, a cache size or image animation, so
+the UI does not offer them, and the EasyList updater (a child process on `master`) is not ported. Keyboard events carry a keyval
 but no hardware keycode, so `KeyboardEvent.code` is empty; popups are refused; the clipboard is WPE's
 in-process one.

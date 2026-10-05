@@ -125,7 +125,7 @@ static NSString *pref(const char *key, const char *def)
 	/* General */
 	v = [self pane];
 	y = h - 30;
-	label(v, @"Homepage (blank: a new page is empty):", NSMakeRect(0, y, LABEL_W + 60, 18), NSRightTextAlignment);
+	label(v, @"Homepage (blank: the start page):", NSMakeRect(0, y, LABEL_W + 60, 18), NSRightTextAlignment);
 	homeField = field(v, NSMakeRect(FIELD_X + 70, y - 2, 200, 22), self);
 	y -= 36;
 	label(v, @"Search engine:", NSMakeRect(0, y, LABEL_W, 18), NSRightTextAlignment);

@@ -2,6 +2,7 @@
 #import "FloTab.h"
 #import "FloBrowser.h"
 #import "FloStore.h"
+#import "FloStartPage.h"
 
 #define T(ui) ((FloTab *)(ui))
 
@@ -31,8 +32,8 @@ static void ev_uri(void *ui, const char *u)
 {
 	FloTab *tab = T(ui);
 	NSString *s = str(u);
-	/* a blank page shows an empty address bar */
-	[tab setUrl:[s isEqualToString:@"about:blank"] ? @"" : s];
+	/* the start page and a blank page show an empty address bar */
+	[tab setUrl:[s isEqualToString:@"about:blank"] || FloIsStartPageURL(s) ? @"" : s];
 	[tab->browser setNeedsChrome];
 }
 
