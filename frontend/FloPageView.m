@@ -1,6 +1,7 @@
 /* Florence: the page view. See FloPageView.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloPageView.h"
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include "flo.h"
 
@@ -50,15 +51,29 @@
 	NSSize s = [self bounds].size;
 	if (page != NULL && (s.width != sentSize.width || s.height != sentSize.height) && s.width > 0 && s.height > 0) {
 		sentSize = s;
+		if (getenv("FLORENCE_DEBUG_SIZE") != NULL)
+			fprintf(stderr, "florence: view %dx%d -> engine viewport\n", (int)s.width, (int)s.height);
 		flo_page_resize(page, (int)s.width, (int)s.height);
 	}
+}
+
+/* gnustep-gui's setFrame: does not go through setFrameSize: (and autoresizing uses either), so both are caught */
+- (void)scheduleSendSize
+{
+	[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(sendSize) object:nil];
+	[self performSelector:@selector(sendSize) withObject:nil afterDelay:0.08];     /* one reflow per drag */
 }
 
 - (void)setFrameSize:(NSSize)s
 {
 	[super setFrameSize:s];
-	[NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(sendSize) object:nil];
-	[self performSelector:@selector(sendSize) withObject:nil afterDelay:0.08];     /* one reflow per drag */
+	[self scheduleSendSize];
+}
+
+- (void)setFrame:(NSRect)f
+{
+	[super setFrame:f];
+	[self scheduleSendSize];
 }
 
 /* ---- drawing -------------------------------------------------------------------------------------- */
@@ -72,6 +87,9 @@
 	if (page != NULL && flo_page_pixels(page, &fw, &fh, &stride) != NULL && (fw != frameW || fh != frameH)) {
 		frameW = fw;
 		frameH = fh;
+		if (getenv("FLORENCE_DEBUG_SIZE") != NULL)
+			fprintf(stderr, "florence: engine frame %dx%d, view bounds %dx%d, window content %dx%d\n", fw, fh, (int)[self bounds].size.width,
+				(int)[self bounds].size.height, (int)[[[self window] contentView] bounds].size.width, (int)[[[self window] contentView] bounds].size.height);
 		[self setNeedsDisplay:YES];
 		return;
 	}
