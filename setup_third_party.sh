@@ -78,6 +78,8 @@ nghttp2|https://github.com/nghttp2/nghttp2/releases/download/v1.58.0/nghttp2-1.5
 brotli|https://github.com/google/brotli/archive/refs/tags/v1.1.0.tar.gz|e720a6ca29428b803f4ad165371771f5398faba397edf6778837a18599ea13ff
 libjpeg-turbo|https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.0.1/libjpeg-turbo-3.0.1.tar.gz|22429507714ae147b3acacd299e82099fce5d9f456882fc28e252e4579ba2a75
 shared-mime-info|https://gitlab.freedesktop.org/xdg/shared-mime-info/-/archive/2.4/shared-mime-info-2.4.tar.gz|531291d0387eb94e16e775d7e73788d06d2b2fdd8cd2ac6b6b15287593b6a2de
+openssl|https://github.com/openssl/openssl/releases/download/openssl-3.0.15/openssl-3.0.15.tar.gz|23c666d0edf20f14249b3d8f0368acaee9ab585b09e1de82107c66e1f3ec9533
+glib-networking|https://download.gnome.org/sources/glib-networking/2.78/glib-networking-2.78.0.tar.xz|52fe4ce93f7dc51334b102894599858d23c8a65ac4a1110b30920565d68d3aba
 woff2|https://github.com/google/woff2/archive/refs/tags/v1.0.2.tar.gz|add272bb09e6384a4833ffca4896350fdb16e0ca22df68c0384773c67a175594
 libgpg-error|https://www.gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.47.tar.bz2|9e3c670966b96ecc746c28c2c419541e3bcb787d1a73930f5e5f5e1bcbbb9bdb
 libgcrypt|https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.10.3.tar.bz2|8b0870897ac5ac67ded568dcfadf45969cfa8a6beb0fd60af2a9eadc2a3272aa

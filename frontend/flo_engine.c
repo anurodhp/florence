@@ -84,6 +84,9 @@ int flo_engine_init(const char *data_dir, const char *cache_dir)
 	setdefault("WEBKIT_FORCE_VBLANK_TIMER", "1");            /* DisplayVBlankMonitor.cpp: no screen to ask */
 	setdefault("WEBKIT_DISPLAY_REFRESH_THROTTLE_FPS", "30"); /* DisplayLinkGLib.cpp: a factor of the 60 Hz timer */
 
+	setdefault("GIO_EXTRA_MODULES", "/usr/local/lib/gio/modules");   /* glib giomodule.c: the openssl TLS backend (scripts/build_meson_lib.sh gnet) */
+	setdefault("SSL_CERT_FILE", "/usr/local/ssl/cert.pem");  /* OpenSSL crypto/x509/by_file.c: the CA roots staged by build_openssl.sh */
+
 	display = flo_display_new();
 	if (!wpe_display_connect(display, &error)) {
 		g_printerr("florence: display: %s\n", error->message);
