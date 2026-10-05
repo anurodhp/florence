@@ -182,3 +182,12 @@ compiler-rt, aligned_alloc/wcstod, filesystem syscalls, libm.
   carries it, run engine tests with `DYLD_LIBRARY_PATH=/tmp/newlib` (copy `iokit/tools/userland_staging/libc_build/system/libsystem_kernel.dylib`
   there); the bridge `compat/flo_pthread.c` only helps images linked after it existed (glib etc. were not relinked).
 * `libflocompat` order matters: a library only binds to a flocompat symbol if flocompat exported it when that library was linked.
+
+
+## Pi status: X connection crash and the errno fix (2026-10-05)
+
+Florence died a few seconds after start on the Pi with `X IO error: errno 60 (Operation timed out)` in `_XEventsQueued` on the main
+thread (`~/.florence/florence.log`, from `flo_diag.c`). Cause (strong, not proven): the image's libsystem_kernel keeps `errno` in one
+global, so another thread's timed wait timing out (ETIMEDOUT = 60) overwrites the EAGAIN Xlib just read. The fix is iokit PR #19
+(per-thread errno). On the test Pi `/usr/lib/system/libsystem_kernel.dylib` was replaced with that build (the original is
+`libsystem_kernel.dylib.orig` beside it; a copy of the new one is in `/usr/local/lib/errnofix/`). To undo: `mv` the `.orig` back.
