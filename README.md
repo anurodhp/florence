@@ -29,7 +29,9 @@ says what has been checked, what the Pi build still needs, and what is missing.
 | `flo_platform.c` | the WPE display, toplevel and view that receive frames (no GPU, no compositor) |
 | `FloGLib.m` | drives GLib's main context from GNUstep's run loop: no thread, no polling timer |
 | `FloPageView.m` | draws the exposed rectangle of the newest frame; sends mouse, wheel and key input |
-| `FloWindow.m`, `FloMain.m` | the window and its controls; menus and `main()` |
+| `FloBrowser.m`, `FloToolbar.m`, `FloTab.m` | the window, toolbar, tab strip and find bar; one tab per engine page |
+| `FloStore.m`, `FloPrefs.m`, `FloAbout.m` | bookmarks and history files; Preferences; About |
+| `FloMain.m` | menus and `main()` |
 | `assets/` | the icon, the toolbar glyphs, and a starter content-blocker list (Safari JSON, which WebKit reads natively) |
 
 ## Building

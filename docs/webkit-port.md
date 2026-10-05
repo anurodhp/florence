@@ -18,7 +18,7 @@ is `get_egl_display` plus a DMA-BUF buffer path in that one file.
 ```
 GNUstep UI (Objective-C)              engine glue (C, GLib/WebKit headers)        WebKit (C++)
 frontend/FloMain.m      menus, main   frontend/flo_engine.c   web view, input     libWPEWebKit-2.0
-frontend/FloWindow.m    back/fwd/     frontend/flo_platform.c WPE display, view   WPEWebProcess
+frontend/FloBrowser.m   window, tabs    frontend/flo_platform.c WPE display, view   WPEWebProcess
                         reload/addr                           and toplevel        WPENetworkProcess
 frontend/FloPageView.m  draws frames  frontend/flo.h  <-- the only thing the two sides share
 frontend/FloGLib.m      GLib main context driven from NSRunLoop
