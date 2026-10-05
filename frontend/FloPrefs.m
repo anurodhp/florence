@@ -1,6 +1,6 @@
 /* Florence: the Preferences window. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
  *
- * Plain AppKit controls laid out by hand: four tabs in one small window, nothing running while it is
+ * Plain AppKit controls laid out by hand: three tabs in one small window, nothing running while it is
  * closed. Settings take effect as they are changed; the few that need a restart say so. */
 #import "FloPrefs.h"
 #import "FloStore.h"
@@ -171,20 +171,8 @@ static NSString *pref(const char *key, const char *def)
 	[ti setView:v];
 	[tabs addTabViewItem:ti];
 
-	/* Advanced */
-	v = [self pane];
-	y = h - 30;
-	jsBox = button(v, @"Enable JavaScript", NSSwitchButton, NSMakeRect(20, y, 400, 20), self, @selector(changed:));
-	y -= 40;
-	{
-		NSTextField *t = label(v, @"JavaScript applies to pages as they load. It costs memory and CPU on a small machine, so it is off until you turn it on.",
-			NSMakeRect(20, y - 30, 400, 54), NSLeftTextAlignment);
-		[t setTextColor:[NSColor darkGrayColor]];
-	}
-	ti = [[[NSTabViewItem alloc] initWithIdentifier:@"advanced"] autorelease];
-	[ti setLabel:@"Advanced"];
-	[ti setView:v];
-	[tabs addTabViewItem:ti];
+	/* Advanced: hidden. Its only control was the JavaScript switch, which is in the View menu; the pane returns when there is
+	 * something to put in it (cache sizes and the like). */
 }
 
 static int fontIndex(void)
@@ -207,7 +195,6 @@ static int fontIndex(void)
 	[[dlField cell] setPlaceholderString:@"~/Downloads"];
 	[fontPop selectItemAtIndex:fontIndex()];
 	[adsBox setState:flo_opt_hide_ads() ? NSOnState : NSOffState];
-	[jsBox setState:flo_engine_javascript() ? NSOnState : NSOffState];
 }
 
 - (void)show
@@ -230,8 +217,6 @@ static int fontIndex(void)
 	flo_opt_set_font_min(sizes[[fontPop indexOfSelectedItem]]);
 	if (([adsBox state] == NSOnState) != flo_opt_hide_ads())
 		flo_opt_set_hide_ads([adsBox state] == NSOnState);
-	if (([jsBox state] == NSOnState) != flo_engine_javascript())
-		flo_engine_set_javascript([jsBox state] == NSOnState);
 	[self refresh];
 }
 
