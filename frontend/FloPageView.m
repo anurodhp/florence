@@ -162,9 +162,11 @@ static int mods_of(NSEvent *e)
 - (void)scrollWheel:(NSEvent *)e
 {
 	NSPoint p = [self at:e];
-	/* AppKit's deltaY is positive for "scroll up"; the engine's is positive for down */
+	/* Same convention on both sides: AppKit's (gnustep-back sends deltaY +1 for wheel up, XGServerEvent.m:506) and WebCore's
+	 * wheel deltas are positive for "scroll up"/"scroll left", which is what WPE passes through unchanged (found on the Pi:
+	 * +5 at the top of a page is "up" and, correctly, does nothing). No sign change. */
 	if (page != NULL)
-		flo_page_scroll(page, mods_of(e), -[e deltaX], -[e deltaY], p.x, p.y);
+		flo_page_scroll(page, mods_of(e), [e deltaX], [e deltaY], p.x, p.y);
 }
 
 static int special_of(unichar c)

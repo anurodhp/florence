@@ -71,7 +71,7 @@ const uint8_t *flo_page_pixels(struct flo_page *p, int *w, int *h, int *stride);
 enum { FLO_MOD_SHIFT = 1, FLO_MOD_CTRL = 2, FLO_MOD_ALT = 4, FLO_MOD_META = 8 };
 void flo_page_pointer_move(struct flo_page *p, int mods, double x, double y);
 void flo_page_pointer_button(struct flo_page *p, int mods, int button, bool down, int clicks, double x, double y);
-void flo_page_scroll(struct flo_page *p, int mods, double dx, double dy, double x, double y);   /* wheel notches, + is down/right */
+void flo_page_scroll(struct flo_page *p, int mods, double dx, double dy, double x, double y);   /* wheel notches, WebCore's convention: + is up/left, - is down/right */
 void flo_page_key(struct flo_page *p, int mods, uint32_t codepoint, bool down);   /* printable key */
 enum flo_special_key {
 	FLO_KEY_ENTER = 1, FLO_KEY_TAB, FLO_KEY_BACKSPACE, FLO_KEY_DELETE, FLO_KEY_ESCAPE,

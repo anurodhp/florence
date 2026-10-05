@@ -21,3 +21,14 @@ DEPLOY_ROOT="${DEPLOY_ROOT:-$FL_DIR/build/root}"   # scripts/deploy_pi_webkit.sh
 cd "$DEPLOY_ROOT"
 paths=("$@"); [ "${#paths[@]}" -gt 0 ] || paths=(.)
 tar cf - "${paths[@]}" | "${SSH[@]}" "$PI_USER@$PI_HOST" 'tar xmf - -C / && echo deployed'
+# A dropped connection can leave a cut-off file behind (tar then reports "Write error" or nothing at all): a truncated dylib maps
+# and crashes with a bus error. Compare the sizes of every file over 1 MB with what the Pi has.
+bad=0
+while read -r sz f; do
+    [ -n "$f" ] || continue
+    remote=$("${SSH[@]}" "$PI_USER@$PI_HOST" "ls -l '/$f' | awk '{print \$5}'" 2>/dev/null || echo missing)
+    [ "$remote" = "$sz" ] || { echo "error: /$f is $remote bytes on the Pi, expected $sz" >&2; bad=1; }
+done < <(find "${paths[@]}" -type f -size +1M -exec stat -f '%z %N' {} + 2>/dev/null)
+[ "$bad" = 0 ] || { echo "error: the deploy is incomplete, run it again" >&2; exit 1; }
+echo "verified"
+

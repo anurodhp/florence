@@ -141,7 +141,7 @@ int main(int argc, char **argv)
 		f0 = frames;
 		flo_page_pointer_move(page, 0, 400, 300);
 		{ struct timeval tv; gettimeofday(&tv, NULL); fprintf(stderr, "%ld.%03d ### wheel sent\n", (long)(tv.tv_sec % 1000), (int)(tv.tv_usec / 1000)); }
-		flo_page_scroll(page, 0, 0, 5, 400, 300);
+		flo_page_scroll(page, 0, 0, -5, 400, 300);   /* WPE/WebCore: negative is "down" */
 		{ double end = now() + 3; while (now() < end) pump(50); }
 		px(20, 20, &after);
 		printf("      frames during the scroll: %d\n", frames - f0);
