@@ -23,7 +23,7 @@
 #     off. Each is small. Making them optional is a patch for the anurodhp/WebKit fork, not a flag.
 #   * The multi-process model. UI process (our app) + one WebProcess + one NetworkProcess is how
 #     WPE works; the processes are started with fork/exec, which suits this port (see CLAUDE.md,
-#     "no threads beside GNUstep's run loop"), but it costs RAM that NetSurf did not.
+#     "no threads beside GNUstep's run loop"), but it costs RAM.
 # Runtime knobs (software painting, a 30 fps frame cap, one painting thread) are
 # environment variables set by frontend/flo_engine.c, not build options.
 

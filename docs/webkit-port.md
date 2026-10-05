@@ -1,6 +1,6 @@
 # The WebKit engine
 
-This branch replaces NetSurf with **WPE WebKit 2.54.0**, built for software rendering with every
+This branch is the engine **WPE WebKit 2.54.0**, built for software rendering with every
 feature that can be left out left out. The GNUstep UI is back to the bare minimum so the engine is
 what is being proved. What works, what has been checked and what has not is stated plainly below.
 
@@ -43,7 +43,7 @@ The web process paints into shared-memory buffers. `FloView.render_buffer` gets 
 rectangles, and from the main loop (never inside WebKit's own call) makes it current, tells the UI which box
 changed, releases the previous buffer and reports the new one rendered, the order WebKit's own headless
 view uses. The UI converts only the exposed rectangle to RGB and draws it with the same vertical-mirror
-workaround the NetSurf UI needed for gnustep-gui's bitmap drawing.
+workaround the earlier UI needed for gnustep-gui's bitmap drawing.
 
 ## What was turned off
 
@@ -124,7 +124,7 @@ zlib and X11. WPE 2.54 needs, from `Source/cmake/OptionsWPE.cmake` with the opti
 | SQLite | any | no |
 | HarfBuzz (with its ICU glue) | 2.7.4 | no |
 | ICU | **70.1** | **66.1: too old** |
-| libjpeg (libjpeg-turbo) | any | `build_jpeg.sh` here is libjpeg 9f |
+| libjpeg (libjpeg-turbo) | any | `build_cmake_lib.sh libjpeg-turbo` |
 | libwebp (with demux) | any | no |
 | libgcrypt, libtasn1 | 1.7 | no |
 | libepoxy | 1.5.4 | no (never called: no EGL display) |
@@ -146,7 +146,7 @@ each with the source line that reads it.
 ## Not in the UI yet
 
 Tabs, bookmarks, history, the start page, find, zoom, downloads, preferences, the content blocker, context
-menu, favicons. They were in the NetSurf UI (`git show master:frontend/FloBrowser.m`, `FloPrefs.m`, ...);
+menu, favicons. They were in the earlier UI (`git show master:frontend/FloBrowser.m`, `FloPrefs.m`, ...);
 the engine-facing ones need WebKit's equivalents (`WebKitFindController`, `WebKitDownload`,
 `WebKitUserContentFilter`, `WebKitContextMenu`, `WebKitFaviconDatabase`). Keyboard events carry a keyval
 but no hardware keycode, so `KeyboardEvent.code` is empty; popups are refused; the clipboard is WPE's

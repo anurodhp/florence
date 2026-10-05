@@ -7,22 +7,6 @@ cd "$(dirname "$0")"
 FORCE=0; [ "${1:-}" = "--force" ] && FORCE=1
 mkdir -p third_party
 
-# git repos: name|url|ref
-# (mbedtls, curl and jpeg below are left over from the NetSurf engine on master; WebKit's network
-# stack is libsoup and its JPEG decoder wants libjpeg-turbo, so nothing here uses them yet.)
-REPOS='
-mbedtls|https://github.com/Mbed-TLS/mbedtls.git|v3.6.7
-'
-echo "$REPOS" | while IFS='|' read -r name url ref; do
-    [ -z "$name" ] && continue
-    d="third_party/$name"
-    if [ -d "$d" ]; then
-        [ "$FORCE" = 1 ] && rm -rf "$d" || { echo "= $d exists"; continue; }
-    fi
-    echo "+ $name @ $ref"
-    git clone -q --depth 1 --branch "$ref" "$url" "$d"
-done
-
 # The rendering engine: WPE WebKit, pinned to a release tag AND the commit that tag points at
 # (a moved tag aborts). A full checkout is 8 GB, most of it tests; the sparse set below leaves out
 # everything the build never reads (LayoutTests, JSTests, ...) and blobs are fetched on demand.
@@ -63,11 +47,8 @@ if [ ! -d "$d" ]; then
     echo "  $(du -sh "$d" | cut -f1) checked out"
 fi
 
-# release tarballs: name|url|sha256 (curl's configure only generates curl_config.h;
-# a git tag has no configure script)
+# release tarballs: name|url|sha256
 TARBALLS='
-curl|https://curl.se/download/curl-8.15.0.tar.xz|6cd0a8a5b126ddfda61c94dc2c3fc53481ba7a35461cf7c5ab66aa9d6775b609
-jpeg|https://ijg.org/files/jpegsrc.v9f.tar.gz|04705c110cb2469caa79fb71fba3d7bf834914706e9641a4589485c1f832565b
 icu|https://github.com/unicode-org/icu/releases/download/release-74-2/icu4c-74_2-src.tgz|68db082212a96d6f53e35d60f47d38b962e9f9d207a74cfac78029ae8ff5e08c
 glib|https://download.gnome.org/sources/glib/2.78/glib-2.78.6.tar.xz|244854654dd82c7ebcb2f8e246156d2a05eb9cd1ad07ed7a779659b4602c9fae
 pcre2|https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.42/pcre2-10.42.tar.bz2|8d36cd8cb6ea2a4c2bb358ff6411b0c788633a2a45dabbf1aeb4b701d1b5e840

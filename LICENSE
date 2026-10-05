@@ -26,14 +26,13 @@ This file applies to the original code in this repository: the sources, scripts,
 that carry "SPDX-License-Identifier: MIT". Copyright (c) 2026 Anurodh Pokharel. Each file's SPDX line
 is authoritative for that file. The full text is also in LICENSES/MIT.txt.
 
-History: the code was GPL-2.0-only while the browser linked NetSurf (GPL-2.0-only) and had files derived
-from NetSurf's frontends. None of that is on this branch (the NetSurf-based UI lives on `master` and
-keeps its GPL terms there), so the original code here is relicensed by its copyright holder.
+History: the code was GPL-2.0-only while the browser linked the earlier engine (GPL-2.0-only) and had files
+derived from its frontends. None of that is on this branch (the earlier UI lives on `master` and keeps its GPL
+terms there), so the original code here is relicensed by its copyright holder.
 
 Exceptions, which keep their own terms:
   frontend/assets/icons/        the Lucide icons (ISC; chevrons, x, plus and lock also MIT via Feather):
                                 see frontend/assets/icons/LICENSE-lucide.txt, which must travel with them
-  configs/curl/curl_config.h    curl's licence (it is curl's configuration header)
   compat/include/epoxy/egl.h    a stub header taken from the MacPorts webkit2-gtk port (macports-ports,
                                 BSD-licensed); see the note at the top of the file
   compat/include/libproc.h,     small interface declarations (struct layouts, constants, prototypes) modelled on
@@ -44,6 +43,6 @@ Exceptions, which keep their own terms:
                                 small source file it writes into it) become part of WebKit and are under
                                 WebKit's licences (LGPL-2 and BSD-2-Clause)
 
-Third-party sources that setup_third_party.sh fetches (WebKit, GLib, ICU, LLVM's libc++, libsoup, curl,
-mbedTLS, libjpeg, the CA bundle and the other libraries) keep their own licences; Florence links the
+Third-party sources that setup_third_party.sh fetches (WebKit, GLib, ICU, LLVM's libc++, libsoup, OpenSSL,
+libjpeg-turbo, the CA bundle and the other libraries) keep their own licences; Florence links the
 LGPL ones as shared libraries and does not copy them into this repository.

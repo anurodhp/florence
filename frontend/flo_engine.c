@@ -2,7 +2,7 @@
  * Florence: the engine glue. WPE WebKit (software rendering, no GPU) behind the plain C interface in
  * flo.h. This file and flo_platform.c are the only ones that include WebKit or GLib headers.
  *
- * Small-machine rules, as in the NetSurf frontend this replaces: nothing runs while the page is
+ * Small-machine rules, nothing runs while the page is
  * idle (GLib's main context is driven from the UI's run loop and sleeps in it, see flo_glib_*),
  * frames are capped at 30 per second and arrive as damage rectangles, caches are the smallest
  * WebKit offers.

@@ -1,7 +1,7 @@
 # Handoff: the WebKit branch (read this first)
 
 Branch `claude/intelligent-einstein-pdi60i`, PR anurodhp/florence#2 (draft). Goal from the user: switch Florence's engine
-from NetSurf to WebKit, clone WebKit pinned to a version, hook up the bare minimum of UI. Eventual target: low-CPU,
+to WebKit, clone WebKit pinned to a version, hook up the bare minimum of UI. Eventual target: low-CPU,
 low-RAM Darwin on a Raspberry Pi 3 (also Linux); turn off every WebKit feature possible; GPU support later, not now.
 `docs/webkit-port.md` is the design document; this file is the state of play and the lab notebook.
 
@@ -11,7 +11,7 @@ WebKit itself (the official repo, tag `wpewebkit-2.54.0`, commit `73f39d84ea9d40
 (the toolkit-less one; WPE is a port of WebKit, not a different engine), built with `config/webkit-options.cmake`. Our code
 supplies a custom WPE *display* (`frontend/flo_platform.c`): WebKit's web process paints on the CPU (Skia) into shared
 memory, WPE hands each frame to our view, and a GNUstep `NSView` draws the exposed rectangle. GLib's main context is
-pumped from NSRunLoop (`FloGLib.m`), no thread and no polling timer. The NetSurf engine and its full UI are on `master`
+pumped from NSRunLoop (`FloGLib.m`), no thread and no polling timer. The previous engine and its full UI are on `master`
 (`git show master:frontend/...`).
 
 ## State
@@ -121,7 +121,7 @@ is ours). That is how the libepoxy abort was located (stack: `NonCompositedFrame
 * Sandbox notes: scratch builds lived in `/tmp/claude-0/wk/` (WebKit checkout `t/third_party/webkit`, build dir `bld`), symlinked
   into the repo as `third_party/webkit` and `build/webkit-host` (both gitignored, gone in a new container). Rebuilding from
   scratch is ~1 h. A repo-local `third_party/webkit` made by `setup_third_party.sh` is equivalent.
-* Licence: decided. The original code is MIT (relicensed by its copyright holder once NetSurf, the reason for GPL-2.0-only, was
+* Licence: decided. The original code is MIT (relicensed by its copyright holder once the previous engine, the reason for GPL-2.0-only, was
   gone from this branch); third-party and derived files keep their own licences (`LICENSE` lists the exceptions).
 
 ## Branch `claude/webkit-2.54-pi` (2026-10-04): the Pi, WPE 2.54.0, CPU rendering, no GL
@@ -140,7 +140,7 @@ lacks). 2.54 has the Skia CPU path, so no GL. The 610-era sources and staged tre
 | ICU 74.2 (system ICU 66 untouched, versioned symbols) | `scripts/build_icu.sh` | `tests/pi/icu_smoke.cpp` 8/8 |
 | PCRE2 10.42, GLib 2.78.6 | `build_pcre2.sh`, `build_glib.sh` | `tests/pi/glib_smoke.c` 13/13 |
 | libxml2 2.9.14, nghttp2, libwebp 1.3.2 | `build_cmake_lib.sh` | not run |
-| brotli 1.1.0, woff2 1.0.2 (decoder), sqlite 3.44, libjpeg 9f | `build_brotli.sh`, `build_woff2.sh`, `build_sqlite.sh`, `build_jpeg.sh` | not run |
+| brotli 1.1.0, woff2 1.0.2 (decoder), sqlite 3.44 | `build_brotli.sh`, `build_woff2.sh`, `build_sqlite.sh` | not run |
 | harfbuzz 8.3, libpsl 0.21.5, libepoxy 1.5.4, libxkbcommon 1.6, libsoup 3.4.4 | `build_harfbuzz.sh`, `build_meson_lib.sh` | not run |
 | libgpg-error 1.47, libgcrypt 1.10.3, libtasn1 4.19 | `build_autotools_lib.sh` | not run |
 

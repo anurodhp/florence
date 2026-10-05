@@ -24,7 +24,7 @@ fl_meson_build "$SRC" _cross "${opts[@]}"
 for s in $stems; do
     fl_fix_install_names "$LIB"/lib$s*.dylib 2>/dev/null || true
 done
-fl_fix_install_names $(ls "$LIB"/lib*.dylib | grep -v -E "libflocompat|libjpeg|libmbed|libcurl") 2>/dev/null || true
+fl_fix_install_names $(ls "$LIB"/lib*.dylib | grep -v -E "libflocompat|libjpeg") 2>/dev/null || true
 for s in $stems; do "$FL_DIR/tools/bind_audit.sh" "$LIB/lib$s.dylib"; done
 # glib-networking asks glib's .pc for giomoduledir, which here points into the staged tree, and DESTDIR then prepends the staging
 # root a second time: move the module to where the Pi looks for it (/usr/local/lib/gio/modules) and drop the nested copy.

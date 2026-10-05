@@ -2,8 +2,8 @@
 
 A small web browser for small machines. This branch runs it on **WPE WebKit 2.54.0** with a native GNUstep
 user interface: the engine is built with every feature that can be left out left out, renders on the CPU
-(no GPU yet) and hands finished frames to a GNUstep view. The previous engine, NetSurf 3.11 with its full
-UI (tabs, bookmarks, start page, content blocker, preferences), is on `master`.
+(no GPU yet) and hands finished frames to a GNUstep view. The previous engine with its full UI
+(tabs, bookmarks, start page, content blocker, preferences) is on `master`.
 
 The target is a **Raspberry Pi 3 running the Darwin/XNU port** in the sibling repository `xnu-iokit-pi3` ("the
 iokit port"), 1 GB of RAM and a slow CPU; it should also run on Linux. **Status: the engine compiles on Linux with the option set (needing three small edits, `scripts/webkit_fixes.sh`) and
@@ -47,12 +47,9 @@ For the Raspberry Pi (cross-compiled on a **Mac** with the iokit port's toolchai
 build glib, libsoup, sqlite, harfbuzz and the rest of WPE's dependencies, and its ICU is too old. The table is in
 `docs/webkit-port.md`. `tools/deploy_to_pi.sh` copies `build/root` to the Pi when there is one.
 
-`scripts/build_mbedtls.sh`, `build_curl.sh` and `build_jpeg.sh` are left over from the NetSurf engine (WebKit's
-network stack is libsoup); `scripts/build_tests.sh` builds their smoke test.
-
 ## License
 
-The original code in this repository is MIT, see `LICENSE` and `LICENSES/MIT.txt`. It was GPL-2.0-only while the NetSurf core was
-linked; none of NetSurf, nor of the files derived from its frontends, is on this branch (the NetSurf-based UI on `master` keeps its GPL
+The original code in this repository is MIT, see `LICENSE` and `LICENSES/MIT.txt`. It was GPL-2.0-only while the previous engine was
+linked; none of that engine, nor of the files derived from its frontends, is on this branch (the UI on `master` keeps its GPL
 terms). Third-party code keeps its own licence: WebKit is LGPL-2 and BSD (linked as shared libraries, fetched by
 `setup_third_party.sh`), and the few vendored or derived files are listed under "Exceptions" in `LICENSE`.

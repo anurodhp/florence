@@ -107,7 +107,7 @@
 	NSImage *img = [[NSImage alloc] initWithSize:NSMakeSize(w, h)];
 	[img addRepresentation:rep];
 	/* gnustep-gui (0.30) draws a bitmap bottom-up even in a flipped view, so draw through a vertical
-	 * mirror; an AppKit that gets this right can run with FLORENCE_NOMIRROR=1 (as the NetSurf UI did). */
+	 * mirror; an AppKit that gets this right can run with FLORENCE_NOMIRROR=1. */
 	BOOL mirror = getenv("FLORENCE_NOMIRROR") == NULL;
 	[NSGraphicsContext saveGraphicsState];
 	if (mirror) {

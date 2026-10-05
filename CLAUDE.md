@@ -2,7 +2,7 @@
 
 Florence: a browser for small machines. On this branch the engine is WPE WebKit 2.54.0, built
 for CPU rendering with every removable feature removed, under a bare-minimum GNUstep UI (the
-NetSurf 3.11 engine and its full UI are on `master`). The target is the Raspberry Pi 3 running
+previous engine and its full UI are on `master`). The target is the Raspberry Pi 3 running
 the Darwin/XNU port in the sibling repo `xnu-iokit-pi3` ("the iokit port"); Pi builds are
 cross-compiled on a Mac. The engine and the glue also build and run on Linux (`scripts/build_*.sh
 host`), which is where they are developed and tested; nothing has been built for the Pi yet.
@@ -79,20 +79,19 @@ with a stated reason in the "Left on" list.
 * New third-party code: a pinned entry in `setup_third_party.sh` (git tag or sha256, plus the commit for a git tag),
   a `scripts/build_*.sh` using `tools/common.sh` helpers, dylib not static archive (the iokit port's
   standing rule: nothing ships fully static except its password tool). Edits to a third-party tree are few,
-  scripted, idempotent and assert their anchors (`scripts/webkit_fixes.sh`, the same pattern as the two NetSurf
-  edits on `master`): a different upstream stops the build instead of building something else. The iokit port's
+  scripted, idempotent and assert their anchors (`scripts/webkit_fixes.sh`): a different upstream stops the build instead of building something else. The iokit port's
   rule is a fork (`anurodhp/*`) instead of patches; WebKit's Darwin port will need that, and this file then goes away.
-* Licensing: the original code here is MIT (see `LICENSE`, `LICENSES/MIT.txt`; it was GPL-2.0-only while NetSurf was linked,
+* Licensing: the original code here is MIT (see `LICENSE`, `LICENSES/MIT.txt`; it was GPL-2.0-only while the previous engine was linked,
   and none of that is on this branch). Every original file carries `SPDX-License-Identifier: MIT`; new original files get it.
   Third-party and derived files keep their own licence and say so in their own header (never relabel them MIT):
-  `configs/curl/curl_config.h` (curl), `compat/include/epoxy/egl.h` (MacPorts stub), the three Apple-derived `compat/include`
+  `compat/include/epoxy/egl.h` (MacPorts stub), the three Apple-derived `compat/include`
   headers (`libproc.h`, `sys/proc_info.h`, `sys/random.h`: APSL-2.0), `tools/bind_audit.sh` (vendored from the iokit repo), the Lucide icons, and the text `scripts/webkit_fixes.sh` patches into WebKit (WebKit's LGPL-2/BSD). The full
   list is in `LICENSE`.
 
 ## Lessons learned the hard way
 
 * Do not run threads beside GNUstep's run loop on this port. A worker thread running libcurl (the first EasyList
-  updater, NetSurf days) made the browser die within seconds with `fatal IO error 22` on the X connection; moving the
+  updater on `master`) made the browser die within seconds with `fatal IO error 22` on the X connection; moving the
   work into a child process (posix_spawn) fixed it. Background work is a child process. The cause was never pinned
   down. WebKit runs its network and web content in child processes already, but its UI-process library makes some
   threads of its own: if `fatal IO error 22` returns, this is the first suspect.
@@ -110,7 +109,7 @@ with a stated reason in the "Left on" list.
   default ON and the interpreter OFF. The options file sets them all explicitly.
 * WPE's render path wants its protocol kept: after `render_buffer` WebKit sends no further frame until
   `buffer-rendered`, and the previous buffer must be reported `released` (`flo_platform.c`).
-* The old lessons (NetSurf's `netsurf_table` lifetime, `VLDTARGET`, the `fetch_start()` hook) live in
+* The old lessons (the previous engine's table lifetime, `VLDTARGET`, the `fetch_start()` hook) live in
   `git show master:CLAUDE.md`; the diagnostics of that UI (`FLORENCE_TRACE`, the X IO error handler, the crash
   report) were not carried over and may be wanted on the first Pi run (`git show master:frontend/gs_core.c`).
 
@@ -122,8 +121,6 @@ with a stated reason in the "Left on" list.
   orientation (gnustep-gui draws bitmaps bottom-up even in flipped views, hence the mirror in
   `FloPage.m`), scrolling and click coordinates were checked. It proves nothing about the iokit
   port's own GNUstep build.
-* `gs_core.c` / `gs_window.c` need NetSurf 3.11's headers; compare against
-  `frontends/monkey/main.c` and `frontends/gtk/window.c` when the first compile complains.
 
 ## Branches
 
