@@ -78,7 +78,9 @@ static NSString *version(void)
 	y -= 17;
 	line(v, @"Released under the MIT licence.", y, 16, small, grey);
 	y -= 17;
-	line(v, @"Includes WebKit, © Apple Inc. and others (LGPL, BSD).", y, 16, small, grey);
+	line(v, @"Includes WebKit, © Apple Inc. and others", y, 16, small, grey);
+	y -= 17;
+	line(v, @"(LGPL and BSD licences).", y, 16, small, grey);
 }
 
 - (void)show
