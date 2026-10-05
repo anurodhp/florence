@@ -117,3 +117,34 @@ uint8_t *getsegmentdata(const struct mach_header_64 *mh, const char *segname, un
         }
     return 0;
 }
+
+/* ---- libcache: sys_icache_invalidate / sys_dcache_flush (arm64) -------------------------------------------------
+ * JavaScriptCore's ARM64 assembler (LLInt and the JIT) makes freshly written code visible to the instruction fetch with
+ * these. The architecture's sequence: clean the data cache to the point of unification, invalidate the instruction cache,
+ * with barriers, line by line (CTR_EL0 gives the line sizes). */
+#if defined(__aarch64__)
+void sys_dcache_flush(void *start, size_t len)
+{
+    uint64_t ctr;
+    __asm__ volatile("mrs %0, ctr_el0" : "=r"(ctr));
+    uintptr_t line = (uintptr_t)4 << ((ctr >> 16) & 0xf);
+    uintptr_t a = (uintptr_t)start & ~(line - 1), end = (uintptr_t)start + len;
+    for (; a < end; a += line)
+        __asm__ volatile("dc cvau, %0" : : "r"(a) : "memory");
+    __asm__ volatile("dsb ish" : : : "memory");
+}
+
+void sys_icache_invalidate(void *start, size_t len)
+{
+    uint64_t ctr;
+    __asm__ volatile("mrs %0, ctr_el0" : "=r"(ctr));
+    uintptr_t dline = (uintptr_t)4 << ((ctr >> 16) & 0xf), iline = (uintptr_t)4 << (ctr & 0xf);
+    uintptr_t a = (uintptr_t)start & ~(dline - 1), end = (uintptr_t)start + len;
+    for (; a < end; a += dline)
+        __asm__ volatile("dc cvau, %0" : : "r"(a) : "memory");
+    __asm__ volatile("dsb ish" : : : "memory");
+    for (a = (uintptr_t)start & ~(iline - 1); a < end; a += iline)
+        __asm__ volatile("ic ivau, %0" : : "r"(a) : "memory");
+    __asm__ volatile("dsb ish\n\tisb" : : : "memory");
+}
+#endif

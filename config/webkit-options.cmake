@@ -37,7 +37,9 @@ endmacro()
 flo_set(ENABLE_JIT OFF)
 flo_set(ENABLE_DFG_JIT OFF)
 flo_set(ENABLE_FTL_JIT OFF)
-flo_set(ENABLE_C_LOOP ON)
+# LLInt, JavaScriptCore's assembly interpreter (offlineasm, no JIT, no executable memory): several times faster than the C
+# "CLoop" interpreter this was before (ENABLE_C_LOOP ON), for the same memory.
+flo_set(ENABLE_C_LOOP OFF)
 flo_set(ENABLE_WEBASSEMBLY OFF)
 flo_set(ENABLE_WEBASSEMBLY_BBQJIT OFF)
 flo_set(ENABLE_WEBASSEMBLY_OMGJIT OFF)

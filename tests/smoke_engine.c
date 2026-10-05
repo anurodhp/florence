@@ -117,6 +117,16 @@ int main(int argc, char **argv)
 		snprintf(url, sizeof url, "file://%s", argv[1]);
 	flo_page_load(page, url);
 
+	/* SMOKE_BENCH=1: only load the page (a benchmark that sets its title to "done ...") and report how long that took */
+	if (getenv("SMOKE_BENCH")) {
+		double t0 = now(), end = t0 + 120 * scale;
+		while (now() < end && strncmp(last_title, "done", 4) != 0) pump(20);
+		printf("bench: %s in %.0f ms\n", last_title, (now() - t0) * 1000);
+		flo_page_free(page);
+		flo_engine_fini();
+		return strncmp(last_title, "done", 4) != 0;
+	}
+
 	CHECK(pump_until(have_frame, 90), "a frame arrived (%d frames so far)", frames);
 	/* let the page settle: the first frame can be the blank one */
 	{ double end = now() + 3 * scale; while (now() < end && strcmp(last_title, "Smoke") != 0) pump(50); }
@@ -139,6 +149,8 @@ int main(int argc, char **argv)
 		{ double end = now() + 2; while (now() < end) pump(50); }
 		int f0;
 		px(20, 20, &before);
+		f0 = frames;
+		if (getenv("SMOKE_SETTLE")) { double end = now() + atof(getenv("SMOKE_SETTLE")); while (now() < end) pump(50); }   /* e.g. 20: after the overlay scroll bars had time to fade */
 		f0 = frames;
 		{ double end = now() + 3; while (now() < end) pump(50); }
 		printf("      frames in 3 s of idle: %d\n", frames - f0);

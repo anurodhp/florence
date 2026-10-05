@@ -237,4 +237,15 @@ edit("Source/WebKit/WebProcess/glib/WebProcessGLib.cpp",
      '    WTFLogAlways("Could not create EGL display: no supported platform available. Aborting...");\n    CRASH();\n}',
      '    // Florence: no EGL display is fine, the CPU renderer does not need one\n    return;\n}',
      "Florence: no EGL display is fine")
+# The helper processes outlive the UI process when it dies. Upstream relies on the IPC socket's EOF, but the Darwin IPC here
+# is a datagram socketpair (SOCK_SEQPACKET does not exist on xnu-7195), and a datagram socket gives no EOF when the peer
+# closes. Watch the parent with kqueue (EVFILT_PROC, NOTE_EXIT) from the helper's own GLib main loop: no timer, no polling.
+edit("Source/WebKit/Shared/unix/AuxiliaryProcessMain.cpp",
+     "#if USE(GLIB)\n#include <glib-unix.h>\n#endif\n",
+     "#if USE(GLIB)\n#include <glib-unix.h>\n#endif\n\n#if OS(DARWIN) && USE(GLIB) // Florence: exit with the UI process\n#include <errno.h>\n#include <sys/event.h>\n#include <unistd.h>\n#endif\n",
+     "Florence: exit with the UI process")
+edit("Source/WebKit/Shared/unix/AuxiliaryProcessMain.cpp",
+     "    RELEASE_ASSERT(!sigaction(SIGPIPE, &signalAction, nullptr));\n#if ENABLE(LLVM_PROFILE_GENERATION) && USE(GLIB)",
+     "    RELEASE_ASSERT(!sigaction(SIGPIPE, &signalAction, nullptr));\n#if OS(DARWIN) && USE(GLIB)\n    {\n        // Florence: see scripts/webkit_fixes.sh, the helper exits when the UI process does\n        pid_t parent = getppid();\n        int queue = kqueue();\n        struct kevent change;\n        if (parent <= 1)\n            _exit(0);\n        EV_SET(&change, parent, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, nullptr);\n        if (queue >= 0 && kevent(queue, &change, 1, nullptr, 0, nullptr) == 0) {\n            g_unix_fd_add(queue, G_IO_IN, [](gint, GIOCondition, gpointer) -> gboolean {\n                _exit(0);\n                return G_SOURCE_REMOVE;\n            }, nullptr);\n        } else if (queue >= 0 && errno == ESRCH)\n            _exit(0); // the parent is already gone\n    }\n#endif\n#if ENABLE(LLVM_PROFILE_GENERATION) && USE(GLIB)",
+     "Florence: see scripts/webkit_fixes.sh, the helper exits")
 PY
