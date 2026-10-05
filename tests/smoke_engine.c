@@ -23,7 +23,9 @@ static char last_title[256], last_uri[512];
 static int last_w, last_h;
 
 static int trace_frames;
-static void changed(void *ui, int x, int y, int w, int h) { (void)ui; frames++; if (trace_frames && frames % 20 == 0) printf("      frame %d: damage %dx%d at %d,%d\n", frames, w, h, x, y); }
+static double last_frame_at;
+static double now(void);
+static void changed(void *ui, int x, int y, int w, int h) { (void)ui; frames++; last_frame_at = now(); if (trace_frames && frames % 20 == 0) printf("      frame %d: damage %dx%d at %d,%d\n", frames, w, h, x, y); }
 static void title(void *ui, const char *t) { (void)ui; snprintf(last_title, sizeof last_title, "%s", t != NULL ? t : ""); if (strcmp(last_title, "Clicked") == 0) title_seen_clicked = 1; }
 static void uri(void *ui, const char *u) { (void)ui; uri_events++; snprintf(last_uri, sizeof last_uri, "%s", u != NULL ? u : ""); }
 static void progress(void *ui, double p) { (void)ui; (void)p; }
@@ -117,6 +119,16 @@ int main(int argc, char **argv)
 		snprintf(url, sizeof url, "file://%s", argv[1]);
 	flo_page_load(page, url);
 
+	/* SMOKE_BENCH=1: only load the page (a benchmark that sets its title to "done ...") and report how long that took */
+	if (getenv("SMOKE_BENCH")) {
+		double t0 = now(), end = t0 + 120 * scale;
+		while (now() < end && strncmp(last_title, "done", 4) != 0) pump(20);
+		printf("bench: %s in %.0f ms\n", last_title, (now() - t0) * 1000);
+		flo_page_free(page);
+		flo_engine_fini();
+		return strncmp(last_title, "done", 4) != 0;
+	}
+
 	CHECK(pump_until(have_frame, 90), "a frame arrived (%d frames so far)", frames);
 	/* let the page settle: the first frame can be the blank one */
 	{ double end = now() + 3 * scale; while (now() < end && strcmp(last_title, "Smoke") != 0) pump(50); }
@@ -140,13 +152,17 @@ int main(int argc, char **argv)
 		int f0;
 		px(20, 20, &before);
 		f0 = frames;
+		if (getenv("SMOKE_SETTLE")) { double end = now() + atof(getenv("SMOKE_SETTLE")); while (now() < end) pump(50); }   /* e.g. 20: after the overlay scroll bars had time to fade */
+		f0 = frames;
 		{ double end = now() + 3; while (now() < end) pump(50); }
 		printf("      frames in 3 s of idle: %d\n", frames - f0);
 		f0 = frames;
 		flo_page_pointer_move(page, 0, 400, 300);
 		{ struct timeval tv; gettimeofday(&tv, NULL); fprintf(stderr, "%ld.%03d ### wheel sent\n", (long)(tv.tv_sec % 1000), (int)(tv.tv_usec / 1000)); }
+		{ double t_wheel = now();
 		flo_page_scroll(page, 0, 0, -5, 400, 300);   /* WPE/WebCore: negative is "down" */
 		{ double end = now() + 3; while (now() < end) pump(50); }
+		printf("      scroll settled %.0f ms after the wheel (%d frames)\n", (last_frame_at - t_wheel) * 1000, frames - f0); }
 		px(20, 20, &after);
 		printf("      frames during the scroll: %d\n", frames - f0);
 		if (getenv("TRY_KEYS")) {

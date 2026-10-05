@@ -45,7 +45,7 @@ cross)
     . tools/common.sh
     . tools/cmake_cross.sh
     export FL_CMAKE_C_CLANG=daily
-    B="$BUILD/webkit-cross"; mkdir -p "$B"
+    B="$BUILD/${FL_WK_DIR:-webkit-cross}"; mkdir -p "$B"      # FL_WK_DIR: another build directory, to keep a working build beside a new configuration
     # compiler wrappers: WebKit adds GNU/ELF-only options (-fdebug-types-section: WebKitCompilerFlags.cmake:180, under
     # NOT APPLE) and the GNU-ld-only -Wl,--no-undefined (WebKitCompilerFlags.cmake:437, set again after any CMake variable we could
     # set) that clang/ld64 reject for a Darwin target; they are dropped here instead of editing WebKit
@@ -78,7 +78,7 @@ add_compile_definitions(SK_BUILD_FOR_UNIX)
 set(CMAKE_SHARED_LINKER_FLAGS "\${CMAKE_SHARED_LINKER_FLAGS} -Wl,-dead_strip $LIB/libintl.dylib")
 set(CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-dead_strip $LIB/libintl.dylib")
 AP
-    ( cd "$B" && env PKG_CONFIG_LIBDIR="$FL_PKGCFG" PKG_CONFIG_PATH= cmake -GNinja -DPORT=WPE -DCMAKE_BUILD_TYPE=MinSizeRel \
+    ( cd "$B" && env PKG_CONFIG_LIBDIR="$FL_PKGCFG" PKG_CONFIG_PATH= cmake -GNinja -DPORT=WPE -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG" -DCMAKE_CXX_FLAGS_RELEASE="-O2 -DNDEBUG" \
         -DCMAKE_TOOLCHAIN_FILE="$B/toolchain.cmake" -DCMAKE_OSX_SYSROOT="$SDK" -DCMAKE_PROJECT_INCLUDE="$B/after_project.cmake" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
         -C "$FL_DIR/config/webkit-options.cmake" "$WK" ) > "$B/configure.log" 2>&1 \
         || { grep -B2 -A12 "CMake Error" "$B/configure.log" | head -60 >&2; echo "error: configure failed (see $B/configure.log)" >&2; exit 1; }

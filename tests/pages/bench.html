@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>running</title>
+<style>body{font:14px sans-serif;margin:8px} .c{display:inline-block;width:60px;height:20px;margin:1px;background:#ccd;border:1px solid #99a}</style>
+</head><body><h3>Florence benchmark</h3><div id="out"></div><div id="cells"></div>
+<script>
+function fib(n) { return n < 2 ? n : fib(n - 1) + fib(n - 2); }
+function t(f) { var s = Date.now(); f(); return Date.now() - s; }
+var r = {};
+r.fib = t(function () { fib(24); });
+r.sort = t(function () { var a = [], i; for (i = 0; i < 40000; i++) a.push((i * 7919) % 10007); a.sort(function (x, y) { return x - y; }); });
+r.str = t(function () { var s = "", i; for (i = 0; i < 20000; i++) s += i; return s.length; });
+r.dom = t(function () { var d = document.getElementById("cells"), i; for (i = 0; i < 1500; i++) { var e = document.createElement("span"); e.className = "c"; e.textContent = i; d.appendChild(e); } });
+document.getElementById("out").textContent = JSON.stringify(r);
+document.title = "done fib=" + r.fib + " sort=" + r.sort + " str=" + r.str + " dom=" + r.dom;
+</script></body></html>

@@ -1,11 +1,11 @@
 # CLAUDE.md
 
-Florence: a browser for small machines. On this branch the engine is WPE WebKit 2.54.0, built
+Florence: a browser for small machines. The engine is WPE WebKit 2.54.0, built
 for CPU rendering with every removable feature removed, under a GNUstep UI (toolbar, tabs, bookmarks, history, find, zoom, preferences,
-ad blocking) ported from the previous engine's UI, which is on `master` with that engine. The target is the Raspberry Pi 3 running
+ad blocking) ported from the previous engine's UI, which is at the tag `legacy-engine` with that engine. The target is the Raspberry Pi 3 running
 the Darwin/XNU port in the sibling repo `xnu-iokit-pi3` ("the iokit port"); Pi builds are
 cross-compiled on a Mac. The engine and the glue also build and run on Linux (`scripts/build_*.sh
-host`), which is where they are developed and tested; nothing has been built for the Pi yet.
+host`), which is where they are developed and tested; it also runs on the Pi 3 (see `docs/HANDOFF.md`).
 README.md has the layout and status; `docs/HANDOFF.md` is the state of play for resuming; `docs/webkit-port.md` has the design, the verified/unverified
 list and the dependency table the Pi build is waiting on.
 
@@ -91,7 +91,7 @@ with a stated reason in the "Left on" list.
 ## Lessons learned the hard way
 
 * Do not run threads beside GNUstep's run loop on this port. A worker thread running libcurl (the first EasyList
-  updater on `master`) made the browser die within seconds with `fatal IO error 22` on the X connection; moving the
+  updater at `legacy-engine`) made the browser die within seconds with `fatal IO error 22` on the X connection; moving the
   work into a child process (posix_spawn) fixed it. Background work is a child process. The cause was never pinned
   down. WebKit runs its network and web content in child processes already, but its UI-process library makes some
   threads of its own: if `fatal IO error 22` returns, this is the first suspect.
@@ -110,8 +110,8 @@ with a stated reason in the "Left on" list.
 * WPE's render path wants its protocol kept: after `render_buffer` WebKit sends no further frame until
   `buffer-rendered`, and the previous buffer must be reported `released` (`flo_platform.c`).
 * The old lessons (the previous engine's table lifetime, `VLDTARGET`, the `fetch_start()` hook) live in
-  `git show master:CLAUDE.md`; the diagnostics of that UI (`FLORENCE_TRACE`, the X IO error handler, the crash
-  report) were not carried over and may be wanted on the first Pi run (`git show master:frontend/gs_core.c`).
+  `git show legacy-engine:CLAUDE.md`; the diagnostics of that UI (`FLORENCE_TRACE`, the X IO error handler, the crash
+  report) were not carried over and may be wanted on the first Pi run (`git show legacy-engine:frontend/gs_core.c`).
 
 ## Verifying without the Pi
 
@@ -124,4 +124,5 @@ with a stated reason in the "Left on" list.
 
 ## Branches
 
-Default branch is `master` (`main` is retired). Do not open pull requests unless asked.
+Default branch is `master` (`main` is retired); the WebKit work lives there since PR #3. Tags: `stable-webkit-2026-10-05` is the last known stable
+build on the Pi, `legacy-engine` is the previous engine and UI. New work goes on a branch off `master`. Do not open pull requests unless asked.
