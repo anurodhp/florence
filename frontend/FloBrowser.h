@@ -1,0 +1,60 @@
+/*
+ * Florence: a browser window: toolbar, tab strip (shown only with two or more tabs),
+ * the current tab's page and a status line. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT
+ */
+#import <AppKit/AppKit.h>
+#import "FloTab.h"
+#import "FloToolbar.h"
+
+NSString *FloURLFromInput(NSString *input);     /* address, or a search for anything else */
+NSImage *FloAppIcon(void);                      /* defined by FloMain.m */
+
+extern NSString *const FloBookmarksChanged;      /* posted when the bookmark list changes */
+extern NSString *const FloHistoryChanged;        /* and when a page is added to the history */
+
+@interface FloBrowser : NSObject <NSWindowDelegate> {
+@public
+	NSWindow *win;
+	FloToolbarBand *band;
+	FloToolButton *backBtn, *fwdBtn, *starBtn, *newTabBtn;
+	FloAddressBar *addr;
+	NSTextField *urlField;          /* the address bar's text field */
+	FloTabStrip *strip;
+	NSView *container;
+	FloStatusLabel *status;
+	NSView *findBar;                /* Cmd-F */
+	NSTextField *findField, *findStatus;
+	FloToolButton *findPrev, *findNext;
+	BOOL findVisible;
+	NSMutableArray *tabs;
+	FloTab *current;
+	BOOL closing, chromePending;
+}
++ (NSMutableArray *)all;                /* every live browser window */
++ (FloBrowser *)key;                    /* the key window's browser, if any */
++ (FloBrowser *)openWindowWithAddress:(NSString *)address;   /* nil: the homepage, else a blank page */
+- (FloTab *)openTabWithAddress:(NSString *)address select:(BOOL)select;
+- (void)relayout;
+- (void)layoutStrip;
+- (void)rebuildStrip;
+- (void)refreshChrome;
+- (void)showWindow;
+- (void)addTab:(FloTab *)t select:(BOOL)select;
+- (void)removeTab:(FloTab *)t;
+- (void)selectTab:(FloTab *)t;
+- (void)setNeedsChrome;                 /* title/address/buttons changed: refresh next loop pass */
+- (void)setStatusText:(NSString *)s;    /* the hover label; hides itself after a few seconds */
+- (void)focusLocation;
+- (void)closeCurrentTab;
+- (void)nextTab:(int)delta;
+- (void)newTab;
+- (void)toggleBookmark;
+- (void)showFind;                       /* the find bar under the toolbar */
+- (void)hideFind;
+- (void)runFind:(BOOL)forwards;
+- (void)setFindFound:(BOOL)found;
+- (void)zoom:(int)step;                 /* +1 / -1 / 0 (reset) */
+- (void)goBack:(id)sender;
+- (void)goForward:(id)sender;
+- (void)reloadOrStop:(id)sender;
+@end

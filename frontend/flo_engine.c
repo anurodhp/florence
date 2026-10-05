@@ -12,6 +12,7 @@
 #include "flo_platform.h"
 
 #include <glib.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wpe/webkit.h>
@@ -69,8 +70,20 @@ static WPEDisplay *display;
 static WebKitNetworkSession *session;
 static WebKitWebContext *context;
 static WebKitSettings *settings;        /* shared by every page, so one switch changes all */
+static WebKitUserContentManager *content;   /* shared too: the content blocker's rules */
+static WebKitUserContentFilterStore *filter_store;
+static WebKitUserContentFilter *filter;     /* the compiled default list, once WebKit has it */
+static char *data_path;
 
 static void setdefault(const char *name, const char *value) { setenv(name, value, 0); }
+
+static void apply_font_min(void)
+{
+	int tenths = flo_opt_font_min();
+
+	/* WebKit's minimum is in CSS pixels (96 per inch); 0 is "no minimum". 8.5 pt is the old default and means none. */
+	webkit_settings_set_minimum_font_size(settings, tenths <= 85 ? 0 : (tenths * 96 + 360) / 720);
+}
 
 int flo_engine_init(const char *data_dir, const char *cache_dir)
 {
@@ -115,11 +128,19 @@ int flo_engine_init(const char *data_dir, const char *cache_dir)
 	webkit_settings_set_enable_media_stream(settings, FALSE);
 	webkit_settings_set_enable_webaudio(settings, FALSE);
 	webkit_settings_set_enable_webgl(settings, FALSE);
+	webkit_settings_set_enable_javascript(settings, strcmp(flo_pref_get("javascript", "0"), "1") == 0);
+	apply_font_min();
+	content = webkit_user_content_manager_new();
+	data_path = g_strdup(data_dir);
 	return 0;
 }
 
 void flo_engine_fini(void)
 {
+	g_clear_pointer(&filter, webkit_user_content_filter_unref);
+	g_clear_object(&filter_store);
+	g_clear_object(&content);
+	g_clear_pointer(&data_path, g_free);
 	g_clear_object(&settings);
 	g_clear_object(&context);
 	g_clear_object(&session);
@@ -135,6 +156,92 @@ void flo_engine_set_javascript(bool on)
 {
 	if (settings != NULL)
 		webkit_settings_set_enable_javascript(settings, on);
+	flo_pref_set("javascript", on ? "1" : "0");
+}
+
+void flo_opt_set_font_min(int tenths)
+{
+	char v[16];
+
+	snprintf(v, sizeof v, "%d", tenths);
+	flo_pref_set("font_min", v);
+	if (settings != NULL)
+		apply_font_min();
+}
+
+void flo_clear_cookies(void)
+{
+	if (session != NULL)
+		webkit_website_data_manager_clear(webkit_network_session_get_website_data_manager(session),
+			WEBKIT_WEBSITE_DATA_COOKIES, 0, NULL, NULL, NULL);
+}
+
+/* ---- the content blocker ------------------------------------------------------------------------- */
+
+/* Rules are Safari's content-blocker JSON, which WebKit compiles natively (ENABLE_CONTENT_EXTENSIONS); the user content manager is
+ * shared by every page, so one add or remove covers all of them. A page applies the rules when it next loads. */
+static void apply_blocker(void)
+{
+	if (content == NULL)
+		return;
+	webkit_user_content_manager_remove_all_filters(content);
+	if (flo_opt_hide_ads() && filter != NULL)
+		webkit_user_content_manager_add_filter(content, filter);
+}
+
+void flo_opt_set_hide_ads(bool on)
+{
+	flo_pref_set("hide_ads", on ? "1" : "0");
+	apply_blocker();
+}
+
+static void filter_ready(GObject *o, GAsyncResult *res, gpointer data)
+{
+	GError *error = NULL;
+	WebKitUserContentFilter *f = webkit_user_content_filter_store_save_from_file_finish(WEBKIT_USER_CONTENT_FILTER_STORE(o), res, &error);
+	(void)data;
+
+	if (f == NULL) {
+		g_printerr("florence: content blocker: %s\n", error != NULL ? error->message : "failed");
+		g_clear_error(&error);
+		return;
+	}
+	g_clear_pointer(&filter, webkit_user_content_filter_unref);
+	filter = f;
+	apply_blocker();
+}
+
+static void filter_load_done(GObject *o, GAsyncResult *res, gpointer data)
+{
+	char *json = data;
+	GError *error = NULL;
+	WebKitUserContentFilter *f = webkit_user_content_filter_store_load_finish(WEBKIT_USER_CONTENT_FILTER_STORE(o), res, &error);
+
+	g_clear_error(&error);
+	if (f != NULL) {                /* compiled by an earlier run */
+		g_clear_pointer(&filter, webkit_user_content_filter_unref);
+		filter = f;
+		apply_blocker();
+	} else {
+		GFile *file = g_file_new_for_path(json);
+		webkit_user_content_filter_store_save_from_file(WEBKIT_USER_CONTENT_FILTER_STORE(o), "florence-default-1", file, NULL,
+			filter_ready, NULL);
+		g_object_unref(file);
+	}
+	g_free(json);
+}
+
+void flo_engine_set_blocklist(const char *json_path)
+{
+	char *dir;
+
+	if (data_path == NULL || filter_store != NULL)
+		return;
+	dir = g_build_filename(data_path, "filters", NULL);
+	g_mkdir_with_parents(dir, 0700);
+	filter_store = webkit_user_content_filter_store_new(dir);
+	g_free(dir);
+	webkit_user_content_filter_store_load(filter_store, "florence-default-1", NULL, filter_load_done, g_strdup(json_path));
 }
 
 /* ---- pages --------------------------------------------------------------------------------------- */
@@ -145,6 +252,9 @@ struct flo_page {
 	struct flo_page_events ev;
 	void *ui;
 	unsigned buttons;               /* pointer buttons held, as WPE modifier bits */
+	double zoom;
+	char *find_text;                /* the text of the search in progress, to tell "next" from "a new search" */
+	bool find_cs;
 };
 
 static void on_frame(WPEView *view, int x, int y, int w, int h, gpointer data)
@@ -189,6 +299,10 @@ static void on_load_changed(WebKitWebView *web, WebKitLoadEvent event, gpointer 
 {
 	struct flo_page *p = data;
 	(void)web;
+	if (event == WEBKIT_LOAD_STARTED && p->ev.loading != NULL)
+		p->ev.loading(p->ui, true);
+	if (event == WEBKIT_LOAD_FINISHED && p->ev.loading != NULL)
+		p->ev.loading(p->ui, false);
 	if (event == WEBKIT_LOAD_FINISHED && p->ev.progress != NULL)
 		p->ev.progress(p->ui, 1.0);
 	if (event == WEBKIT_LOAD_COMMITTED || event == WEBKIT_LOAD_FINISHED)
@@ -198,9 +312,13 @@ static void on_load_changed(WebKitWebView *web, WebKitLoadEvent event, gpointer 
 static gboolean on_load_failed(WebKitWebView *web, WebKitLoadEvent event, const char *uri, GError *error, gpointer data)
 {
 	char *msg, *html;
-	(void)event; (void)data;
-	if (g_error_matches(error, WEBKIT_NETWORK_ERROR, WEBKIT_NETWORK_ERROR_CANCELLED))
+	(void)event;
+	if (g_error_matches(error, WEBKIT_NETWORK_ERROR, WEBKIT_NETWORK_ERROR_CANCELLED)) {
+		struct flo_page *p = data;
+		if (p->ev.loading != NULL)
+			p->ev.loading(p->ui, false);
 		return FALSE;           /* the user stopped it, or navigated away */
+	}
 	msg = g_markup_escape_text(error->message, -1);
 	html = g_strdup_printf("<html><body style='font:16px sans-serif;margin:3em'><h2>Cannot open the page</h2>"
 			       "<p>%s</p></body></html>", msg);
@@ -218,8 +336,38 @@ static void on_mouse_target(WebKitWebView *web, WebKitHitTestResult *hit, guint 
 		p->ev.hover(p->ui, webkit_hit_test_result_context_is_link(hit) ? webkit_hit_test_result_get_link_uri(hit) : NULL);
 }
 
-/* A page that wants a new window (window.open, target=_blank) gets none: there is one view per
- * window and no tab model yet. WebKit's default for a missing "create" handler is the same. */
+/* A link that wants a new window (target=_blank, a middle click) is handed to the UI as a new tab. window.open() from a script
+ * still gets no window: WebKit's default for a missing "create" handler. */
+static gboolean on_decide_policy(WebKitWebView *web, WebKitPolicyDecision *decision, WebKitPolicyDecisionType type, gpointer data)
+{
+	struct flo_page *p = data;
+	(void)web;
+	if (type == WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION) {
+		WebKitNavigationAction *a = webkit_navigation_policy_decision_get_navigation_action(WEBKIT_NAVIGATION_POLICY_DECISION(decision));
+		WebKitURIRequest *r = webkit_navigation_action_get_request(a);
+		if (p->ev.open_tab != NULL && r != NULL)
+			p->ev.open_tab(p->ui, webkit_uri_request_get_uri(r));
+		webkit_policy_decision_ignore(decision);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static void on_found(WebKitFindController *fc, guint count, gpointer data)
+{
+	struct flo_page *p = data;
+	(void)fc; (void)count;
+	if (p->ev.found != NULL)
+		p->ev.found(p->ui, true);
+}
+
+static void on_not_found(WebKitFindController *fc, gpointer data)
+{
+	struct flo_page *p = data;
+	(void)fc;
+	if (p->ev.found != NULL)
+		p->ev.found(p->ui, false);
+}
 
 struct flo_page *flo_page_new(const struct flo_page_events *ev, void *ui, int w, int h)
 {
@@ -230,7 +378,8 @@ struct flo_page *flo_page_new(const struct flo_page_events *ev, void *ui, int w,
 	p->ui = ui;
 	p->web = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
 		"web-context", context, "network-session", session, "settings", settings,
-		"display", display, NULL));
+		"user-content-manager", content, "display", display, NULL));
+	p->zoom = 1.0;
 	webkit_web_view_set_background_color(p->web, &white);    /* opaque frames: the UI never blends */
 	p->view = webkit_web_view_get_wpe_view(p->web);
 	flo_view_set_frame_func(p->view, on_frame, p);
@@ -241,6 +390,9 @@ struct flo_page *flo_page_new(const struct flo_page_events *ev, void *ui, int w,
 	g_signal_connect(p->web, "load-changed", G_CALLBACK(on_load_changed), p);
 	g_signal_connect(p->web, "load-failed", G_CALLBACK(on_load_failed), p);
 	g_signal_connect(p->web, "mouse-target-changed", G_CALLBACK(on_mouse_target), p);
+	g_signal_connect(p->web, "decide-policy", G_CALLBACK(on_decide_policy), p);
+	g_signal_connect(webkit_web_view_get_find_controller(p->web), "found-text", G_CALLBACK(on_found), p);
+	g_signal_connect(webkit_web_view_get_find_controller(p->web), "failed-to-find-text", G_CALLBACK(on_not_found), p);
 
 	flo_view_attach(p->view, w, h);
 	return p;
@@ -252,7 +404,9 @@ void flo_page_free(struct flo_page *p)
 		return;
 	flo_view_set_frame_func(p->view, NULL, NULL);
 	g_signal_handlers_disconnect_by_data(p->web, p);
+	g_signal_handlers_disconnect_by_data(webkit_web_view_get_find_controller(p->web), p);
 	g_object_unref(p->web);
+	g_free(p->find_text);
 	g_free(p);
 }
 
@@ -262,6 +416,55 @@ void flo_page_stop(struct flo_page *p) { webkit_web_view_stop_loading(p->web); }
 void flo_page_back(struct flo_page *p) { webkit_web_view_go_back(p->web); }
 void flo_page_forward(struct flo_page *p) { webkit_web_view_go_forward(p->web); }
 bool flo_page_loading(struct flo_page *p) { return webkit_web_view_is_loading(p->web); }
+
+int flo_page_security(struct flo_page *p)
+{
+	GTlsCertificate *cert = NULL;
+	GTlsCertificateFlags errors = 0;
+
+	return webkit_web_view_get_tls_info(p->web, &cert, &errors) && errors == 0 ? 1 : 0;
+}
+
+void flo_page_find(struct flo_page *p, const char *text, bool forwards, bool case_sensitive)
+{
+	WebKitFindController *fc = webkit_web_view_get_find_controller(p->web);
+	guint opts = WEBKIT_FIND_OPTIONS_WRAP_AROUND | (case_sensitive ? 0 : WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE)
+		   | (forwards ? 0 : WEBKIT_FIND_OPTIONS_BACKWARDS);
+
+	if (text == NULL || text[0] == '\0') {
+		webkit_find_controller_search_finish(fc);
+		g_clear_pointer(&p->find_text, g_free);
+		return;
+	}
+	if (p->find_text != NULL && strcmp(p->find_text, text) == 0 && p->find_cs == case_sensitive) {
+		if (forwards)
+			webkit_find_controller_search_next(fc);
+		else
+			webkit_find_controller_search_previous(fc);
+		return;
+	}
+	g_free(p->find_text);
+	p->find_text = g_strdup(text);
+	p->find_cs = case_sensitive;
+	webkit_find_controller_search(fc, text, opts, G_MAXUINT);
+}
+
+void flo_page_find_clear(struct flo_page *p)
+{
+	webkit_find_controller_search_finish(webkit_web_view_get_find_controller(p->web));
+	g_clear_pointer(&p->find_text, g_free);
+}
+
+int flo_page_zoom(struct flo_page *p, int step)
+{
+	double z = step == 0 ? 1.0 : p->zoom + step * 0.1;
+
+	if (z < 0.3) z = 0.3;
+	if (z > 3.0) z = 3.0;
+	p->zoom = (int)(z * 10 + 0.5) / 10.0;
+	webkit_web_view_set_zoom_level(p->web, p->zoom);
+	return (int)(p->zoom * 100 + 0.5);
+}
 
 void flo_page_resize(struct flo_page *p, int w, int h) { flo_view_set_size(p->view, w, h); }
 

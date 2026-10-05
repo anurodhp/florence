@@ -145,9 +145,10 @@ each with the source line that reads it.
 
 ## Not in the UI yet
 
-Tabs, bookmarks, history, the start page, find, zoom, downloads, preferences, the content blocker, context
-menu, favicons. They were in the earlier UI (`git show master:frontend/FloBrowser.m`, `FloPrefs.m`, ...);
-the engine-facing ones need WebKit's equivalents (`WebKitFindController`, `WebKitDownload`,
-`WebKitUserContentFilter`, `WebKitContextMenu`, `WebKitFaviconDatabase`). Keyboard events carry a keyval
+The UI is the earlier one (`FloBrowser`, `FloToolbar`, `FloStore`, `FloPrefs`, `FloAbout`, from `master`) on a new tab
+model (`FloTab` owns a `flo_page`). In: tabs, bookmarks, history, find (`WebKitFindController`), zoom, preferences, the
+content blocker (`flo_engine_set_blocklist`: `WebKitUserContentFilterStore`, compiled once and cached under the data
+directory), links that open a new tab. Not in yet: the start page, downloads (`WebKitDownload`), the EasyList updater, the
+context menu (`WebKitContextMenu`), favicons (`WebKitFaviconDatabase`), Do Not Track and Referer switches, scroll bars. Keyboard events carry a keyval
 but no hardware keycode, so `KeyboardEvent.code` is empty; popups are refused; the clipboard is WPE's
 in-process one.

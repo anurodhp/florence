@@ -862,18 +862,6 @@
  },
  {
   "trigger": {
-   "url-filter": "^https?://fonts\\.(googleapis",
-   "resource-type": [
-    "font",
-    "style-sheet"
-   ]
-  },
-  "action": {
-   "type": "ignore-previous-rules"
-  }
- },
- {
-  "trigger": {
    "url-filter": ".*"
   },
   "action": {

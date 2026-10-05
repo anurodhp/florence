@@ -39,7 +39,21 @@ void flo_glib_dispatch(void);                     /* a descriptor or the timeout
 int  flo_engine_init(const char *data_dir, const char *cache_dir);   /* 0 ok; sets the low-power environment first */
 void flo_engine_fini(void);
 bool flo_engine_javascript(void);               /* off until the user opts in */
-void flo_engine_set_javascript(bool on);        /* every page, now and later */
+void flo_engine_set_javascript(bool on);        /* every page, now and later; remembered (flo_prefs) */
+
+/* Settings, remembered in one small key=value file (flo_prefs.c). Without flo_prefs_init() they live in memory only. */
+void flo_prefs_init(const char *path);
+const char *flo_pref_get(const char *key, const char *def);    /* valid until the next flo_pref_set of that key */
+void flo_pref_set(const char *key, const char *val);
+bool flo_opt_hide_ads(void);                    /* the content blocker: on by default */
+void flo_opt_set_hide_ads(bool on);             /* takes effect on the next load of a page */
+int  flo_opt_font_min(void);                    /* tenths of a point: 85 = WebKit's default, no minimum */
+void flo_opt_set_font_min(int tenths);
+const char *flo_opt_homepage(void);             /* "" when none */
+void flo_opt_set_homepage(const char *url);
+void flo_clear_cookies(void);                   /* cookies and other site data, now */
+/* The content blocker's rules: a Safari content-blocker JSON file, compiled once by WebKit and cached under the data directory. */
+void flo_engine_set_blocklist(const char *json_path);
 
 /* ---- one page (a web view) ---------------------------------------------------------------------- */
 struct flo_page;
@@ -51,6 +65,9 @@ struct flo_page_events {
 	void (*progress)(void *ui, double fraction);             /* 0..1; 1 when done */
 	void (*nav_state)(void *ui, bool can_back, bool can_forward);
 	void (*hover)(void *ui, const char *link);               /* link under the pointer, or NULL */
+	void (*loading)(void *ui, bool loading);                 /* a load started / ended (finished, failed or stopped) */
+	void (*found)(void *ui, bool found);                     /* the last find matched / did not */
+	void (*open_tab)(void *ui, const char *uri);             /* the page asked for a new window (target=_blank): not opened by the engine */
 };
 
 struct flo_page *flo_page_new(const struct flo_page_events *ev, void *ui, int w, int h);
@@ -62,6 +79,11 @@ void flo_page_back(struct flo_page *p);
 void flo_page_forward(struct flo_page *p);
 void flo_page_resize(struct flo_page *p, int w, int h);  /* the viewport, in pixels */
 bool flo_page_loading(struct flo_page *p);
+/* what the address bar's padlock may claim: 0 nothing (not https), 1 https and the certificate verified */
+int  flo_page_security(struct flo_page *p);
+void flo_page_find(struct flo_page *p, const char *text, bool forwards, bool case_sensitive);
+void flo_page_find_clear(struct flo_page *p);
+int  flo_page_zoom(struct flo_page *p, int step);        /* step +1/-1 (10 %), 0 resets to 100 %; returns the new percentage */
 
 /* The newest finished frame: BGRA, premultiplied, rows top-down. Valid until the next call into
  * the engine; NULL before the first frame. */

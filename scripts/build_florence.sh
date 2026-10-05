@@ -14,8 +14,8 @@ cd "$(dirname "$0")/.."
 FL_DIR="$PWD"
 MODE="${1:-host}"
 SRC="$FL_DIR/frontend"
-CFILES=(flo_engine.c flo_platform.c)
-MFILES=(FloGLib.m FloPageView.m FloWindow.m FloMain.m)
+CFILES=(flo_engine.c flo_platform.c flo_prefs.c)
+MFILES=(FloGLib.m FloPageView.m FloTab.m FloStore.m FloToolbar.m FloPrefs.m FloAbout.m FloBrowser.m FloMain.m)
 
 case "$MODE" in
 host)
@@ -64,7 +64,8 @@ pi)
     # a GNUstep application bundle in the Mac layout the image uses (/Applications/X.app)
     APP="$ROOT/Applications/Florence.app"; rm -rf "$APP"; mkdir -p "$APP/Resources"
     cp "$ROOT$PREFIX/bin/florence" "$APP/Florence"
-    cp "$SRC/assets/Florence.tiff" "$SRC/assets/Florence.png" "$APP/Resources/"
+    cp "$SRC/assets/Florence.tiff" "$SRC/assets/Florence.png" "$SRC/assets/Florence-about.png" "$SRC/assets/blocklist-default.json" "$APP/Resources/"
+    cp "$SRC"/assets/icons/tb-*.tiff "$APP/Resources/"        # the toolbar glyphs (Lucide, see assets/icons/README.md)
     FL_VERSION="$(tr -d '[:space:]' < "$FL_DIR/VERSION")"
     printf '{\n    ApplicationName = Florence;\n    ApplicationDescription = "WebKit with a GNUstep UI";\n    ApplicationRelease = "%s";\n    NSExecutable = Florence;\n    NSIcon = "Florence.tiff";\n    NSPrincipalClass = NSApplication;\n    CFBundleIdentifier = "org.florence.browser";\n}\n' "$FL_VERSION" > "$APP/Resources/Info-gnustep.plist"
     echo "bundle $APP (run: openapp Florence, under an X server)"

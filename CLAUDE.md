@@ -1,8 +1,8 @@
 # CLAUDE.md
 
 Florence: a browser for small machines. On this branch the engine is WPE WebKit 2.54.0, built
-for CPU rendering with every removable feature removed, under a bare-minimum GNUstep UI (the
-previous engine and its full UI are on `master`). The target is the Raspberry Pi 3 running
+for CPU rendering with every removable feature removed, under a GNUstep UI (toolbar, tabs, bookmarks, history, find, zoom, preferences,
+ad blocking) ported from the previous engine's UI, which is on `master` with that engine. The target is the Raspberry Pi 3 running
 the Darwin/XNU port in the sibling repo `xnu-iokit-pi3` ("the iokit port"); Pi builds are
 cross-compiled on a Mac. The engine and the glue also build and run on Linux (`scripts/build_*.sh
 host`), which is where they are developed and tested; nothing has been built for the Pi yet.

@@ -18,9 +18,9 @@ says what has been checked, what the Pi build still needs, and what is missing.
   sparsely (1.8 GB instead of 8).
 * `config/webkit-options.cmake`: the 100-odd build options, grouped by what each saves, with what was left on
   and why. `scripts/check_webkit_options.sh` proves each still exists in the pinned tree.
-* `frontend/`: the bare-minimum browser. One window: Back, Forward, Reload/Stop, an address field (anything that
-  is not an address is a DuckDuckGo search, the JavaScript-free page), the page, a status line.
-  JavaScript is off.
+* `frontend/`: the browser. A Safari-style window: toolbar, tabs, address bar with a padlock, bookmarks, history, find in
+  page, zoom, Preferences, a content blocker (Safari rule lists, native in WebKit). Anything that is not an address is
+  a web search. JavaScript is off until turned on.
 
 | File | Role |
 |---|---|
