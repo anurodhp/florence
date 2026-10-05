@@ -27,7 +27,7 @@ that carry "SPDX-License-Identifier: MIT". Copyright (c) 2026 Anurodh Pokharel. 
 is authoritative for that file. The full text is also in LICENSES/MIT.txt.
 
 History: the code was GPL-2.0-only while the browser linked the earlier engine (GPL-2.0-only) and had files
-derived from its frontends. None of that is on this branch (the earlier UI lives on `master` and keeps its GPL
+derived from its frontends. None of that is on this branch (the earlier UI lives at the tag `legacy-engine` and keeps its GPL
 terms there), so the original code here is relicensed by its copyright holder.
 
 Exceptions, which keep their own terms:

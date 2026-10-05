@@ -11,8 +11,8 @@ WebKit itself (the official repo, tag `wpewebkit-2.54.0`, commit `73f39d84ea9d40
 (the toolkit-less one; WPE is a port of WebKit, not a different engine), built with `config/webkit-options.cmake`. Our code
 supplies a custom WPE *display* (`frontend/flo_platform.c`): WebKit's web process paints on the CPU (Skia) into shared
 memory, WPE hands each frame to our view, and a GNUstep `NSView` draws the exposed rectangle. GLib's main context is
-pumped from NSRunLoop (`FloGLib.m`), no thread and no polling timer. The previous engine and its full UI are on `master`
-(`git show master:frontend/...`).
+pumped from NSRunLoop (`FloGLib.m`), no thread and no polling timer. The previous engine and its full UI are at the tag `legacy-engine`
+(`git show legacy-engine:frontend/...`).
 
 ## State
 

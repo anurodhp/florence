@@ -3,7 +3,7 @@
 A small web browser for small machines. This branch runs it on **WPE WebKit 2.54.0** with a native GNUstep
 user interface: the engine is built with every feature that can be left out left out, renders on the CPU
 (no GPU yet) and hands finished frames to a GNUstep view. The previous engine with its full UI
-(tabs, bookmarks, start page, content blocker, preferences) is on `master`.
+(tabs, bookmarks, start page, content blocker, preferences) is at the tag `legacy-engine`.
 
 The target is a **Raspberry Pi 3 running the Darwin/XNU port** in the sibling repository `xnu-iokit-pi3` ("the
 iokit port"), 1 GB of RAM and a slow CPU; it should also run on Linux. **Status: the engine compiles on Linux with the option set (needing three small edits, `scripts/webkit_fixes.sh`) and
@@ -52,6 +52,6 @@ build glib, libsoup, sqlite, harfbuzz and the rest of WPE's dependencies, and it
 ## License
 
 The original code in this repository is MIT, see `LICENSE` and `LICENSES/MIT.txt`. It was GPL-2.0-only while the previous engine was
-linked; none of that engine, nor of the files derived from its frontends, is on this branch (the UI on `master` keeps its GPL
+linked; none of that engine, nor of the files derived from its frontends, is on this branch (the UI at `legacy-engine` keeps its GPL
 terms). Third-party code keeps its own licence: WebKit is LGPL-2 and BSD (linked as shared libraries, fetched by
 `setup_third_party.sh`), and the few vendored or derived files are listed under "Exceptions" in `LICENSE`.
