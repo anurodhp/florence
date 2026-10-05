@@ -131,7 +131,7 @@ int flo_engine_init(const char *data_dir, const char *cache_dir)
 	webkit_settings_set_enable_media_stream(settings, FALSE);
 	webkit_settings_set_enable_webaudio(settings, FALSE);
 	webkit_settings_set_enable_webgl(settings, FALSE);
-	webkit_settings_set_enable_javascript(settings, strcmp(flo_pref_get("javascript", "0"), "1") == 0);
+	webkit_settings_set_enable_javascript(settings, strcmp(flo_pref_get("javascript", "1"), "1") == 0);
 	apply_font_min();
 	content = webkit_user_content_manager_new();
 	data_path = g_strdup(data_dir);

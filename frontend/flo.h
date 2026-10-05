@@ -42,7 +42,7 @@ void flo_install_crash_report(void);          /* a fatal signal prints where it 
 /* ---- engine ----------------------------------------------------------------------------------- */
 int  flo_engine_init(const char *data_dir, const char *cache_dir);   /* 0 ok; sets the low-power environment first */
 void flo_engine_fini(void);
-bool flo_engine_javascript(void);               /* off until the user opts in */
+bool flo_engine_javascript(void);               /* on by default; the View menu turns it off */
 void flo_engine_set_javascript(bool on);        /* every page, now and later; remembered (flo_prefs) */
 
 /* Settings, remembered in one small key=value file (flo_prefs.c). Without flo_prefs_init() they live in memory only. */
