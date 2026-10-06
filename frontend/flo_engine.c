@@ -93,8 +93,21 @@ int flo_engine_init(const char *data_dir, const char *cache_dir)
 
 	/* Read by WebKit's processes at start-up (they inherit our environment); setdefault keeps
 	 * anything the user put there for experiments. Each is a source line in the pinned tree: */
-	setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1");      /* scripts/webkit_fixes.sh: no GL compositor, paint on the CPU */
-	setdefault("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1");     /* WebProcessGLib.cpp: no GPU buffers, shared memory */
+	/* The GL path is the default: WebKit's GL compositor and Skia's GL backend through libepoxy and compat/egl on the Mesa GLX
+	 * presenter (the VideoCore), frames read back into shared memory. FLORENCE_CPU=1 selects the CPU path (no GL stack at all). */
+	const char *cpu = getenv("FLORENCE_CPU");
+	if (cpu == NULL || strcmp(cpu, "0") == 0) {
+		const char *old = getenv("DYLD_LIBRARY_PATH");
+		char path[1024];
+
+		setdefault("WEBKIT_ASYNC_SCROLLING", "0");               /* webkit_fixes.sh: scroll on the main thread: the scroll bars need it */
+		/* one libc++ per process: see scripts/build_egl.sh. Read by the processes started from here on (the web process loads libGL). */
+		snprintf(path, sizeof path, "/usr/local/lib/flo-alias%s%s", old != NULL && old[0] != '\0' ? ":" : "", old != NULL ? old : "");
+		setenv("DYLD_LIBRARY_PATH", path, 1);
+	} else {
+		setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1");      /* scripts/webkit_fixes.sh: no GL compositor, paint on the CPU */
+		setdefault("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1");     /* WebProcessGLib.cpp: no GPU buffers, shared memory */
+	}
 	setdefault("WEBKIT_SKIA_CPU_PAINTING_THREADS", "1");     /* SkiaPaintingEngine.cpp: default is half the cores */
 	setdefault("WEBKIT_FORCE_VBLANK_TIMER", "1");            /* DisplayVBlankMonitor.cpp: no screen to ask */
 	setdefault("WEBKIT_DISPLAY_REFRESH_THROTTLE_FPS", "30"); /* DisplayLinkGLib.cpp: a factor of the 60 Hz timer */
@@ -386,6 +399,14 @@ static void report_nav(struct flo_page *p)
 		p->ev.nav_state(p->ui, webkit_web_view_can_go_back(p->web), webkit_web_view_can_go_forward(p->web));
 }
 
+/* The web process died (or was killed): say so on stderr (the log of the app), since the page just stops otherwise. */
+static void on_web_process_terminated(WebKitWebView *web, WebKitWebProcessTerminationReason reason, gpointer data)
+{
+	(void)web; (void)data;
+	g_printerr("florence: web process terminated: %s\n", reason == WEBKIT_WEB_PROCESS_CRASHED ? "crashed"
+		: reason == WEBKIT_WEB_PROCESS_EXCEEDED_MEMORY_LIMIT ? "exceeded its memory limit" : "terminated by the API");
+}
+
 static void on_title(GObject *o, GParamSpec *spec, gpointer data)
 {
 	struct flo_page *p = data;
@@ -517,6 +538,7 @@ struct flo_page *flo_page_new(const struct flo_page_events *ev, void *ui, int w,
 	p->view = webkit_web_view_get_wpe_view(p->web);
 	flo_view_set_frame_func(p->view, on_frame, p);
 
+	g_signal_connect(p->web, "web-process-terminated", G_CALLBACK(on_web_process_terminated), p);
 	g_signal_connect(p->web, "notify::title", G_CALLBACK(on_title), p);
 	g_signal_connect(p->web, "notify::uri", G_CALLBACK(on_uri), p);
 	g_signal_connect(p->web, "notify::estimated-load-progress", G_CALLBACK(on_progress), p);

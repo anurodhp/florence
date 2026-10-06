@@ -14,7 +14,19 @@ fl_stage_headers . "$IOKIT_LIBC/fontstack/usr_include/zlib.h" "$IOKIT_LIBC/fonts
 fl_stage_headers . "$IOKIT_LIBC/fontstack/usr_include/expat.h" "$IOKIT_LIBC/fontstack/usr_include/expat_external.h"
 # libproc.h: GLib 2.78 gspawn uses proc_pidinfo (exported by libsystem_kernel) to close fds; the SDK has no libproc.h
 fl_stage_headers . "$FL_DIR/compat/include/libproc.h"
-fl_stage_headers epoxy "$FL_DIR/compat/include/epoxy/egl.h"
+# Khronos EGL headers (libepoxy's generated egl.h includes them; the same ones the EGL implementation in compat/egl is built with)
+ANGLE_INC="$TP/webkit/Source/ThirdParty/ANGLE/include"
+fl_stage_headers EGL "$ANGLE_INC/EGL/egl.h" "$ANGLE_INC/EGL/eglext.h" "$ANGLE_INC/EGL/eglext_angle.h" "$ANGLE_INC/EGL/eglplatform.h"
+fl_stage_headers KHR "$ANGLE_INC/KHR/khrplatform.h"
+# Khronos' eglplatform.h has an __APPLE__ branch (EGLNativeDisplayType = int) for Apple's own EGL; here EGL is Mesa-style, so the Unix branch
+# (void * display, pointer-sized window and pixmap) is the right one. Without this a 64-bit Display* does not fit through eglGetDisplay.
+python3 - "$INC/EGL/eglplatform.h" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p).read()
+old = "#elif defined(__unix__)\n"
+if old in s:
+    open(p, "w").write(s.replace(old, "#elif defined(__unix__) || defined(__APPLE__) /* Florence */\n", 1))
+PY
 fl_stage_headers sys "$FL_DIR/compat/include/sys/proc_info.h" "$FL_DIR/compat/include/sys/random.h"
 # ICU: not staged here; this branch builds its own 74 (scripts/build_icu.sh, headers + pkg-config files included)
 fl_pc libffi 3.4 "-L$SYS -lffi"

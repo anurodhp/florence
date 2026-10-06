@@ -6,6 +6,7 @@
 #   scripts/deploy_pi_webkit.sh            # everything
 #   scripts/deploy_pi_webkit.sh bin        # only usr/local/bin (test programs) -- the quick loop
 #   scripts/deploy_pi_webkit.sh stage      # everything into build/deploy, no ssh (tools/init_binary/inject_into_sd_image.sh in the iokit port copies it into the image)
+#   (all and stage include /usr/X11/lib/libEGL.1.dylib)
 #   scripts/deploy_pi_webkit.sh wk         # only libWPEWebKit and the helper processes (after a WebKit rebuild)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -32,7 +33,11 @@ wk)  mkdir -p "$D$PREFIX/lib" "$D$PREFIX/libexec"
 all|stage) sync_dir lib strip; sync_dir libexec strip; sync_dir bin; mkdir -p "$D$PREFIX/share"; rsync -a "$ROOT$PREFIX/share/wpe-webkit-2.0" "$D$PREFIX/share/"; [ -d "$ROOT$PREFIX/share/mime" ] && rsync -a --delete "$ROOT$PREFIX/share/mime" "$D$PREFIX/share/"
      [ -d "$ROOT$PREFIX/ssl" ] && rsync -a --delete "$ROOT$PREFIX/ssl" "$D$PREFIX/" ;;
 esac
+# libEGL (compat/egl, scripts/build_egl.sh) lives beside Mesa's libGL in /usr/X11/lib
+if [ -f "$ROOT/usr/X11/lib/libEGL.1.dylib" ] && [ "$what" != bin ] && [ "$what" != wk ]; then
+    mkdir -p "$D/usr/X11/lib"; cp -p "$ROOT/usr/X11/lib/libEGL.1.dylib" "$D/usr/X11/lib/"; ln -sf libEGL.1.dylib "$D/usr/X11/lib/libEGL.dylib"
+fi
 [ -d "$ROOT/Applications/Florence.app" ] && { mkdir -p "$D/Applications"; rsync -a --delete "$ROOT/Applications/Florence.app" "$D/Applications/"; }
 mkdir -p "$D$PREFIX/share/florence" && rsync -a tests/pages "$D$PREFIX/share/florence/"
 [ "$what" = stage ] && { echo "staged $D"; exit 0; }
-DEPLOY_ROOT="$D" tools/deploy_to_pi.sh $([ "$what" = wk ] && echo usr/local/lib usr/local/libexec || [ "$what" = bin ] && echo usr/local/bin usr/local/share/florence Applications/Florence.app || echo usr/local/. Applications/Florence.app)
+DEPLOY_ROOT="$D" tools/deploy_to_pi.sh $([ "$what" = wk ] && echo usr/local/lib usr/local/libexec || [ "$what" = bin ] && echo usr/local/bin usr/local/share/florence Applications/Florence.app || echo usr/local/. usr/X11/lib/libEGL.1.dylib usr/X11/lib/libEGL.dylib Applications/Florence.app)

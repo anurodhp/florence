@@ -191,3 +191,21 @@ thread (`~/.florence/florence.log`, from `flo_diag.c`). Cause (strong, not prove
 global, so another thread's timed wait timing out (ETIMEDOUT = 60) overwrites the EAGAIN Xlib just read. The fix is iokit PR #19
 (per-thread errno). On the test Pi `/usr/lib/system/libsystem_kernel.dylib` was replaced with that build (the original is
 `libsystem_kernel.dylib.orig` beside it; a copy of the new one is in `/usr/local/lib/errnofix/`). To undo: `mv` the `.orig` back.
+
+## GL is the default (2026-10-06)
+
+* Path: web process (Skia GL + GL compositor) -> libepoxy (EGL enabled, Darwin library names patched by `scripts/deps_fixes.sh`) ->
+  `/usr/X11/lib/libEGL.1.dylib` (`compat/egl/flo_egl.c`, built by `scripts/build_egl.sh`, tested by `tests/pi/egl_smoke.c`) -> Mesa libGL
+  (GLX, `MESA_VC4` presenter: `GL_RENDERER VC4 V3D 2.1` on the Pi) -> frames read back by `glReadPixels` into shared memory
+  (`RenderTargetSHMImage`, no dma-buf here). `FLORENCE_CPU=1` selects the old CPU path.
+* Two requirements found the hard way: (1) the web process needs `DISPLAY`/`XAUTHORITY` (the EGL layer opens the X connection; without
+  it WebKit aborts "Could not create surfaceless EGL display"), so run headless tests with `FLORENCE_CPU=1`; (2) Mesa's libGL pulls
+  the image's `/usr/lib/libc++.1.dylib` into a process that already has Florence's libc++ and its iostream initialiser crashes: the
+  alias directory `/usr/local/lib/flo-alias/libc++.1.dylib -> ../libc++.1.0.dylib` goes on `DYLD_LIBRARY_PATH` for the processes the engine
+  starts (`flo_engine_init`). The proper fix is Mesa built against Florence's libc++, or the alias in the image.
+* The user measured: scrolling is better with GL, CPU use is higher.
+* Known: no overlay scroll bars in GL mode (the CPU path draws them; `WEBKIT_ASYNC_SCROLLING=0`, set by the engine, did not bring them
+  back: they are layers in the composited path); Mesa logs `GL_INVALID_ENUM in glTexImage2D(GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV)` (an ES 3 upload type on an
+  ES 2 context).
+* Helper crash reports: WPE helpers print signal, pc and a symbolised frame walk to stderr (`webkit_fixes.sh`); the engine logs
+  "web process terminated". `tests/pi/crashhook.c` is a preloadable crash report.
