@@ -119,6 +119,34 @@ int main(int argc, char **argv)
 		snprintf(url, sizeof url, "file://%s", argv[1]);
 	flo_page_load(page, url);
 
+	/* SMOKE_SCROLLBENCH=1: load the page, let it settle, send ten wheel gestures (3 notches each) and report how long the page took
+	 * to stop changing after each, and how many frames that was: what scrolling feels like, as numbers */
+	if (getenv("SMOKE_SCROLLBENCH")) {
+		double t0 = now(), end, total = 0, worst = 0;
+		int i, f0, totalframes = 0;
+		while (now() < t0 + 90 * scale && frames < 1) pump(20);
+		end = now() + 6 * scale;
+		while (now() < end) pump(20);                   /* the load and the first paints, shader compiles, scroll bar fade */
+		flo_page_pointer_move(page, 0, 400, 300);
+		{ double e2 = now() + 1; while (now() < e2) pump(20); }
+		for (i = 0; i < 10; i++) {
+			double t_wheel = now(), quiet;
+			f0 = frames;
+			last_frame_at = t_wheel;
+			flo_page_scroll(page, 0, 0, -3, 400, 300);
+			for (;;) {                              /* until 400 ms pass without a frame (at least 150 ms, at most 4 s) */
+				pump(10);
+				quiet = now() - (last_frame_at > t_wheel ? last_frame_at : t_wheel);
+				if ((now() - t_wheel > 0.15 && quiet > 0.4) || now() - t_wheel > 4.0) break;
+			}
+			{ double settle = (last_frame_at > t_wheel ? last_frame_at - t_wheel : 0) * 1000; total += settle; if (settle > worst) worst = settle; totalframes += frames - f0; }
+		}
+		printf("scrollbench: %.0f ms average to the last frame of a gesture (worst %.0f ms), %.1f frames per gesture\n", total / 10, worst, totalframes / 10.0);
+		flo_page_free(page);
+		flo_engine_fini();
+		return 0;
+	}
+
 	/* SMOKE_BENCH=1: only load the page (a benchmark that sets its title to "done ...") and report how long that took */
 	if (getenv("SMOKE_BENCH")) {
 		double t0 = now(), end = t0 + 120 * scale;

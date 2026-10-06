@@ -97,6 +97,14 @@ int main(void)
 	CHECK(eglMakeCurrent(dpy, pb, pb, ctx), "eglMakeCurrent with the pbuffer");
 	CHECK(eglGetCurrentContext() == ctx && eglGetCurrentSurface(EGL_DRAW) == pb && eglGetCurrentDisplay() == dpy, "the current context, surface and display are reported back");
 	printf("      GL_RENDERER %s, GL_VERSION %s\n", glGetString(GL_RENDERER), glGetString(GL_VERSION));
+	{
+		const char *ext = (const char *)glGetString(GL_EXTENSIONS);
+		unsigned char q[4];
+		glGetError();
+		glReadPixels(0, 0, 1, 1, 0x80E1 /* GL_BGRA_EXT */, GL_UNSIGNED_BYTE, q);
+		printf("      GL_EXT_read_format_bgra: %s; glReadPixels(GL_BGRA_EXT) error 0x%x\n", ext && strstr(ext, "GL_EXT_read_format_bgra") ? "yes" : "NO", glGetError());
+		printf("      extensions: %.600s\n", ext ? ext : "(none)");
+	}
 	draw_and_check("pbuffer");
 	{
 		EGLint w = 0, h = 0;
