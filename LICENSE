@@ -33,8 +33,6 @@ terms there), so the original code here is relicensed by its copyright holder.
 Exceptions, which keep their own terms:
   frontend/assets/icons/        the Lucide icons (ISC; chevrons, x, plus and lock also MIT via Feather):
                                 see frontend/assets/icons/LICENSE-lucide.txt, which must travel with them
-  compat/include/epoxy/egl.h    a stub header taken from the MacPorts webkit2-gtk port (macports-ports,
-                                BSD-licensed); see the note at the top of the file
   compat/include/libproc.h,     small interface declarations (struct layouts, constants, prototypes) modelled on
   compat/include/sys/           Apple's XNU / macOS headers: APSL-2.0 (LICENSES/APSL-2.0.txt), as their SPDX lines say
     proc_info.h, random.h

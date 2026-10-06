@@ -7,8 +7,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 . tools/common.sh
 X11INC="$IOKIT_LIBC/x11/include"
-ANGLE_INC="$TP/webkit/Source/ThirdParty/ANGLE/include"          # Khronos EGL headers
-[ -f "$ANGLE_INC/EGL/egl.h" ] || { echo "error: $ANGLE_INC/EGL/egl.h missing -- run setup_third_party.sh" >&2; exit 1; }
+scripts/stage_iokit_libs.sh >/dev/null                          # stages the Khronos EGL headers (patched eglplatform.h) into $INC
+ANGLE_INC="$INC"
+[ -f "$ANGLE_INC/EGL/egl.h" ] || { echo "error: $ANGLE_INC/EGL/egl.h missing" >&2; exit 1; }
 [ -f "$SYS/libGL.dylib" ] || { echo "error: $SYS/libGL.dylib missing -- build Mesa in the iokit port first" >&2; exit 1; }
 O="$BUILD/obj/egl"; rm -rf "$O"; mkdir -p "$O"
 XLIB="$ROOT/usr/X11/lib"; mkdir -p "$XLIB"

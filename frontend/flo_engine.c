@@ -93,8 +93,12 @@ int flo_engine_init(const char *data_dir, const char *cache_dir)
 
 	/* Read by WebKit's processes at start-up (they inherit our environment); setdefault keeps
 	 * anything the user put there for experiments. Each is a source line in the pinned tree: */
-	setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1");      /* scripts/webkit_fixes.sh: no GL compositor, paint on the CPU */
-	setdefault("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1");     /* WebProcessGLib.cpp: no GPU buffers, shared memory */
+	/* FLORENCE_GL=1: the GL path (WebKit's GL compositor and Skia's GL backend, through libepoxy and compat/egl on the Mesa GLX
+	 * presenter, frames read back into shared memory). Default is the CPU path until the GL path measures faster. */
+	if (getenv("FLORENCE_GL") == NULL) {
+		setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1");      /* scripts/webkit_fixes.sh: no GL compositor, paint on the CPU */
+		setdefault("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1");     /* WebProcessGLib.cpp: no GPU buffers, shared memory */
+	}
 	setdefault("WEBKIT_SKIA_CPU_PAINTING_THREADS", "1");     /* SkiaPaintingEngine.cpp: default is half the cores */
 	setdefault("WEBKIT_FORCE_VBLANK_TIMER", "1");            /* DisplayVBlankMonitor.cpp: no screen to ask */
 	setdefault("WEBKIT_DISPLAY_REFRESH_THROTTLE_FPS", "30"); /* DisplayLinkGLib.cpp: a factor of the 60 Hz timer */

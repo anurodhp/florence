@@ -10,7 +10,7 @@ which="$1"
 scripts/deps_fixes.sh
 scripts/stage_iokit_libs.sh >/dev/null
 case "$which" in
-epoxy)      dir=libepoxy;     stems='epoxy.0';          opts=(-Degl=no -Dglx=no -Dx11=false -Dtests=false) ;;
+epoxy)      dir=libepoxy;     stems='epoxy.0';          opts=(-Degl=yes -Dglx=no -Dx11=false -Dtests=false) ;;
 xkbcommon)  dir=libxkbcommon; stems='xkbcommon.0';      opts=(-Denable-tools=false -Denable-wayland=false -Denable-x11=false -Denable-docs=false -Denable-xkbregistry=false -Denable-bash-completion=false -Dxkb-config-root=/usr/local/share/X11/xkb -Dx-locale-root=/usr/local/share/X11/locale) ;;
 psl)        dir=libpsl;       stems='psl.5';            opts=(-Druntime=libicu -Dbuiltin=true -Dtests=false -Ddocs=false) ;;
 gnet)       dir=glib-networking; stems='';       opts=(-Dopenssl=enabled -Dgnutls=disabled -Dlibproxy=disabled -Dgnome_proxy=disabled -Denvironment_proxy=enabled -Dinstalled_tests=false -Ddebug_logs=false) ;;
