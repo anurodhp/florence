@@ -22,6 +22,11 @@ OUT="$XLIB/libEGL.1.dylib"; rm -f "$OUT" "$XLIB/libEGL.dylib"
     -o "$OUT" "$O"/*.o "$SYS/libGL.dylib" "$SYS/libX11.dylib" "${FL_SYS_DYLIBS[@]}" 2>"$O/link.err" \
     || { grep '^  "' "$O/link.err" | sed 's/,.*//' | sort -u >&2; tail -20 "$O/link.err" >&2; echo "error: libEGL link failed" >&2; exit 1; }
 ln -s libEGL.1.dylib "$XLIB/libEGL.dylib"
+# Mesa's libGL (built in the iokit port) depends on the image's /usr/lib/libc++.1.dylib; a process that already has Florence's own libc++
+# (/usr/local/lib/libc++.1.0.dylib, LLVM 20) crashes in the older one's iostream initialiser when libGL loads it. This directory holds an
+# alias named libc++.1.dylib; flo_engine_init puts it on DYLD_LIBRARY_PATH for the processes it starts, so libGL's reference lands on
+# Florence's libc++ and there is only one in the process.
+mkdir -p "$LIB/flo-alias"; ln -sfn ../libc++.1.0.dylib "$LIB/flo-alias/libc++.1.dylib"
 echo "wrote $OUT"
 "$FL_DIR/tools/bind_audit.sh" "$OUT"
 # the smoke test: EGL + GLES2 only, as WebKit uses them

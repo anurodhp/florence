@@ -1,7 +1,9 @@
 # CLAUDE.md
 
-Florence: a browser for small machines. The engine is WPE WebKit 2.54.0, built
-for CPU rendering with every removable feature removed, under a GNUstep UI (toolbar, tabs, bookmarks, history, find, zoom, preferences,
+Florence: a browser for small machines. The engine is WPE WebKit 2.54.0 (-O2, the LLInt interpreter,
+every removable feature removed), rendering on the GPU by default: WebKit's GL compositor and Skia GL backend on the Pi's VideoCore through
+libepoxy, `compat/egl` (EGL 1.4 over Mesa's client-side GLX; Mesa's own EGL cannot be built here) and Mesa's libGL, frames read back into
+shared memory. `FLORENCE_CPU=1` selects the CPU path (no GL stack), under a GNUstep UI (toolbar, tabs, bookmarks, history, find, zoom, preferences,
 ad blocking) ported from the previous engine's UI, which is at the tag `legacy-engine` with that engine. The target is the Raspberry Pi 3 running
 the Darwin/XNU port in the sibling repo `xnu-iokit-pi3` ("the iokit port"); Pi builds are
 cross-compiled on a Mac. The engine and the glue also build and run on Linux (`scripts/build_*.sh

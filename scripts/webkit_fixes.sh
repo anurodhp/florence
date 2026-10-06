@@ -258,4 +258,11 @@ edit("Source/WebKit/Shared/unix/AuxiliaryProcessMain.cpp",
      "#include <signal.h>\n#include <stdlib.h>\n#include <string.h>\n",
      "#include <signal.h>\n#include <stdlib.h>\n#include <string.h>\n#if OS(DARWIN)\n#include <dlfcn.h>\n#include <unistd.h>\n#endif\n",
      "#if OS(DARWIN)\n#include <dlfcn.h>")
+# In the composited (GL) mode scrolling moved to the scrolling thread (setThreadedScrollingEnabled above), and the overlay scroll
+# bars never appeared: they are driven from the main thread's scroll animator. WEBKIT_ASYNC_SCROLLING=0 keeps the GL compositor and
+# scrolls on the main thread, as the CPU path does.
+edit("Source/WebKit/UIProcess/wpe/WebPreferencesWPE.cpp",
+     "    setThreadedScrollingEnabled(composited);\n",
+     "    const char* asyncScrolling = getenv(\"WEBKIT_ASYNC_SCROLLING\");     // Florence\n    bool async = composited && !(asyncScrolling && !strcmp(asyncScrolling, \"0\"));\n    setThreadedScrollingEnabled(async);\n    setAsyncFrameScrollingEnabled(async);\n    setAsyncOverflowScrollingEnabled(async);\n",
+     "Florence\n    bool async = composited")
 PY
