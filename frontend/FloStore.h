@@ -4,6 +4,12 @@
  */
 #import <Foundation/Foundation.h>
 
+/* Text helpers that never cut a character in two (a surrogate pair, or a letter with its combining marks): cutting
+ * one leaves a lone surrogate, which has no UTF-8 form -- [s UTF8String] can be NULL and writing the string to a file fails. */
+NSString *FloPrefix(NSString *s, NSUInteger units);     /* at most `units` UTF-16 units, cut on a character boundary */
+NSString *FloDropLast(NSString *s);                     /* without its last character */
+NSString *FloUTF8Safe(NSString *s);                     /* lone surrogates replaced by U+FFFD */
+
 @interface FloStore : NSObject {
 	NSString *path;
 	NSMutableArray *items;          /* NSArray *{address, title} */

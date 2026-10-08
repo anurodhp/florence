@@ -24,12 +24,14 @@ NSString *FloURLFromInput(NSString *in)
 	if ([s rangeOfString:@"://"].location != NSNotFound || [s hasPrefix:@"about:"] ||
 	    [s hasPrefix:@"file:"] || [s hasPrefix:@"data:"])
 		return s;
-	if ([s rangeOfString:@" "].location == NSNotFound &&
+	/* any white space (U+3000, the ideographic space CJK input methods type, counts), not only U+0020 */
+	if ([s rangeOfCharacterFromSet:[NSCharacterSet whitespaceCharacterSet]].location == NSNotFound &&
 	    ([s rangeOfString:@"."].location != NSNotFound || [s hasPrefix:@"localhost"]))
 		return [@"https://" stringByAppendingString:s];       /* https first, as a modern browser does */
 	/* not an address: search with the engine chosen in Preferences */
-	NSMutableCharacterSet *ok = [[[NSCharacterSet alphanumericCharacterSet] mutableCopy] autorelease];
-	[ok addCharactersInString:@"-._~"];
+	/* ASCII only: percent-encode every other letter (as UTF-8) so the query reaches the engine the same everywhere */
+	NSCharacterSet *ok = [NSCharacterSet characterSetWithCharactersInString:
+		@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~"];
 	return [FloSearchURLPrefix() stringByAppendingString:
 		[s stringByAddingPercentEncodingWithAllowedCharacters:ok]];
 }
@@ -424,7 +426,7 @@ static NSString *newPageAddress(void)
 		return;
 	if ([t length] == 0)
 		[findStatus setStringValue:@""];
-	flo_page_find(current->fp, [t UTF8String], forwards, false);
+	flo_page_find(current->fp, [FloUTF8Safe(t) UTF8String], forwards, false);
 }
 
 - (void)findNextAction:(id)s { [self runFind:YES]; }
@@ -462,7 +464,7 @@ static NSString *newPageAddress(void)
 {
 	NSString *u = FloURLFromInput([urlField stringValue]);
 	if (u != nil && current != nil && current->fp != NULL) {
-		flo_page_load(current->fp, [u UTF8String]);
+		flo_page_load(current->fp, [FloUTF8Safe(u) UTF8String]);
 		[win makeFirstResponder:current->page];
 	}
 }
