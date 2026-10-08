@@ -265,4 +265,10 @@ edit("Source/WebKit/UIProcess/wpe/WebPreferencesWPE.cpp",
      "    setThreadedScrollingEnabled(composited);\n",
      "    const char* asyncScrolling = getenv(\"WEBKIT_ASYNC_SCROLLING\");     // Florence\n    bool async = composited && !(asyncScrolling && !strcmp(asyncScrolling, \"0\"));\n    setThreadedScrollingEnabled(async);\n    setAsyncFrameScrollingEnabled(async);\n    setAsyncOverflowScrollingEnabled(async);\n",
      "Florence\n    bool async = composited")
+# JIT build (FL_WK_JIT=1, docs/jit-plan.md): InlineCacheCompiler.h names CCallHelpers::Jump in a class body but only gets the forward
+# declaration (from ArithProfile.h) in a translation unit as small as LLIntOffsetsExtractor.cpp.
+edit("Source/JavaScriptCore/bytecode/InlineCacheCompiler.h",
+     '#include "AccessCase.h"\n#include "InlineCacheHandler.h"',
+     '#include "AccessCase.h"\n#include "CCallHelpers.h" // Florence: the complete type, see webkit_fixes.sh\n#include "InlineCacheHandler.h"',
+     "Florence: the complete type")
 PY

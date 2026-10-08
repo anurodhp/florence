@@ -123,11 +123,13 @@ uint8_t *getsegmentdata(const struct mach_header_64 *mh, const char *segname, un
  * these. The architecture's sequence: clean the data cache to the point of unification, invalidate the instruction cache,
  * with barriers, line by line (CTR_EL0 gives the line sizes). */
 #if defined(__aarch64__)
+/* The line size is not read from CTR_EL0: on this kernel EL0 cannot (SCTLR_EL1.UCT is clear: mrs ctr_el0 is an illegal instruction,
+ * found by tests/pi/jit_probe.c; dc cvau and ic ivau are allowed). 16 bytes is no larger than any line, so the loops below touch every
+ * line (some more than once, which is harmless). */
+#define FLO_CACHE_STRIDE 16
 void sys_dcache_flush(void *start, size_t len)
 {
-    uint64_t ctr;
-    __asm__ volatile("mrs %0, ctr_el0" : "=r"(ctr));
-    uintptr_t line = (uintptr_t)4 << ((ctr >> 16) & 0xf);
+    uintptr_t line = FLO_CACHE_STRIDE;
     uintptr_t a = (uintptr_t)start & ~(line - 1), end = (uintptr_t)start + len;
     for (; a < end; a += line)
         __asm__ volatile("dc cvau, %0" : : "r"(a) : "memory");
@@ -136,9 +138,7 @@ void sys_dcache_flush(void *start, size_t len)
 
 void sys_icache_invalidate(void *start, size_t len)
 {
-    uint64_t ctr;
-    __asm__ volatile("mrs %0, ctr_el0" : "=r"(ctr));
-    uintptr_t dline = (uintptr_t)4 << ((ctr >> 16) & 0xf), iline = (uintptr_t)4 << (ctr & 0xf);
+    uintptr_t dline = FLO_CACHE_STRIDE, iline = FLO_CACHE_STRIDE;
     uintptr_t a = (uintptr_t)start & ~(dline - 1), end = (uintptr_t)start + len;
     for (; a < end; a += dline)
         __asm__ volatile("dc cvau, %0" : : "r"(a) : "memory");
