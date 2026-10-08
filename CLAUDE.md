@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Florence: a browser for small machines. The engine is WPE WebKit 2.54.0 (-O2, the LLInt interpreter,
+Florence: a browser for small machines. The engine is WPE WebKit 2.54.0 (-O2, LLInt plus the baseline and DFG JIT,
 every removable feature removed), rendering on the GPU by default: WebKit's GL compositor and Skia GL backend on the Pi's VideoCore through
 libepoxy, `compat/egl` (EGL 1.4 over Mesa's client-side GLX; Mesa's own EGL cannot be built here) and Mesa's libGL, frames read back into
 shared memory. `FLORENCE_CPU=1` selects the CPU path (no GL stack), under a GNUstep UI (toolbar, tabs, bookmarks, history, find, zoom, preferences,

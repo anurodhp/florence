@@ -1,6 +1,6 @@
 # Plan: the real JIT (later)
 
-Status: not started. The build today runs JavaScriptCore's LLInt (assembly interpreter, no JIT, -O2); measured against the C
+Status: done, on by default (2026-10-08). Steps 1-5 passed on the Pi: `tests/pi/jit_probe.c` (MAP_JIT and RW->RX both run), the only blocker was `sys_icache_invalidate` reading `CTR_EL0` (illegal at EL0 here; `compat/flo_runtime.c` uses a fixed 16-byte stride now). `tests/pages/bench.html`: fib 129 -> 23 ms, sort 422 -> 158 ms, web process RSS +5 MB. `FL_WK_JIT=0 scripts/build_webkit.sh cross` (own `FL_WK_DIR`) builds without it; `JSC_useJIT=false` turns it off at run time. The old text follows. The build today runs JavaScriptCore's LLInt (assembly interpreter, no JIT, -O2); measured against the C
 interpreter it gained only about 5 % on the page benchmark (`tests/pages/bench.html`, `docs/HANDOFF.md` has the numbers), and about
 half of a page load is not JavaScript at all. The JIT is the one change that can make script several times faster, and the
 riskiest, so it is its own project.

@@ -31,21 +31,21 @@ macro(flo_set name value)
     set(${name} ${value} CACHE BOOL "Florence" FORCE)
 endmacro()
 
-# ---- the engine: the interpreter only, the system allocator ----------------------------------
-# procs/code: no JIT tiers (also no executable-memory entitlement dance on Darwin), no WebAssembly
-# (needs a JIT tier), no sampling profiler thread.
-# FL_WK_JIT=1 in the environment of scripts/build_webkit.sh: the baseline and DFG JIT tiers (docs/jit-plan.md; tests/pi/jit_probe.c shows
-# this kernel runs MAP_JIT and mprotect-to-RX code). FTL needs B3/LLVM and a lot of RAM: never.
-if ("$ENV{FL_WK_JIT}" STREQUAL "1")
-    flo_set(ENABLE_JIT ON)
-    flo_set(ENABLE_DFG_JIT ON)
-else ()
+# ---- the engine: LLInt plus the baseline and DFG JIT, the system allocator -------------------
+# procs/code: no FTL, no WebAssembly (needs a JIT tier), no sampling profiler thread.
+# The baseline and DFG JIT tiers are the default (docs/jit-plan.md; tests/pi/jit_probe.c shows this kernel runs MAP_JIT and mprotect-to-RX code;
+# bench.html on the Pi: fib 129 -> 23 ms, sort 422 -> 158 ms for about 5 MB more in the web process). FL_WK_JIT=0 in the environment of
+# scripts/build_webkit.sh builds the interpreter-only configuration (use FL_WK_DIR for its own build directory). FTL needs B3/LLVM and a lot of RAM: never.
+if ("$ENV{FL_WK_JIT}" STREQUAL "0")
     flo_set(ENABLE_JIT OFF)
     flo_set(ENABLE_DFG_JIT OFF)
+else ()
+    flo_set(ENABLE_JIT ON)
+    flo_set(ENABLE_DFG_JIT ON)
 endif ()
 flo_set(ENABLE_FTL_JIT OFF)
-# LLInt, JavaScriptCore's assembly interpreter (offlineasm, no JIT, no executable memory): several times faster than the C
-# "CLoop" interpreter this was before (ENABLE_C_LOOP ON), for the same memory.
+# LLInt, JavaScriptCore's assembly interpreter (offlineasm): several times faster than the C "CLoop" interpreter this was
+# before (ENABLE_C_LOOP ON), for the same memory; it is the first tier under the JIT and the whole engine with FL_WK_JIT=0.
 flo_set(ENABLE_C_LOOP OFF)
 flo_set(ENABLE_WEBASSEMBLY OFF)
 flo_set(ENABLE_WEBASSEMBLY_BBQJIT OFF)

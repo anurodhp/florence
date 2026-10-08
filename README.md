@@ -20,7 +20,7 @@ says what has been checked, what the Pi build still needs, and what is missing.
   and why. `scripts/check_webkit_options.sh` proves each still exists in the pinned tree.
 * `frontend/`: the browser. A Safari-style window: toolbar, tabs, address bar with a padlock, bookmarks, history, find in
   page, zoom, Preferences, a content blocker (Safari rule lists, native in WebKit). Anything that is not an address is
-  a web search. JavaScript is on (View menu to turn it off); the interpreter is JavaScriptCore's CLoop, so heavy pages are slow on the Pi.
+  a web search. JavaScript is on (View menu to turn it off); JavaScriptCore runs LLInt plus the baseline and DFG JIT (`FL_WK_JIT=0` builds without; `JSC_useJIT=false` turns it off at run time).
 
 | File | Role |
 |---|---|
