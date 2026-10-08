@@ -35,8 +35,11 @@ static NSString *hostOf(NSString *url)
 
 static unsigned hashOf(NSString *s)
 {
-	const char *c = [s UTF8String];
+	const char *c = [FloUTF8Safe(s) UTF8String];
 	unsigned h = 5381;
+
+	if (c == NULL)
+		return 0;
 
 	while (*c != '\0')
 		h = h * 33 + (unsigned char)*c++;
@@ -47,10 +50,10 @@ static NSString *tile(NSString *url, NSString *title, NSString *host)
 {
 	static const char *palette[] = { "#d94545", "#e68c26", "#339e73", "#3385cc", "#7361cc", "#c74d8c", "#59738c", "#8c804d" };
 	NSString *name = [title length] > 0 ? title : host;
-	NSString *letter = [[host substringToIndex:1] uppercaseString];
+	NSString *letter = [FloPrefix(host, 2) uppercaseString];
 
 	if ([name length] > 15)
-		name = [[name substringToIndex:14] stringByAppendingString:@"..."];
+		name = [FloPrefix(name, 14) stringByAppendingString:@"..."];
 	return [NSString stringWithFormat:@"<a class=\"tile\" href=\"%@\"><b style=\"background:%s\">%@</b><span>%@</span></a>\n",
 		html(url), palette[hashOf(host) % 8], html(letter), html(name)];
 }
@@ -115,7 +118,8 @@ NSString *FloStartPageURL(void)
 	[page appendString:@"</div>\n<h2>Recently visited</h2>\n<div class=\"row\">\n"];
 	[page appendString:[recent length] > 0 ? recent : @"<p class=\"empty\">Sites you visit will appear here.</p>\n"];
 	[page appendString:@"</div>\n</body></html>\n"];
+	page = (NSMutableString *)FloUTF8Safe(page);
 	if (![page writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:NULL])
 		return nil;
-	return [@"file://" stringByAppendingString:path];
+	return [[NSURL fileURLWithPath:path] absoluteString];     /* a home with a space or a non-ASCII letter must be percent-encoded */
 }

@@ -74,7 +74,7 @@ static void fillStoreMenu(NSMenu *m, FloStore *st, NSUInteger fixed, NSUInteger 
 		NSString *title = [[e objectAtIndex:1] length] > 0 ? [e objectAtIndex:1] : [e objectAtIndex:0];
 		NSMenuItem *mi;
 		if ([title length] > 56)
-			title = [[title substringToIndex:55] stringByAppendingString:@"..."];
+			title = [FloPrefix(title, 55) stringByAppendingString:@"..."];
 		mi = [m addItemWithTitle:title action:@selector(openStored:) keyEquivalent:@""];
 		[mi setTarget:menuTarget];
 		[mi setRepresentedObject:[e objectAtIndex:0]];

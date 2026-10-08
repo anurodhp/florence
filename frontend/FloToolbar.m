@@ -1,5 +1,6 @@
 /* Florence: Safari-like toolbar parts. See FloToolbar.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloToolbar.h"
+#import "FloStore.h"
 #import "FloBrowser.h"
 #include <math.h>
 
@@ -359,7 +360,7 @@ static NSString *fitted(NSString *s, NSDictionary *attrs, CGFloat width)
 	if ([t sizeWithAttributes:attrs].width <= width)
 		return t;
 	while ([t length] > 1) {
-		t = [t substringToIndex:[t length] - 1];
+		t = FloDropLast(t);
 		if ([[t stringByAppendingString:@"..."] sizeWithAttributes:attrs].width <= width)
 			break;
 	}
@@ -468,7 +469,7 @@ static NSString *fitted(NSString *s, NSDictionary *attrs, CGFloat width)
 		NSString *t = text;
 		if ([t sizeWithAttributes:a].width > b.size.width - 20) {
 			while ([t length] > 1 && [[t stringByAppendingString:@"..."] sizeWithAttributes:a].width > b.size.width - 20)
-				t = [t substringToIndex:[t length] - 1];
+				t = FloDropLast(t);
 			t = [t stringByAppendingString:@"..."];
 		}
 		[t drawAtPoint:NSMakePoint(10, (b.size.height - [t sizeWithAttributes:a].height) / 2) withAttributes:a];
