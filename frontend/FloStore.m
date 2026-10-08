@@ -2,6 +2,53 @@
 #import "FloStore.h"
 #include <stdlib.h>
 
+NSString *FloPrefix(NSString *s, NSUInteger units)
+{
+	NSUInteger end = 0, n = [s length];
+
+	while (end < n) {
+		NSRange r = [s rangeOfComposedCharacterSequenceAtIndex:end];
+		if (NSMaxRange(r) > units)
+			break;
+		end = NSMaxRange(r);
+	}
+	return [s substringToIndex:end];
+}
+
+NSString *FloDropLast(NSString *s)
+{
+	NSUInteger n = [s length];
+
+	if (n == 0)
+		return s;
+	return [s substringToIndex:[s rangeOfComposedCharacterSequenceAtIndex:n - 1].location];
+}
+
+NSString *FloUTF8Safe(NSString *s)
+{
+	NSUInteger i, n = [s length];
+	NSMutableString *out = nil;
+
+	for (i = 0; i < n; i++) {
+		unichar c = [s characterAtIndex:i];
+		BOOL pair = c >= 0xd800 && c < 0xdc00 && i + 1 < n &&
+			[s characterAtIndex:i + 1] >= 0xdc00 && [s characterAtIndex:i + 1] < 0xe000;
+
+		if (pair) {
+			if (out != nil)
+				[out appendString:[s substringWithRange:NSMakeRange(i, 2)]];
+			i++;
+		} else if (c >= 0xd800 && c < 0xe000) {                 /* a lone surrogate */
+			if (out == nil)
+				out = [NSMutableString stringWithString:[s substringToIndex:i]];
+			[out appendString:@"\ufffd"];
+		} else if (out != nil) {
+			[out appendString:[s substringWithRange:NSMakeRange(i, 1)]];
+		}
+	}
+	return out != nil ? out : s;
+}
+
 @implementation FloStore
 
 + (FloStore *)bookmarks
@@ -75,7 +122,7 @@
 	NSUInteger i;
 	for (i = 0; i < [items count]; i++) {
 		NSArray *e = [items objectAtIndex:i];
-		[out appendFormat:@"%@\t%@\n", [e objectAtIndex:0], [e objectAtIndex:1]];
+		[out appendFormat:@"%@\t%@\n", FloUTF8Safe([e objectAtIndex:0]), FloUTF8Safe([e objectAtIndex:1])];
 	}
 	[out writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:NULL];
 }

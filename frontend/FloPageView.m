@@ -1,5 +1,6 @@
 /* Florence: the page view. See FloPageView.h. Copyright (c) 2026 Anurodh Pokharel. SPDX-License-Identifier: MIT */
 #import "FloPageView.h"
+#import "FloStore.h"
 #import "FloCairo.h"
 #include <math.h>
 #include <stdio.h>
@@ -229,9 +230,11 @@ static int mods_of(NSEvent *e)
 {
 	NSString *t = [[NSPasteboard generalPasteboard] stringForType:NSStringPboardType];
 
-	if (page == NULL || t == nil)
+	const char *u;
+
+	if (page == NULL || t == nil || (u = [FloUTF8Safe(t) UTF8String]) == NULL)
 		return;
-	flo_clipboard_set_text([t UTF8String]);
+	flo_clipboard_set_text(u);
 	flo_page_edit(page, FLO_EDIT_PASTE);
 }
 
@@ -245,7 +248,9 @@ static int mods_of(NSEvent *e)
 		if (t != NULL) {
 			NSPasteboard *pb = [NSPasteboard generalPasteboard];
 			[pb declareTypes:[NSArray arrayWithObject:NSStringPboardType] owner:nil];
-			[pb setString:[NSString stringWithUTF8String:t] forType:NSStringPboardType];
+			NSString *s = [NSString stringWithUTF8String:t];     /* nil when the page copied bytes that are not UTF-8 */
+			if (s != nil)
+				[pb setString:s forType:NSStringPboardType];
 			free(t);
 		}
 		return;
@@ -311,11 +316,17 @@ static int special_of(unichar c)
 		int sk = special_of(c);
 		if (sk != 0) {
 			flo_page_special_key(page, mods_of(e), sk, down);
-		} else if (c >= 0x20 && !(c >= 0xf700 && c <= 0xf8ff)) {      /* printable, not an AppKit function-key code */
+		} else if (c >= 0x20 && !(c >= 0x7f && c < 0xa0) && !(c >= 0xf700 && c <= 0xf8ff)) {
+			/* printable (not DEL or a C1 control), not an AppKit function-key code */
 			uint32_t cp = c;
-			if (c >= 0xd800 && c < 0xdc00 && i + 1 < [s length]) {      /* a surrogate pair */
-				unichar lo = [s characterAtIndex:++i];
+			if (c >= 0xd800 && c < 0xdc00) {                       /* a high surrogate: needs its low half */
+				unichar lo = i + 1 < [s length] ? [s characterAtIndex:i + 1] : 0;
+				if (lo < 0xdc00 || lo >= 0xe000)
+					continue;                              /* lone: not a character */
+				i++;
 				cp = 0x10000 + (((uint32_t)c - 0xd800) << 10) + (lo - 0xdc00);
+			} else if (c >= 0xdc00 && c < 0xe000) {
+				continue;                                      /* a lone low surrogate */
 			}
 			flo_page_key(page, mods_of(e), cp, down);
 		}
