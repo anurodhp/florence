@@ -96,14 +96,15 @@ int flo_engine_init(const char *data_dir, const char *cache_dir)
 	/* The GL path is the default: WebKit's GL compositor and Skia's GL backend through libepoxy and compat/egl on the Mesa GLX
 	 * presenter (the VideoCore), frames read back into shared memory. FLORENCE_CPU=1 selects the CPU path (no GL stack at all). */
 	const char *cpu = getenv("FLORENCE_CPU");
-	if (cpu == NULL || strcmp(cpu, "0") == 0) {
-		const char *old = getenv("DYLD_LIBRARY_PATH");
-		char path[1024];
+	const char *old = getenv("DYLD_LIBRARY_PATH");
+	char path[1024];
 
+	/* one libc++ per process: see scripts/build_egl.sh. Read by the processes started from here on (the web process loads libGL;
+	 * on the CPU path the image's libc++ gets pulled in by something else and its iostream initialiser crashes the same way). */
+	snprintf(path, sizeof path, "/usr/local/lib/flo-alias%s%s", old != NULL && old[0] != '\0' ? ":" : "", old != NULL ? old : "");
+	setenv("DYLD_LIBRARY_PATH", path, 1);
+	if (cpu == NULL || strcmp(cpu, "0") == 0) {
 		setdefault("WEBKIT_ASYNC_SCROLLING", "0");               /* webkit_fixes.sh: scroll on the main thread: the scroll bars need it */
-		/* one libc++ per process: see scripts/build_egl.sh. Read by the processes started from here on (the web process loads libGL). */
-		snprintf(path, sizeof path, "/usr/local/lib/flo-alias%s%s", old != NULL && old[0] != '\0' ? ":" : "", old != NULL ? old : "");
-		setenv("DYLD_LIBRARY_PATH", path, 1);
 	} else {
 		setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1");      /* scripts/webkit_fixes.sh: no GL compositor, paint on the CPU */
 		setdefault("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1");     /* WebProcessGLib.cpp: no GPU buffers, shared memory */
