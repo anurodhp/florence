@@ -161,6 +161,23 @@ index e219a0ef8..11d3f5958 100644
  #include "CommonCryptoUtilities.h"
  
  typedef CCRSACryptorRef PlatformRSAKey;
+diff --git a/Source/WebCore/platform/graphics/skia/SkiaReplayCanvas.cpp b/Source/WebCore/platform/graphics/skia/SkiaReplayCanvas.cpp
+index 6fe72852f..dfc7bd9c2 100644
+--- a/Source/WebCore/platform/graphics/skia/SkiaReplayCanvas.cpp
++++ b/Source/WebCore/platform/graphics/skia/SkiaReplayCanvas.cpp
+@@ -45,8 +45,10 @@ SkiaReplayCanvas::SkiaReplayCanvas(const IntSize& size, const Ref<SkiaRecordingR
+         const auto& gpuAtlases = m_recording->gpuAtlases();
+         m_atlases.reserveInitialCapacity(gpuAtlases.size());
+ 
+-        for (const auto& gpuAtlas : gpuAtlases)
+-            m_atlases.append(SkiaReplayAtlas::create(gpuAtlas));
++        for (const auto& gpuAtlas : gpuAtlases) {
++            if (auto atlas = SkiaReplayAtlas::create(gpuAtlas)) // Florence: create() can fail, and the draw loops need non-null atlases
++                m_atlases.append(WTF::move(atlas));
++        }
+     }
+ }
+ 
 diff --git a/Source/WebKit/Platform/IPC/Attachment.h b/Source/WebKit/Platform/IPC/Attachment.h
 index 606d48b9e..91573980c 100644
 --- a/Source/WebKit/Platform/IPC/Attachment.h
