@@ -177,5 +177,30 @@ int main(int argc, char **argv)
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 	}
+
+	/* what WebKit's AcceleratedSurface really does: a renderbuffer (GL_RGBA8) colour attachment plus a DEPTH24_STENCIL8 renderbuffer */
+	{
+		GLuint fbo3, rb_color, rb_ds;
+		glGenFramebuffers(1, &fbo3);
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo3);
+		glGenRenderbuffers(1, &rb_ds);
+		glBindRenderbuffer(GL_RENDERBUFFER, rb_ds);
+		glRenderbufferStorage(GL_RENDERBUFFER, 0x88F0 /* GL_DEPTH24_STENCIL8_OES */, w, h);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rb_ds);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rb_ds);
+		glGenRenderbuffers(1, &rb_color);
+		glBindRenderbuffer(GL_RENDERBUFFER, rb_color);
+		glRenderbufferStorage(GL_RENDERBUFFER, 0x8058 /* GL_RGBA8 */, w, h);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, rb_color);
+		printf("renderbuffer framebuffer status 0x%x, GL error 0x%x\n", glCheckFramebufferStatus(GL_FRAMEBUFFER), glGetError());
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
+			glClear(GL_COLOR_BUFFER_BIT);
+			run("RENDERBUFFER: draw+finish", 1, w, h, buf);
+			run("RENDERBUFFER: draw + read 100x100 RGBA", 4, w, h, buf);
+			run("RENDERBUFFER: draw + read all RGBA", 2, w, h, buf);
+			run("RENDERBUFFER: draw + read all BGRA", 3, w, h, buf);
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	}
 	return 0;
 }

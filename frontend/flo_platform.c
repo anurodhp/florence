@@ -93,6 +93,10 @@ static gboolean view_commit(gpointer data)
 	return G_SOURCE_REMOVE;
 }
 
+guint64 flo_frames_total;
+gint64 flo_last_frame_us;
+gint64 flo_frame_times_us[FLO_FRAME_LOG];
+
 /* FLORENCE_STATS=1: frames per second and the mean damaged area, to stderr every 5 s, also when nothing arrived
  * (is something repainting while the page is idle?) */
 static guint stat_frames;
@@ -129,6 +133,9 @@ static gboolean flo_view_render_buffer(WPEView *view, WPEBuffer *buffer, const W
 	FloView *self = FLO_VIEW(view);
 	guint i;
 
+	flo_last_frame_us = g_get_monotonic_time();
+	flo_frame_times_us[flo_frames_total % FLO_FRAME_LOG] = flo_last_frame_us;
+	flo_frames_total++;
 	frame_stats(damage, n_damage);
 
 	if (!WPE_IS_BUFFER_SHM(buffer)) {

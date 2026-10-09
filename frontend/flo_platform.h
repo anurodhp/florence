@@ -12,6 +12,12 @@
 
 G_BEGIN_DECLS
 
+/* Frames WebKit has rendered into the view so far, and when the last one arrived (g_get_monotonic_time, microseconds). */
+extern guint64 flo_frames_total;
+extern gint64 flo_last_frame_us;
+#define FLO_FRAME_LOG 8192
+extern gint64 flo_frame_times_us[FLO_FRAME_LOG];   /* arrival time of frame n (n < flo_frames_total), wrapping */
+
 WPEDisplay *flo_display_new(void);
 
 /* The view's frame sink: called (from the main loop, never re-entrantly) with the bounding box of

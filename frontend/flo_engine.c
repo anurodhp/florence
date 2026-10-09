@@ -145,6 +145,8 @@ int flo_engine_init(const char *data_dir, const char *cache_dir)
 	webkit_settings_set_enable_media_stream(settings, FALSE);
 	webkit_settings_set_enable_webaudio(settings, FALSE);
 	webkit_settings_set_enable_webgl(settings, FALSE);
+	if (g_getenv("FLORENCE_NO_IMAGES") != NULL)               /* an experiment knob: no images (are animated ones what keeps a page repainting?) */
+		webkit_settings_set_auto_load_images(settings, FALSE);
 	webkit_settings_set_enable_javascript(settings, strcmp(flo_pref_get("javascript", "1"), "1") == 0);
 	apply_font_min();
 	content = webkit_user_content_manager_new();
@@ -524,6 +526,74 @@ static void on_not_found(WebKitFindController *fc, gpointer data)
 		p->ev.found(p->ui, false);
 }
 
+/* FLORENCE_AUTOSCROLL=<delay s>,<events>,<interval ms>,<notches>: a scripted wheel scroll through the real input path, for measuring.
+ * After the delay, <events> wheel events of <notches> (negative scrolls down) are sent <interval ms> apart to the middle of the first page;
+ * the result is logged: how long the events took to send, the frames WebKit produced meanwhile, and how long after the last event the
+ * page was still producing frames (how far behind the engine was). */
+static struct {
+	struct flo_page *page;
+	int events, interval_ms, sent;
+	double notches;
+	gint64 start_us, last_event_us;
+	guint64 frames_at_start;
+} autoscroll;
+
+static gboolean autoscroll_settle(gpointer data)
+{
+	guint64 n, first = autoscroll.frames_at_start, count = flo_frames_total - first;
+	gint64 prev = autoscroll.start_us, max_gap = 0, sum_gap = 0;
+
+	(void)data;
+	if (g_get_monotonic_time() - flo_last_frame_us < 1500000)
+		return G_SOURCE_CONTINUE;
+	for (n = first; n < flo_frames_total && count < FLO_FRAME_LOG; n++) {
+		gint64 t = flo_frame_times_us[n % FLO_FRAME_LOG];
+		if (t - prev > max_gap)
+			max_gap = t - prev;
+		sum_gap += t - prev;
+		prev = t;
+	}
+	g_printerr("florence: autoscroll: %d events sent over %.0f ms; %" G_GUINT64_FORMAT " frames, the last %.0f ms after the first event; "
+		   "mean gap %.0f ms, longest gap %.0f ms\n",
+		   autoscroll.events, (autoscroll.last_event_us - autoscroll.start_us) / 1e3, count, (flo_last_frame_us - autoscroll.start_us) / 1e3,
+		   count ? sum_gap / 1e3 / count : 0.0, max_gap / 1e3);
+	return G_SOURCE_REMOVE;
+}
+
+static gboolean autoscroll_step(gpointer data)
+{
+	(void)data;
+	flo_page_scroll(autoscroll.page, 0, 0, autoscroll.notches, 480, 300);
+	autoscroll.last_event_us = g_get_monotonic_time();
+	if (++autoscroll.sent < autoscroll.events)
+		return G_SOURCE_CONTINUE;
+	g_timeout_add(250, autoscroll_settle, NULL);
+	return G_SOURCE_REMOVE;
+}
+
+static gboolean autoscroll_start(gpointer data)
+{
+	(void)data;
+	autoscroll.start_us = g_get_monotonic_time();
+	autoscroll.frames_at_start = flo_frames_total;
+	g_printerr("florence: autoscroll: start\n");
+	g_timeout_add(autoscroll.interval_ms, autoscroll_step, NULL);
+	return G_SOURCE_REMOVE;
+}
+
+static void autoscroll_arm(struct flo_page *p)
+{
+	const char *spec = g_getenv("FLORENCE_AUTOSCROLL");
+	int delay = 0;
+
+	if (spec == NULL || autoscroll.page != NULL)
+		return;
+	if (sscanf(spec, "%d,%d,%d,%lf", &delay, &autoscroll.events, &autoscroll.interval_ms, &autoscroll.notches) != 4 || autoscroll.interval_ms < 1)
+		return;
+	autoscroll.page = p;
+	g_timeout_add_seconds(delay, autoscroll_start, NULL);
+}
+
 struct flo_page *flo_page_new(const struct flo_page_events *ev, void *ui, int w, int h)
 {
 	struct flo_page *p = g_new0(struct flo_page, 1);
@@ -551,6 +621,7 @@ struct flo_page *flo_page_new(const struct flo_page_events *ev, void *ui, int w,
 	g_signal_connect(webkit_web_view_get_find_controller(p->web), "failed-to-find-text", G_CALLBACK(on_not_found), p);
 
 	flo_view_attach(p->view, w, h);
+	autoscroll_arm(p);
 	return p;
 }
 
