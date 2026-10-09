@@ -271,4 +271,34 @@ edit("Source/JavaScriptCore/bytecode/InlineCacheCompiler.h",
      '#include "AccessCase.h"\n#include "InlineCacheHandler.h"',
      '#include "AccessCase.h"\n#include "CCallHelpers.h" // Florence: the complete type, see webkit_fixes.sh\n#include "InlineCacheHandler.h"',
      "Florence: the complete type")
+# GL frame readback (docs/HANDOFF.md, "GL readback"): SkSurface::readPixels into the BGRA shared-memory bitmap goes through Skia's convert
+# path (SurfaceContext::readPixels): the surface is RGBA8 (what VC4 renders) and the bitmap BGRA with no colour space, so Skia reads into
+# a freshly allocated, zero-filled temporary and converts on the CPU. On the Pi a fresh 2.3 MB buffer costs ~100 ms per frame in page
+# faults (tests/pi/gl_readback_bench.c), more than the read itself (~65 ms). Read the framebuffer directly as BGRA into the bitmap instead,
+# as the non-Skia branch below already does: shared-memory targets are not mirrored, so rows come out top-down as Skia's would.
+# FLORENCE_SKIA_READBACK=1 restores Skia's path (for comparison); FLORENCE_READBACK_LOG=1 prints each readback's time.
+AS = "Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/AcceleratedSurface"
+edit(AS + ".cpp",
+     "#include <skia/gpu/ganesh/GrBackendSurface.h>\n",
+     "#include <skia/gpu/ganesh/GrBackendSurface.h>\n#include <skia/gpu/ganesh/GrDirectContext.h> // Florence: direct readback\n",
+     "Florence: direct readback")
+edit(AS + ".cpp",
+     "            GLContext::ScopedGLContextCurrent scopedCurrent(*PlatformDisplay::sharedDisplay().skiaGLContext());\n            m_skiaSurface->readPixels(info, m_bitmap->mutableSpan().data(), m_bitmap->bytesPerRow(), 0, 0);\n",
+     "            GLContext::ScopedGLContextCurrent scopedCurrent(*PlatformDisplay::sharedDisplay().skiaGLContext());\n"
+     "            static const bool florenceSkiaReadback = !!getenv(\"FLORENCE_SKIA_READBACK\"); // Florence: see webkit_fixes.sh\n"
+     "            static const bool florenceLog = !!getenv(\"FLORENCE_READBACK_LOG\");\n"
+     "            auto florenceStart = MonotonicTime::now();\n"
+     "            const auto width = m_bitmap->size().width(), height = m_bitmap->size().height();\n"
+     "            if (!florenceSkiaReadback && m_bitmap->bytesPerRow() == static_cast<size_t>(width) * 4) {\n"
+     "                auto* grContext = PlatformDisplay::sharedDisplay().skiaGrContext();\n"
+     "                grContext->flushAndSubmit(m_skiaSurface.get(), GrSyncCpu::kNo);\n"
+     "                glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);\n"
+     "                glPixelStorei(GL_PACK_ALIGNMENT, 4);\n"
+     "                glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, m_bitmap->mutableSpan().data());\n"
+     "                grContext->resetContext(kRenderTarget_GrGLBackendState | kPixelStore_GrGLBackendState);\n"
+     "            } else\n"
+     "                m_skiaSurface->readPixels(info, m_bitmap->mutableSpan().data(), m_bitmap->bytesPerRow(), 0, 0);\n"
+     "            if (florenceLog)\n"
+     "                fprintf(stderr, \"readback %s %.1f ms\\n\", florenceSkiaReadback ? \"skia\" : \"direct\", (MonotonicTime::now() - florenceStart).milliseconds());\n",
+     "florenceSkiaReadback")
 PY

@@ -1,0 +1,630 @@
+diff --git a/Source/JavaScriptCore/bytecode/InlineCacheCompiler.h b/Source/JavaScriptCore/bytecode/InlineCacheCompiler.h
+index 41ac33486..3ccc562a2 100644
+--- a/Source/JavaScriptCore/bytecode/InlineCacheCompiler.h
++++ b/Source/JavaScriptCore/bytecode/InlineCacheCompiler.h
+@@ -28,6 +28,7 @@
+ #if ENABLE(JIT)
+ 
+ #include "AccessCase.h"
++#include "CCallHelpers.h" // Florence: the complete type, see webkit_fixes.sh
+ #include "InlineCacheHandler.h"
+ #include "JITStubRoutine.h"
+ #include "JSFunctionInlines.h"
+diff --git a/Source/ThirdParty/skia/src/ports/SkMemory_malloc.cpp b/Source/ThirdParty/skia/src/ports/SkMemory_malloc.cpp
+index 6b2f079bd..03ce24345 100644
+--- a/Source/ThirdParty/skia/src/ports/SkMemory_malloc.cpp
++++ b/Source/ThirdParty/skia/src/ports/SkMemory_malloc.cpp
+@@ -15,7 +15,7 @@
+ 
+ #if defined(SK_BUILD_FOR_MAC) || defined(SK_BUILD_FOR_IOS)
+ #include <malloc/malloc.h>
+-#elif defined(SK_BUILD_FOR_ANDROID) || defined(SK_BUILD_FOR_UNIX)
++#elif defined(SK_BUILD_FOR_ANDROID) || (defined(SK_BUILD_FOR_UNIX) && !defined(__APPLE__)) // Florence: no malloc.h on Darwin
+ #include <malloc.h>
+ #elif defined(SK_BUILD_FOR_WIN)
+ #include <malloc.h>
+@@ -126,7 +126,7 @@ size_t sk_malloc_size(void* addr, size_t size) {
+     #elif defined(SK_BUILD_FOR_ANDROID) && __ANDROID_API__ >= 17
+         completeSize = malloc_usable_size(addr);
+         SkASSERT(completeSize >= size);
+-    #elif defined(SK_BUILD_FOR_UNIX)
++    #elif defined(SK_BUILD_FOR_UNIX) && !defined(__APPLE__) // Florence: Darwin without malloc_size: the requested size
+         completeSize = malloc_usable_size(addr);
+         SkASSERT(completeSize >= size);
+     #elif defined(SK_BUILD_FOR_WIN)
+diff --git a/Source/WTF/wtf/PlatformHave.h b/Source/WTF/wtf/PlatformHave.h
+index 2776e4f9b..82de40a34 100644
+--- a/Source/WTF/wtf/PlatformHave.h
++++ b/Source/WTF/wtf/PlatformHave.h
+@@ -229,7 +229,7 @@
+ #define HAVE_SYS_TIMEB_H 1
+ #endif
+ 
+-#if OS(DARWIN) && __has_include(<mach/mach_exc.defs>) && !PLATFORM(GTK)
++#if OS(DARWIN) && __has_include(<mach/mach_exc.defs>) && !PLATFORM(GTK) && !PLATFORM(WPE)
+ #define HAVE_MACH_EXCEPTIONS 1
+ #endif
+ 
+diff --git a/Source/WTF/wtf/PlatformUse.h b/Source/WTF/wtf/PlatformUse.h
+index 0c16afbd6..88b910851 100644
+--- a/Source/WTF/wtf/PlatformUse.h
++++ b/Source/WTF/wtf/PlatformUse.h
+@@ -123,7 +123,7 @@
+ #define USE_PTHREADS 1
+ #endif
+ 
+-#if OS(DARWIN) && !PLATFORM(GTK)
++#if OS(DARWIN) && !PLATFORM(GTK) && !PLATFORM(WPE)
+ #define USE_ACCELERATE 1
+ #endif
+ 
+diff --git a/Source/WTF/wtf/PlatformWPE.cmake b/Source/WTF/wtf/PlatformWPE.cmake
+index 0f9abb336..2fccfdc5d 100644
+--- a/Source/WTF/wtf/PlatformWPE.cmake
++++ b/Source/WTF/wtf/PlatformWPE.cmake
+@@ -20,9 +20,6 @@ list(APPEND WTF_SOURCES
+     glib/TimeZoneGLib.cpp
+     glib/URLGLib.cpp
+ 
+-    linux/CurrentProcessMemoryStatus.cpp
+-    linux/RealTimeThreads.cpp
+-
+     posix/CPUTimePOSIX.cpp
+     posix/FileHandlePOSIX.cpp
+     posix/FileSystemPOSIX.cpp
+@@ -42,8 +39,16 @@ if (ANDROID)
+         generic/MemoryFootprintGeneric.cpp
+         generic/MemoryPressureHandlerGeneric.cpp
+     )
++elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin") # Florence: Darwin picks task_info for the footprint, no pressure source yet
++    list(APPEND WTF_SOURCES
++        cocoa/MemoryFootprintCocoa.cpp
++        darwin/OSLogPrintStream.cpp
++        generic/MemoryPressureHandlerGeneric.cpp
++    )
+ else ()
+     list(APPEND WTF_SOURCES
++        linux/CurrentProcessMemoryStatus.cpp
++        linux/RealTimeThreads.cpp
+         linux/MemoryFootprintLinux.cpp
+ 
+         unix/MemoryPressureHandlerUnix.cpp
+diff --git a/Source/WebCore/bindings/js/JSHTMLMediaElementCustom.cpp b/Source/WebCore/bindings/js/JSHTMLMediaElementCustom.cpp
+index 61c33bf76..20e707c59 100644
+--- a/Source/WebCore/bindings/js/JSHTMLMediaElementCustom.cpp
++++ b/Source/WebCore/bindings/js/JSHTMLMediaElementCustom.cpp
+@@ -24,6 +24,9 @@
+  */
+ 
+ #include "config.h"
++
++#if ENABLE(VIDEO) // Florence: this file was compiled with VIDEO off, and then failed
++
+ #include "JSHTMLMediaElement.h"
+ 
+ #include "TrackOpaqueRoot.h"
+@@ -40,3 +43,5 @@ void JSHTMLMediaElement::visitAdditionalChildrenInGCThread(Visitor& visitor)
+ DEFINE_VISIT_ADDITIONAL_CHILDREN_IN_GC_THREAD(JSHTMLMediaElement);
+ 
+ } // namespace WebCore
++
++#endif // ENABLE(VIDEO)
+diff --git a/Source/WebCore/crypto/CryptoKey.cpp b/Source/WebCore/crypto/CryptoKey.cpp
+index 927efc02a..0227ec5d2 100644
+--- a/Source/WebCore/crypto/CryptoKey.cpp
++++ b/Source/WebCore/crypto/CryptoKey.cpp
+@@ -76,7 +76,7 @@ WebCoreOpaqueRoot root(CryptoKey* key)
+     return WebCoreOpaqueRoot { key };
+ }
+ 
+-#if !OS(DARWIN) || PLATFORM(GTK)
++#if !OS(DARWIN) || PLATFORM(GTK) || PLATFORM(WPE)
+ Vector<uint8_t> CryptoKey::randomData(size_t size)
+ {
+     Vector<uint8_t> result(size);
+diff --git a/Source/WebCore/crypto/keys/CryptoKeyEC.cpp b/Source/WebCore/crypto/keys/CryptoKeyEC.cpp
+index a062e96fb..7e433419a 100644
+--- a/Source/WebCore/crypto/keys/CryptoKeyEC.cpp
++++ b/Source/WebCore/crypto/keys/CryptoKeyEC.cpp
+@@ -31,7 +31,7 @@
+ #include "JsonWebKey.h"
+ #include <wtf/text/Base64.h>
+ 
+-#if OS(DARWIN) && !PLATFORM(GTK)
++#if OS(DARWIN) && !PLATFORM(GTK) && !PLATFORM(WPE)
+ #include <pal/crypto/CryptoTypes.h>
+ #include <pal/crypto/PlatformECKey.h>
+ #endif
+diff --git a/Source/WebCore/crypto/keys/CryptoKeyEC.h b/Source/WebCore/crypto/keys/CryptoKeyEC.h
+index 5c7e5dfdb..41fa6f334 100644
+--- a/Source/WebCore/crypto/keys/CryptoKeyEC.h
++++ b/Source/WebCore/crypto/keys/CryptoKeyEC.h
+@@ -29,7 +29,7 @@
+ #include <WebCore/CryptoKeyPair.h>
+ 
+ #include <wtf/Platform.h>
+-#if OS(DARWIN) && !PLATFORM(GTK)
++#if OS(DARWIN) && !PLATFORM(GTK) && !PLATFORM(WPE)
+ #include <WebCore/CommonCryptoUtilities.h>
+ 
+ #include <pal/crypto/CryptoTypes.h>
+diff --git a/Source/WebCore/crypto/keys/CryptoKeyRSA.h b/Source/WebCore/crypto/keys/CryptoKeyRSA.h
+index e219a0ef8..11d3f5958 100644
+--- a/Source/WebCore/crypto/keys/CryptoKeyRSA.h
++++ b/Source/WebCore/crypto/keys/CryptoKeyRSA.h
+@@ -28,7 +28,7 @@
+ #include "CryptoKey.h"
+ #include <wtf/Function.h>
+ 
+-#if OS(DARWIN) && !PLATFORM(GTK)
++#if OS(DARWIN) && !PLATFORM(GTK) && !PLATFORM(WPE)
+ #include "CommonCryptoUtilities.h"
+ 
+ typedef CCRSACryptorRef PlatformRSAKey;
+diff --git a/Source/WebKit/Platform/IPC/Attachment.h b/Source/WebKit/Platform/IPC/Attachment.h
+index 606d48b9e..91573980c 100644
+--- a/Source/WebKit/Platform/IPC/Attachment.h
++++ b/Source/WebKit/Platform/IPC/Attachment.h
+@@ -26,7 +26,7 @@
+ 
+ #pragma once
+ 
+-#if OS(DARWIN)
++#if OS(DARWIN) && !USE(UNIX_DOMAIN_SOCKETS) // Florence: sockets win on Darwin
+ #include <wtf/MachSendRight.h>
+ #endif
+ 
+@@ -43,7 +43,9 @@ namespace IPC {
+ 
+ // IPC::Attachment is a type representing objects that cannot be transferred as data,
+ // rather they are transferred via operating system cross-process communication primitives.
+-#if OS(DARWIN)
++#if USE(UNIX_DOMAIN_SOCKETS)
++using Attachment = UnixFileDescriptor;
++#elif OS(DARWIN)
+ using Attachment = MachSendRight;
+ #elif OS(WINDOWS)
+ struct Attachment { }; // Windows does not need attachments at the moment.
+diff --git a/Source/WebKit/Platform/IPC/Connection.h b/Source/WebKit/Platform/IPC/Connection.h
+index 915dc5e5b..ae6ecaf86 100644
+--- a/Source/WebKit/Platform/IPC/Connection.h
++++ b/Source/WebKit/Platform/IPC/Connection.h
+@@ -76,7 +76,7 @@
+ #include <wtf/android/RefPtrAndroid.h>
+ #endif
+ 
+-#if OS(DARWIN)
++#if OS(DARWIN) && !USE(UNIX_DOMAIN_SOCKETS) // Florence: dispatch/XPC objects only for the Mach transport
+ #include <mach/mach_port.h>
+ #include <wtf/darwin/DispatchOSObject.h>
+ #include <wtf/darwin/XPCObjectPtr.h>
+@@ -86,6 +86,10 @@
+ #endif
+ #endif // OS(DARWIN)
+ 
++#if OS(DARWIN) && USE(UNIX_DOMAIN_SOCKETS)
++#include <mach/message.h> // audit_token_t, for the getAuditToken() stub
++#endif
++
+ #if USE(GLIB)
+ #include <wtf/glib/GSocketMonitor.h>
+ #endif
+@@ -344,7 +348,9 @@ public:
+     };
+ 
+ #if OS(DARWIN)
++#if !USE(UNIX_DOMAIN_SOCKETS) // Florence: m_xpcConnection only exists for the Mach transport
+     xpc_connection_t xpcConnection() const { return m_xpcConnection.get(); }
++#endif
+     std::optional<audit_token_t> getAuditToken();
+     pid_t remoteProcessID() const;
+ #endif
+diff --git a/Source/WebKit/Platform/IPC/ConnectionHandle.serialization.in b/Source/WebKit/Platform/IPC/ConnectionHandle.serialization.in
+index a04e9a287..b785fc00b 100644
+--- a/Source/WebKit/Platform/IPC/ConnectionHandle.serialization.in
++++ b/Source/WebKit/Platform/IPC/ConnectionHandle.serialization.in
+@@ -28,7 +28,7 @@ webkit_platform_header: "ConnectionHandle.h"
+ #if OS(WINDOWS)
+     Win32Handle m_handle;
+ #endif
+-#if OS(DARWIN)
++#if OS(DARWIN) && !USE(UNIX_DOMAIN_SOCKETS)
+     MachSendRight m_handle;
+ #endif
+ }
+diff --git a/Source/WebKit/Platform/IPC/glib/ConnectionGLib.cpp b/Source/WebKit/Platform/IPC/glib/ConnectionGLib.cpp
+index d5b3cce63..2c9cc0c10 100644
+--- a/Source/WebKit/Platform/IPC/glib/ConnectionGLib.cpp
++++ b/Source/WebKit/Platform/IPC/glib/ConnectionGLib.cpp
+@@ -532,6 +532,20 @@ void Connection::sendCredentials() const
+     g_socket_set_blocking(m_socket.get(), FALSE);
+ }
+ 
++#if OS(DARWIN)
++// Florence: OS(DARWIN) code in the UI/network/web process logs the peer's pid and passes its audit token; with a plain
++// socket there is neither (no Mach, no audit token), as in the MacPorts WebKitGTK patch.
++pid_t Connection::remoteProcessID() const
++{
++    return 0;
++}
++
++std::optional<audit_token_t> Connection::getAuditToken()
++{
++    return std::nullopt;
++}
++#endif
++
+ pid_t Connection::remoteProcessID(GSocket* socket)
+ {
+     GRefPtr<GUnixConnection> connection = adoptGRef(G_UNIX_CONNECTION(g_object_new(G_TYPE_UNIX_CONNECTION, "socket", socket, nullptr)));
+diff --git a/Source/WebKit/Platform/IPC/unix/IPCUtilitiesUnix.cpp b/Source/WebKit/Platform/IPC/unix/IPCUtilitiesUnix.cpp
+index 5ba3ea569..b147908cc 100644
+--- a/Source/WebKit/Platform/IPC/unix/IPCUtilitiesUnix.cpp
++++ b/Source/WebKit/Platform/IPC/unix/IPCUtilitiesUnix.cpp
+@@ -35,6 +35,22 @@ SocketPair createPlatformConnection(int socketType, unsigned options)
+ {
+     std::array<int, 2> sockets;
+ 
++#if OS(DARWIN)
++    // Florence: datagram sockets with enlarged buffers (default 2 KB / 4 KB on xnu, messages go up to 4 KB)
++    socketType = SOCK_DGRAM;
++    RELEASE_ASSERT(socketpair(AF_UNIX, socketType, 0, sockets.data()) != -1);
++    constexpr int bufferSize = 262144;
++    for (int fd : sockets) {
++        setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &bufferSize, sizeof(bufferSize));
++        setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
++    }
++    if (options & SetCloexecOnServer)
++        RELEASE_ASSERT(setCloseOnExec(sockets[1]));
++    if (options & SetCloexecOnClient)
++        RELEASE_ASSERT(setCloseOnExec(sockets[0]));
++    return { { sockets[0], UnixFileDescriptor::Adopt }, { sockets[1], UnixFileDescriptor::Adopt } };
++#endif
++
+ #if OS(LINUX)
+     if ((options & SetCloexecOnServer) || (options & SetCloexecOnClient)) {
+         RELEASE_ASSERT(socketpair(AF_UNIX, socketType | SOCK_CLOEXEC, 0, sockets.data()) != -1);
+diff --git a/Source/WebKit/Shared/WebCoreArgumentCoders.serialization.in b/Source/WebKit/Shared/WebCoreArgumentCoders.serialization.in
+index 53e089add..bf1f6b3ce 100644
+--- a/Source/WebKit/Shared/WebCoreArgumentCoders.serialization.in
++++ b/Source/WebKit/Shared/WebCoreArgumentCoders.serialization.in
+@@ -1653,7 +1653,7 @@ class WebCore::PasteboardCustomData {
+ #if USE(UNIX_DOMAIN_SOCKETS)
+ headers: <wtf/unix/UnixFileDescriptor.h> "ArgumentCodersUnix.h"
+ #endif
+-#if OS(DARWIN)
++#if OS(DARWIN) && !USE(UNIX_DOMAIN_SOCKETS)
+ header: <wtf/MachSendRight.h>
+ #endif
+ 
+@@ -1661,7 +1661,7 @@ header: <wtf/MachSendRight.h>
+ #if USE(UNIX_DOMAIN_SOCKETS)
+     [Validator='!!m_handle && *m_handle'] UnixFileDescriptor m_handle;
+ #endif
+-#if OS(DARWIN)
++#if OS(DARWIN) && !USE(UNIX_DOMAIN_SOCKETS)
+     [Validator='!!m_handle && *m_handle'] MachSendRight m_handle;
+ #endif
+ #if OS(WINDOWS)
+diff --git a/Source/WebKit/Shared/unix/AuxiliaryProcessMain.cpp b/Source/WebKit/Shared/unix/AuxiliaryProcessMain.cpp
+index 7d054a56b..d709de55b 100644
+--- a/Source/WebKit/Shared/unix/AuxiliaryProcessMain.cpp
++++ b/Source/WebKit/Shared/unix/AuxiliaryProcessMain.cpp
+@@ -31,6 +31,10 @@
+ #include <signal.h>
+ #include <stdlib.h>
+ #include <string.h>
++#if OS(DARWIN)
++#include <dlfcn.h>
++#include <unistd.h>
++#endif
+ #include <wtf/StdLibExtras.h>
+ #include <wtf/text/CStringView.h>
+ #include <wtf/text/StringToIntegerConversion.h>
+@@ -45,17 +49,59 @@
+ #include <glib-unix.h>
+ #endif
+ 
++#if OS(DARWIN) && USE(GLIB) // Florence: exit with the UI process
++#include <errno.h>
++#include <sys/event.h>
++#include <unistd.h>
++#endif
++
+ #if ENABLE(LLVM_PROFILE_GENERATION)
+ __attribute__((weak)) extern "C" int __llvm_profile_dump(void);
+ #endif
+ 
+ namespace WebKit {
+ 
++#if OS(DARWIN) // Florence: crash report of a helper process
++static void floHelperCrash(int sig, siginfo_t* info, void* context)
++{
++    ucontext_t* uc = static_cast<ucontext_t*>(context);
++    uintptr_t pc = static_cast<uintptr_t>(__darwin_arm_thread_state64_get_pc(uc->uc_mcontext->__ss));
++    uintptr_t lr = static_cast<uintptr_t>(__darwin_arm_thread_state64_get_lr(uc->uc_mcontext->__ss));
++    uintptr_t* fp = reinterpret_cast<uintptr_t*>(__darwin_arm_thread_state64_get_fp(uc->uc_mcontext->__ss));
++    auto describe = [](int n, uintptr_t address) {
++        Dl_info di { };
++        if (dladdr(reinterpret_cast<void*>(address), &di) && di.dli_fname)
++            dprintf(2, "florence: helper   #%d %p  %s+%#lx  (%s)\n", n, reinterpret_cast<void*>(address), di.dli_sname ? di.dli_sname : "?", di.dli_saddr ? static_cast<unsigned long>(address - reinterpret_cast<uintptr_t>(di.dli_saddr)) : 0UL, di.dli_fname);
++        else
++            dprintf(2, "florence: helper   #%d %p\n", n, reinterpret_cast<void*>(address));
++    };
++    dprintf(2, "florence: helper process %d crashed: signal %d, fault address %p\n", getpid(), sig, info ? info->si_addr : nullptr);
++    describe(0, pc);
++    describe(1, lr);
++    for (int i = 2; i < 40 && fp && !(reinterpret_cast<uintptr_t>(fp) & 7) && reinterpret_cast<uintptr_t>(fp) > 0x10000; i++) {
++        describe(i, fp[1]);
++        if (fp[0] <= reinterpret_cast<uintptr_t>(fp))
++            break;
++        fp = reinterpret_cast<uintptr_t*>(fp[0]);
++    }
++    signal(sig, SIG_DFL);
++}
++#endif
++
+ AuxiliaryProcessMainCommon::AuxiliaryProcessMainCommon()
+ {
+ #if ENABLE(BREAKPAD)
+     installBreakpadExceptionHandler();
+ #endif
++#if OS(DARWIN)
++    for (int sig : { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT, SIGTRAP }) {
++        struct sigaction action { };
++        action.sa_sigaction = floHelperCrash;
++        action.sa_flags = SA_SIGINFO;
++        sigemptyset(&action.sa_mask);
++        sigaction(sig, &action, nullptr);
++    }
++#endif
+ }
+ 
+ // The command line is constructed in ProcessLauncher::launchProcess.
+@@ -100,6 +146,24 @@ void AuxiliaryProcess::platformInitialize(const AuxiliaryProcessInitializationPa
+     RELEASE_ASSERT(!sigemptyset(&signalAction.sa_mask));
+     signalAction.sa_handler = SIG_IGN;
+     RELEASE_ASSERT(!sigaction(SIGPIPE, &signalAction, nullptr));
++#if OS(DARWIN) && USE(GLIB)
++    {
++        // Florence: see scripts/webkit_fixes.sh, the helper exits when the UI process does
++        pid_t parent = getppid();
++        int queue = kqueue();
++        struct kevent change;
++        if (parent <= 1)
++            _exit(0);
++        EV_SET(&change, parent, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, nullptr);
++        if (queue >= 0 && kevent(queue, &change, 1, nullptr, 0, nullptr) == 0) {
++            g_unix_fd_add(queue, G_IO_IN, [](gint, GIOCondition, gpointer) -> gboolean {
++                _exit(0);
++                return G_SOURCE_REMOVE;
++            }, nullptr);
++        } else if (queue >= 0 && errno == ESRCH)
++            _exit(0); // the parent is already gone
++    }
++#endif
+ #if ENABLE(LLVM_PROFILE_GENERATION) && USE(GLIB)
+     // __llvm_profile_dump() is not async-signal-safe but losing profile
+     // data from auxiliary processes would make PGO collection impractical.
+diff --git a/Source/WebKit/SourcesWPE.txt b/Source/WebKit/SourcesWPE.txt
+index ec7cb442d..6145d1ec8 100644
+--- a/Source/WebKit/SourcesWPE.txt
++++ b/Source/WebKit/SourcesWPE.txt
+@@ -111,6 +111,7 @@ Shared/wpe/WebKeyboardEventWPE.cpp
+ 
+ UIProcess/DefaultUndoController.cpp
+ UIProcess/LegacySessionStateCodingNone.cpp
++UIProcess/ViewGestureController.cpp
+ UIProcess/ViewSnapshotStore.cpp
+ UIProcess/WebGrammarDetail.cpp
+ UIProcess/WebMemoryPressureHandler.cpp @no-unify
+@@ -334,6 +335,7 @@ WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp
+ WebProcess/WebCoreSupport/wpe/WebDragClientWPE.cpp
+ WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp
+ 
++WebProcess/WebPage/ViewGestureGeometryCollector.cpp
+ WebProcess/WebPage/CoordinatedGraphics/AcceleratedSurface.cpp
+ WebProcess/WebPage/CoordinatedGraphics/CoordinatedSceneState.cpp
+ WebProcess/WebPage/CoordinatedGraphics/DrawingAreaCoordinatedGraphicsGLib.cpp
+diff --git a/Source/WebKit/UIProcess/API/C/WKPage.cpp b/Source/WebKit/UIProcess/API/C/WKPage.cpp
+index d379e8975..010add727 100644
+--- a/Source/WebKit/UIProcess/API/C/WKPage.cpp
++++ b/Source/WebKit/UIProcess/API/C/WKPage.cpp
+@@ -3618,7 +3618,7 @@ void WKPageDoAfterProcessingAllPendingMouseEvents(WKPageRef page, void* context,
+     });
+ }
+ 
+-#if !PLATFORM(COCOA)
++#if !PLATFORM(COCOA) && !defined(__APPLE__) // Florence: matches the declaration in WKPagePrivate.h
+ void WKPageDoAfterProcessingAllPendingKeyEvents(WKPageRef page, void* context, WKPageDoAfterProcessingAllPendingKeyEventsFunction completionHandler)
+ {
+     protect(toImpl(page))->doAfterProcessingAllPendingKeyEvents([context, completionHandler] {
+diff --git a/Source/WebKit/UIProcess/API/glib/WebKitWebView.cpp b/Source/WebKit/UIProcess/API/glib/WebKitWebView.cpp
+index e988d2a70..511edd307 100644
+--- a/Source/WebKit/UIProcess/API/glib/WebKitWebView.cpp
++++ b/Source/WebKit/UIProcess/API/glib/WebKitWebView.cpp
+@@ -22,6 +22,11 @@
+ #include "config.h"
+ #include "WebKitWebView.h"
+ 
++#include <gio/gio.h>
++#if !GLIB_CHECK_VERSION(2, 80, 0) // Florence: GLib 2.78 has no g_task_return_new_error_literal
++#define g_task_return_new_error_literal(task, domain, code, message) g_task_return_error(task, g_error_new_literal(domain, code, message))
++#endif
++
+ #include "APIContentWorld.h"
+ #include "APIData.h"
+ #include "APINavigation.h"
+diff --git a/Source/WebKit/UIProcess/wpe/AcceleratedBackingStore.cpp b/Source/WebKit/UIProcess/wpe/AcceleratedBackingStore.cpp
+index 22c44ab7d..5fe30813c 100644
+--- a/Source/WebKit/UIProcess/wpe/AcceleratedBackingStore.cpp
++++ b/Source/WebKit/UIProcess/wpe/AcceleratedBackingStore.cpp
+@@ -217,8 +217,12 @@ static Expected<SkImageInfo, String> getImageInfoFromBuffer(const  GRefPtr<WPEBu
+     if (WPE_IS_BUFFER_DMA_BUF(buffer.get())) {
+         auto* dmaBuffer = WPE_BUFFER_DMA_BUF(buffer.get());
+         SkAlphaType alphaType = kPremul_SkAlphaType;
++#if USE(LIBDRM)
+         if (wpe_buffer_dma_buf_get_format(dmaBuffer) == DRM_FORMAT_XRGB8888)
+             alphaType = kOpaque_SkAlphaType;
++#else
++        UNUSED_VARIABLE(dmaBuffer);
++#endif
+         return SkImageInfo::Make(width, height, kBGRA_8888_SkColorType, alphaType, SkColorSpace::MakeSRGB());
+     }
+ 
+diff --git a/Source/WebKit/UIProcess/wpe/WebPreferencesWPE.cpp b/Source/WebKit/UIProcess/wpe/WebPreferencesWPE.cpp
+index 9b688ad32..e5a50660a 100644
+--- a/Source/WebKit/UIProcess/wpe/WebPreferencesWPE.cpp
++++ b/Source/WebKit/UIProcess/wpe/WebPreferencesWPE.cpp
+@@ -26,13 +26,25 @@
+ #include "config.h"
+ #include "WebPreferences.h"
+ 
++#include <stdlib.h>
++#include <string.h>
++
+ namespace WebKit {
+ 
+ void WebPreferences::platformInitializeStore()
+ {
+-    setAcceleratedCompositingEnabled(true);
+-    setForceCompositingMode(true);
+-    setThreadedScrollingEnabled(true);
++    // Florence: WEBKIT_DISABLE_COMPOSITING_MODE (as in the GTK port) turns GL compositing off, so the web
++    // process paints with Skia on the CPU into shared memory and needs no GL stack at all.
++    const char* disableCompositing = getenv("WEBKIT_DISABLE_COMPOSITING_MODE");
++    bool composited = !(disableCompositing && strcmp(disableCompositing, "0"));
++    setAcceleratedCompositingEnabled(composited);
++    setForceCompositingMode(composited);
++    const char* asyncScrolling = getenv("WEBKIT_ASYNC_SCROLLING");     // Florence
++    bool async = composited && !(asyncScrolling && !strcmp(asyncScrolling, "0"));
++    setThreadedScrollingEnabled(async);
++    setAsyncFrameScrollingEnabled(async);
++    setAsyncOverflowScrollingEnabled(async);
++    setHardwareAccelerationEnabled(composited);     // without this the shared-memory render target still makes GL objects
+ }
+ 
+ } // namespace WebKit
+diff --git a/Source/WebKit/WebProcess/InjectedBundle/API/c/WKBundlePage.cpp b/Source/WebKit/WebProcess/InjectedBundle/API/c/WKBundlePage.cpp
+index a5a1c1a6c..af2ad68b0 100644
+--- a/Source/WebKit/WebProcess/InjectedBundle/API/c/WKBundlePage.cpp
++++ b/Source/WebKit/WebProcess/InjectedBundle/API/c/WKBundlePage.cpp
+@@ -592,7 +592,7 @@ bool WKBundlePageIsControlledByAutomation(WKBundlePageRef pageRef)
+     return WebKit::toImpl(pageRef)->isControlledByAutomation();
+ }
+ 
+-#if TARGET_OS_IPHONE
++#if TARGET_OS_IPHONE && PLATFORM(IOS_FAMILY) // Florence: the iPhoneOS SDK sets TARGET_OS_IPHONE for this port too
+ void WKBundlePageSetUseTestingViewportConfiguration(WKBundlePageRef pageRef, bool useTestingViewportConfiguration)
+ {
+     WebKit::toImpl(pageRef)->setUseTestingViewportConfiguration(useTestingViewportConfiguration);
+diff --git a/Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/AcceleratedSurface.cpp b/Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/AcceleratedSurface.cpp
+index f3daaef29..ba634880d 100644
+--- a/Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/AcceleratedSurface.cpp
++++ b/Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/AcceleratedSurface.cpp
+@@ -49,6 +49,7 @@ WTF_IGNORE_WARNINGS_IN_THIRD_PARTY_CODE_BEGIN
+ #include <skia/core/SkCanvas.h>
+ #include <skia/core/SkColorSpace.h>
+ #include <skia/gpu/ganesh/GrBackendSurface.h>
++#include <skia/gpu/ganesh/GrDirectContext.h> // Florence: direct readback
+ #include <skia/gpu/ganesh/SkSurfaceGanesh.h>
+ #include <skia/gpu/ganesh/gl/GrGLBackendSurface.h>
+ WTF_IGNORE_WARNINGS_IN_THIRD_PARTY_CODE_END
+@@ -447,7 +448,21 @@ void AcceleratedSurface::RenderTargetSHMImage::didRenderFrame()
+ 
+         if (m_surface->usesGL()) {
+             GLContext::ScopedGLContextCurrent scopedCurrent(*PlatformDisplay::sharedDisplay().skiaGLContext());
+-            m_skiaSurface->readPixels(info, m_bitmap->mutableSpan().data(), m_bitmap->bytesPerRow(), 0, 0);
++            static const bool florenceSkiaReadback = !!getenv("FLORENCE_SKIA_READBACK"); // Florence: see webkit_fixes.sh
++            static const bool florenceLog = !!getenv("FLORENCE_READBACK_LOG");
++            auto florenceStart = MonotonicTime::now();
++            const auto width = m_bitmap->size().width(), height = m_bitmap->size().height();
++            if (!florenceSkiaReadback && m_bitmap->bytesPerRow() == static_cast<size_t>(width) * 4) {
++                auto* grContext = PlatformDisplay::sharedDisplay().skiaGrContext();
++                grContext->flushAndSubmit(m_skiaSurface.get(), GrSyncCpu::kNo);
++                glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
++                glPixelStorei(GL_PACK_ALIGNMENT, 4);
++                glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, m_bitmap->mutableSpan().data());
++                grContext->resetContext(kRenderTarget_GrGLBackendState | kPixelStore_GrGLBackendState);
++            } else
++                m_skiaSurface->readPixels(info, m_bitmap->mutableSpan().data(), m_bitmap->bytesPerRow(), 0, 0);
++            if (florenceLog)
++                fprintf(stderr, "readback %s %.1f ms\n", florenceSkiaReadback ? "skia" : "direct", (MonotonicTime::now() - florenceStart).milliseconds());
+         } else
+             m_skiaSurface->readPixels(info, m_bitmap->mutableSpan().data(), m_bitmap->bytesPerRow(), 0, 0);
+         return;
+diff --git a/Source/WebKit/WebProcess/glib/WebProcessGLib.cpp b/Source/WebKit/WebProcess/glib/WebProcessGLib.cpp
+index 891441342..2b9ba3248 100644
+--- a/Source/WebKit/WebProcess/glib/WebProcessGLib.cpp
++++ b/Source/WebKit/WebProcess/glib/WebProcessGLib.cpp
+@@ -181,8 +181,8 @@ void WebProcess::initializePlatformDisplayIfNeeded() const
+     }
+ #endif
+ 
+-    WTFLogAlways("Could not create EGL display: no supported platform available. Aborting...");
+-    CRASH();
++    // Florence: no EGL display is fine, the CPU renderer does not need one
++    return;
+ }
+ 
+ void WebProcess::initializeVulkanIfNeeded()
+diff --git a/Source/bmalloc/bmalloc/ProcessCheck.h b/Source/bmalloc/bmalloc/ProcessCheck.h
+index 0355b9ede..c298466f2 100644
+--- a/Source/bmalloc/bmalloc/ProcessCheck.h
++++ b/Source/bmalloc/bmalloc/ProcessCheck.h
+@@ -35,16 +35,15 @@ namespace bmalloc {
+ #if BPLATFORM(WATCHOS)
+ inline bool gigacageEnabledForProcess() { return false; }
+ #else
+-bool gigacageEnabledForProcess();
++inline bool gigacageEnabledForProcess() { return false; } // Florence: ProcessCheck.mm is Cocoa; no Gigacage here
+ #endif
+ #else
+ inline bool gigacageEnabledForProcess() { return true; }
+ #endif
+ 
+ #if BOS(DARWIN)
+-const char* processNameString();
+-
+-bool shouldAllowMiniMode();
++inline const char* processNameString() { return ""; } // Florence: as the MacPorts WebKitGTK patch
++inline bool shouldAllowMiniMode() { return true; }
+ #else
+ inline bool shouldAllowMiniMode() { return true; }
+ #endif
+diff --git a/Source/WTF/wtf/darwin/OSLogPrintStream.cpp b/Source/WTF/wtf/darwin/OSLogPrintStream.cpp
+new file mode 100644
+index 000000000..281d21e6a
+--- /dev/null
++++ b/Source/WTF/wtf/darwin/OSLogPrintStream.cpp
+@@ -0,0 +1,30 @@
++// Florence: stand-in for OSLogPrintStream.mm (Objective-C++, Cocoa); prints to stderr instead of os_log.
++#include "config.h"
++#include <wtf/darwin/OSLogPrintStream.h>
++
++#if OS(DARWIN)
++#include <cstdio>
++
++namespace WTF {
++
++OSLogPrintStream::OSLogPrintStream(os_log_t log, os_log_type_t type)
++    : m_log(log)
++    , m_logType(type)
++{
++}
++
++OSLogPrintStream::~OSLogPrintStream() = default;
++
++std::unique_ptr<OSLogPrintStream> OSLogPrintStream::open(const char*, const char*, os_log_type_t type)
++{
++    return makeUnique<OSLogPrintStream>(nullptr, type);
++}
++
++void OSLogPrintStream::vprintf(const char* format, va_list args)
++{
++    std::vfprintf(stderr, format, args);
++}
++
++} // namespace WTF
++
++#endif // OS(DARWIN)

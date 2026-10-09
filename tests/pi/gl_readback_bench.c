@@ -9,6 +9,7 @@
 #include <GLES2/gl2.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 static double now_ms(void)
@@ -199,6 +200,35 @@ int main(int argc, char **argv)
 			run("RENDERBUFFER: draw + read 100x100 RGBA", 4, w, h, buf);
 			run("RENDERBUFFER: draw + read all RGBA", 2, w, h, buf);
 			run("RENDERBUFFER: draw + read all BGRA", 3, w, h, buf);
+			/* what Skia's readPixels does here (static reading of SurfaceContext::readPixels + GrGLGpu::onReadPixels): PACK_ALIGNMENT 1,
+			 * glReadPixels RGBA into a fresh zero-filled temporary, then convert RGBA -> BGRA into the destination */
+			{
+				double t0, ta = 0, tr = 0, tc = 0;
+				int i;
+				size_t n = (size_t)w * h * 4;
+				for (i = 0; i < 10; i++) {
+					unsigned char *tmp;
+					size_t k;
+					draw_small();
+					glFinish();
+					t0 = now_ms();
+					tmp = calloc(1, n);
+					memset(tmp, 0, n);
+					ta += now_ms() - t0;
+					t0 = now_ms();
+					glPixelStorei(GL_PACK_ALIGNMENT, 1);
+					glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, tmp);
+					tr += now_ms() - t0;
+					t0 = now_ms();
+					for (k = 0; k < n; k += 4) {
+						buf[k] = tmp[k + 2]; buf[k + 1] = tmp[k + 1]; buf[k + 2] = tmp[k]; buf[k + 3] = tmp[k + 3];
+					}
+					tc += now_ms() - t0;
+					free(tmp);
+				}
+				printf("SKIA-STYLE full: alloc+zero %.1f, glReadPixels (align 1) %.1f, swizzle %.1f ms per frame\n", ta / 10, tr / 10, tc / 10);
+				glPixelStorei(GL_PACK_ALIGNMENT, 4);
+			}
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 	}

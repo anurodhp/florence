@@ -209,3 +209,11 @@ global, so another thread's timed wait timing out (ETIMEDOUT = 60) overwrites th
   ES 2 context).
 * Helper crash reports: WPE helpers print signal, pc and a symbolised frame walk to stderr (`webkit_fixes.sh`); the engine logs
   "web process terminated". `tests/pi/crashhook.c` is a preloadable crash report.
+
+## GL readback (2026-10-08)
+
+GL mode was slow because of the frame readback, not the GPU: `SkSurface::readPixels` took 180-270 ms per frame, mostly a fresh
+zero-filled 2.3 MB temporary per frame (page faults on this kernel). `scripts/webkit_fixes.sh` now reads the framebuffer directly
+(`docs/webkit-patches.md`, "GL readback"): 4.4 -> 12.6 frames/s on reddit.com. Measurement knobs: `FLORENCE_STATS=1` (frames/s),
+`FLORENCE_AUTOSCROLL` (scripted wheel scroll), `FLORENCE_READBACK_LOG=1`, `FLORENCE_SKIA_READBACK=1` (old path), `FLORENCE_NO_IMAGES=1`;
+`tests/pi/gl_readback_bench.c`. Every WebKit edit and why: `docs/webkit-patches.md`.
