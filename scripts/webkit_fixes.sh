@@ -301,4 +301,12 @@ edit(AS + ".cpp",
      "            if (florenceLog)\n"
      "                fprintf(stderr, \"readback %s %.1f ms\\n\", florenceSkiaReadback ? \"skia\" : \"direct\", (MonotonicTime::now() - florenceStart).milliseconds());\n",
      "florenceSkiaReadback")
+# SkiaReplayAtlas::create() returns nullptr when it cannot wrap the atlas texture for the worker's GL context, and the SkiaReplayCanvas constructor
+# appended the result unchecked: the draw loops (onDrawImage2, onDrawImageRect2) then dereferenced a null atlas on a painting worker thread and the web
+# process died (SIGSEGV at address 0, 20 bytes into onDrawImageRect2), freezing the tab; seen on the Pi after closing a tab. Skip null atlases:
+# those images are drawn individually, the normal path.
+edit("Source/WebCore/platform/graphics/skia/SkiaReplayCanvas.cpp",
+     "        for (const auto& gpuAtlas : gpuAtlases)\n            m_atlases.append(SkiaReplayAtlas::create(gpuAtlas));\n",
+     "        for (const auto& gpuAtlas : gpuAtlases) {\n            if (auto atlas = SkiaReplayAtlas::create(gpuAtlas)) // Florence: create() can fail, and the draw loops need non-null atlases\n                m_atlases.append(WTF::move(atlas));\n        }\n",
+     "Florence: create() can fail")
 PY

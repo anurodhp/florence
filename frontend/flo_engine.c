@@ -391,6 +391,7 @@ struct flo_page {
 	bool hit_editable, hit_selection;
 	char *find_text;                /* the text of the search in progress, to tell "next" from "a new search" */
 	bool find_cs;
+	gint64 last_crash_us;           /* when the web process last crashed (monotonic), for the one automatic reload */
 };
 
 static void on_frame(WPEView *view, int x, int y, int w, int h, gpointer data)
@@ -407,12 +408,21 @@ static void report_nav(struct flo_page *p)
 		p->ev.nav_state(p->ui, webkit_web_view_can_go_back(p->web), webkit_web_view_can_go_forward(p->web));
 }
 
-/* The web process died (or was killed): say so on stderr (the log of the app), since the page just stops otherwise. */
+/* The web process died (or was killed): say so on stderr (the log of the app), since the page just stops otherwise. A crashed page is reloaded
+ * (WebKit starts a new web process for it), but only once in ten seconds, so a page that crashes on load does not loop. */
 static void on_web_process_terminated(WebKitWebView *web, WebKitWebProcessTerminationReason reason, gpointer data)
 {
-	(void)web; (void)data;
+	struct flo_page *p = data;
+
 	g_printerr("florence: web process terminated: %s\n", reason == WEBKIT_WEB_PROCESS_CRASHED ? "crashed"
 		: reason == WEBKIT_WEB_PROCESS_EXCEEDED_MEMORY_LIMIT ? "exceeded its memory limit" : "terminated by the API");
+	if (reason == WEBKIT_WEB_PROCESS_CRASHED) {
+		gint64 now = g_get_monotonic_time();
+
+		if (p->last_crash_us == 0 || now - p->last_crash_us > 10 * G_USEC_PER_SEC)
+			webkit_web_view_reload(web);
+		p->last_crash_us = now;
+	}
 }
 
 static void on_title(GObject *o, GParamSpec *spec, gpointer data)
