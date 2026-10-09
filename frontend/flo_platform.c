@@ -53,6 +53,7 @@ struct _FloView {
 	WPEView parent;
 	WPEBuffer *committed;           /* the frame the UI is showing */
 	WPEBuffer *pending;             /* handed over by WebKit, not yet current */
+	WPEBuffer *blank;               /* a frame with nothing in it (see flo_view_render_buffer): acknowledged, never shown */
 	gboolean whole, have_box;       /* the pending frame's damage: everything, or the box below */
 	int bx0, by0, bx1, by1;
 	guint idle;                     /* source id of the commit callback, 0 if none */
@@ -69,6 +70,14 @@ static gboolean view_commit(gpointer data)
 	int x = 0, y = 0, w, h;
 
 	self->idle = 0;
+	if (self->blank != NULL) {
+		WPEBuffer *b = self->blank;
+
+		self->blank = NULL;
+		wpe_view_buffer_rendered(view, b);      /* WebKit sends no further frame until this */
+		wpe_view_buffer_released(view, b);      /* and the buffer is not kept */
+		g_object_unref(b);
+	}
 	if (self->pending == NULL)
 		return G_SOURCE_REMOVE;
 	self->committed = self->pending;
@@ -94,6 +103,7 @@ static gboolean view_commit(gpointer data)
 }
 
 guint64 flo_frames_total;
+guint64 flo_frames_blank;      /* frames dropped as blank, see flo_view_render_buffer */
 gint64 flo_last_frame_us;
 gint64 flo_frame_times_us[FLO_FRAME_LOG];
 
@@ -105,7 +115,7 @@ static double stat_area;
 static gboolean stats_tick(gpointer data)
 {
 	(void)data;
-	g_printerr("florence: %.1f frames/s, mean damage %.0f px\n", stat_frames / 5.0, stat_frames ? stat_area / stat_frames : 0.0);
+	g_printerr("florence: %.1f frames/s, mean damage %.0f px, %" G_GUINT64_FORMAT " blank frames dropped so far\n", stat_frames / 5.0, stat_frames ? stat_area / stat_frames : 0.0, flo_frames_blank);
 	stat_frames = 0; stat_area = 0;
 	return G_SOURCE_CONTINUE;
 }
@@ -127,6 +137,22 @@ static void frame_stats(const WPERectangle *damage, guint n_damage)
 		stat_area += (double)damage[i].width * damage[i].height;
 }
 
+/* Is every pixel of the buffer the same (as a 32-bit word)? Stops at the first different one, so a real page costs nothing. */
+static gboolean buffer_is_uniform(WPEBuffer *buffer)
+{
+	GBytes *bytes = wpe_buffer_shm_get_data(WPE_BUFFER_SHM(buffer));
+	gsize size = 0, i, n;
+	const guint32 *w = g_bytes_get_data(bytes, &size);
+
+	if (w == NULL || size < 4)
+		return FALSE;
+	n = size / 4;
+	for (i = 1; i < n; i++)
+		if (w[i] != w[0])
+			return FALSE;
+	return TRUE;
+}
+
 static gboolean flo_view_render_buffer(WPEView *view, WPEBuffer *buffer, const WPERectangle *damage,
 				       guint n_damage, GError **error)
 {
@@ -142,6 +168,19 @@ static gboolean flo_view_render_buffer(WPEView *view, WPEBuffer *buffer, const W
 		g_set_error_literal(error, WPE_VIEW_ERROR, WPE_VIEW_ERROR_RENDER_FAILED,
 				    "Florence draws shared-memory buffers only");
 		return FALSE;
+	}
+	/* A frame with no damage list and one colour all over is WebKit presenting a target it drew nothing into (TargetContents::Invalid: a
+	 * freshly created buffer is zeros): a new tab, or a resize, before the first real frame. No damage list means "everything changed" here,
+	 * so showing it painted the page area black until the next frame, and a heavy page takes seconds to produce that. Acknowledge it and keep
+	 * showing what was there. */
+	if ((n_damage == 0 || damage == NULL) && buffer_is_uniform(buffer)) {
+		if (++flo_frames_blank <= 12)
+			g_printerr("florence: blank frame dropped (%dx%d, no damage list)\n", wpe_buffer_get_width(buffer), wpe_buffer_get_height(buffer));
+		g_clear_object(&self->blank);
+		self->blank = g_object_ref(buffer);
+		if (self->idle == 0)
+			self->idle = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, view_commit, g_object_ref(self), g_object_unref);
+		return TRUE;
 	}
 	/* WebKit sends the next frame only after buffer-rendered for this one, so `pending` is normally
 	 * empty here; if not, the newer frame simply replaces it (as the headless view does). */
@@ -178,6 +217,7 @@ static void flo_view_dispose(GObject *object)
 		self->idle = 0;
 	}
 	g_clear_object(&self->pending);
+	g_clear_object(&self->blank);
 	g_clear_object(&self->committed);
 	self->frame_func = NULL;
 	G_OBJECT_CLASS(flo_view_parent_class)->dispose(object);
