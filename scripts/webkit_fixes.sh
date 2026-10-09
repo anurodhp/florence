@@ -273,8 +273,8 @@ edit("Source/JavaScriptCore/bytecode/InlineCacheCompiler.h",
      "Florence: the complete type")
 # GL frame readback (docs/HANDOFF.md, "GL readback"): SkSurface::readPixels into the BGRA shared-memory bitmap goes through Skia's convert
 # path (SurfaceContext::readPixels): the surface is RGBA8 (what VC4 renders) and the bitmap BGRA with no colour space, so Skia reads into
-# a freshly allocated, zero-filled temporary and converts on the CPU. On the Pi a fresh 2.3 MB buffer costs ~100 ms per frame in page
-# faults (tests/pi/gl_readback_bench.c), more than the read itself (~65 ms). Read the framebuffer directly as BGRA into the bitmap instead,
+# a zero-filled temporary and converts on the CPU. On the Pi the image's memset runs at 24 MB/s, so zeroing that 2.3 MB buffer costs ~95 ms
+# per frame (tests/pi/fault_bench.c), more than the read itself (~65 ms). Read the framebuffer directly as BGRA into the bitmap instead,
 # as the non-Skia branch below already does: shared-memory targets are not mirrored, so rows come out top-down as Skia's would.
 # FLORENCE_SKIA_READBACK=1 restores Skia's path (for comparison); FLORENCE_READBACK_LOG=1 prints each readback's time.
 AS = "Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/AcceleratedSurface"

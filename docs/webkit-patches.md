@@ -76,9 +76,10 @@ GL mode ran animated and scrolled pages at ~5 frames/s with a CPU core busy. Tim
 * VC4 renders `GL_RGBA8` as `R8G8B8A8`; WebKit's bitmap is BGRA with no colour space. GLES reads BGRA only if the driver's
   implementation read format says so, so Skia reads RGBA into a temporary buffer and converts on the CPU (also forced by
   `SkColorSpace::Equals(sRGB, null)` being false).
-* That temporary is a fresh, zero-filled 2.3 MB allocation per frame (`std::make_unique<char[]>`). On the Pi a fresh allocation
-  that size costs ~100 ms in page faults: more than the read itself (~65 ms, bound by ~30 MB/s reads from the write-combined
-  buffer mapping, `xnu-iokit-pi3 docs/framebuffer-mapping.md`). The swizzle is ~2 ms.
+* That temporary is a zero-filled 2.3 MB buffer per frame (`std::make_unique<char[]>`, i.e. a `memset`). On the Pi the image's
+  `memset` runs at **24 MB/s**, so zeroing it costs ~95 ms: more than the read itself (~65 ms, bound by ~30 MB/s reads from the
+  write-combined buffer mapping, `xnu-iokit-pi3 docs/framebuffer-mapping.md`). The swizzle is ~2 ms. (Page faults were suspected
+  first and ruled out: a fault on fresh memory costs ~12 us per 16 KB page, ~7 ms for this buffer; `tests/pi/fault_bench.c`.)
 
 The edit reads with `glReadPixels(GL_BGRA)` directly into the bitmap (shared-memory targets are not mirrored, so the rows are
 top-down as Skia's were) and tells Skia its framebuffer and pixel-store state changed. Measured on the Pi: readback 212 -> 79 ms
@@ -86,6 +87,17 @@ and 4.4 -> 12.6 frames/s on reddit.com, 185 -> 74 ms and 5 -> 10 frames/s on an 
 web-process CPU down by more than half on reddit.com.
 
 Not done yet: reading only the damaged area. The read scales with area (100x100 costs ~1.5 ms) and most frames damage a small
-part of the page, so this is the next large gain; it needs each swap-chain target's accumulated damage, and a reused buffer (never a
-fresh allocation per frame, for the reason above). Also worth raising in the iokit port: ~0.7 ms per 16 KB page to fault in fresh
-memory slows every program that allocates.
+part of the page, so this is the next large gain; it needs each swap-chain target's accumulated damage.
+
+## The slow memset (an iokit port bug, found while chasing the readback)
+
+`memset` and `bzero` in the image run at ~24 MB/s, 50-280x slower than the hardware (a plain store loop does 1.3-2.6 GB/s):
+libplatform's generic `_platform_memset` calls `_platform_memset_pattern4`, which calls `_platform_memmove` once per 4 bytes, and the
+whole of libsystem_platform is built `-O0 -fno-builtin` (`tools/userland_staging/build_libsystem_platform.sh`). There is no arm64
+assembly in the pinned libplatform (`src/string/` has only `generic/`). Every zero-fill in every program pays this: `calloc`, `new T[n]()`,
+`std::vector<T>(n)`, Skia surface clears, image decode buffers. `scripts/build_fastmem.sh` builds `libfastmem.dylib` (`DYLD_INSERT_LIBRARIES`
+shim, `tests/pi/fastmem.c`) that interposes a 64-bytes-per-iteration `memset`/`bzero`: 24 MB/s -> 1.2-6.7 GB/s, a reused 2.2 MB buffer 93 ->
+1.5 ms. Bytes that go through `memset`/`bzero` in the web process of a real page load (`FASTMEM_STATS=1`, 60 s, a lower bound: only the
+interposed names are counted): bench.html 20 MB (0.8 s at 24 MB/s), arstechnica.com 105 MB in 850,000 calls (4.4 s), reddit.com 307 MB in
+3.1 million calls (12.8 s, a fifth or more of the web process's CPU). Page faults, by contrast, cost ~12 us per 16 KB page (`tests/pi/fault_bench.c`):
+a 100 MB working set faults in about 80 ms. The fix belongs in the port: an optimised `_platform_memset`/`_platform_bzero` (and `_platform_memmove`, currently 319 MB/s).
