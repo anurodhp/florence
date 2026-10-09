@@ -93,11 +93,43 @@ static gboolean view_commit(gpointer data)
 	return G_SOURCE_REMOVE;
 }
 
+/* FLORENCE_STATS=1: frames per second and the mean damaged area, to stderr every 5 s, also when nothing arrived
+ * (is something repainting while the page is idle?) */
+static guint stat_frames;
+static double stat_area;
+
+static gboolean stats_tick(gpointer data)
+{
+	(void)data;
+	g_printerr("florence: %.1f frames/s, mean damage %.0f px\n", stat_frames / 5.0, stat_frames ? stat_area / stat_frames : 0.0);
+	stat_frames = 0; stat_area = 0;
+	return G_SOURCE_CONTINUE;
+}
+
+static void frame_stats(const WPERectangle *damage, guint n_damage)
+{
+	static int enabled = -1;
+	guint i;
+
+	if (enabled < 0) {
+		enabled = g_getenv("FLORENCE_STATS") != NULL;
+		if (enabled)
+			g_timeout_add_seconds(5, stats_tick, NULL);
+	}
+	if (!enabled)
+		return;
+	stat_frames++;
+	for (i = 0; i < n_damage && damage != NULL; i++)
+		stat_area += (double)damage[i].width * damage[i].height;
+}
+
 static gboolean flo_view_render_buffer(WPEView *view, WPEBuffer *buffer, const WPERectangle *damage,
 				       guint n_damage, GError **error)
 {
 	FloView *self = FLO_VIEW(view);
 	guint i;
+
+	frame_stats(damage, n_damage);
 
 	if (!WPE_IS_BUFFER_SHM(buffer)) {
 		g_set_error_literal(error, WPE_VIEW_ERROR, WPE_VIEW_ERROR_RENDER_FAILED,
