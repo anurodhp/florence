@@ -105,6 +105,11 @@ int flo_engine_init(const char *data_dir, const char *cache_dir)
 	setenv("DYLD_LIBRARY_PATH", path, 1);
 	if (cpu == NULL || strcmp(cpu, "0") == 0) {
 		setdefault("WEBKIT_ASYNC_SCROLLING", "0");               /* webkit_fixes.sh: scroll on the main thread: the scroll bars need it */
+		/* The direct GL readback (webkit_fixes.sh, about three times the frame rate) is opt-in until it has been shown to survive scrolling and
+		 * page loads: on the day it was installed a black screen while scrolling and then a hung machine were reported. Without
+		 * FLORENCE_DIRECT_READBACK=1 the web process reads frames back through Skia, as before. */
+		if (g_getenv("FLORENCE_DIRECT_READBACK") == NULL)
+			setdefault("FLORENCE_SKIA_READBACK", "1");
 	} else {
 		setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1");      /* scripts/webkit_fixes.sh: no GL compositor, paint on the CPU */
 		setdefault("WEBKIT_SKIA_ENABLE_CPU_RENDERING", "1");     /* WebProcessGLib.cpp: no GPU buffers, shared memory */
