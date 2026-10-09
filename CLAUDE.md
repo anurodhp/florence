@@ -16,7 +16,7 @@ list and the dependency table the Pi build is waiting on.
 `xnu-iokit-pi3` is the reference for every cross-compile decision. Default location is
 `../iokit` (override with `IOKIT_DIR`; the checkout directory name is not significant). Read,
 in that repo: its `CLAUDE.md`, `tools/userland_staging/gnustep_common.sh` (the GNUstep recipe),
-`build_gnustep_terminal.sh` / `build_gnustep_ink.sh` (apps, the closest template to Florence),
+`build_milan.sh` / `build_gnustep_ink.sh` (apps, the closest template to Florence),
 `build_cairo.sh`, and `architecture.md`'s GNUstep section. Do not re-derive these rules from
 Linux/macOS habits; they are wrong here.
 
