@@ -161,6 +161,21 @@ index e219a0ef8..11d3f5958 100644
  #include "CommonCryptoUtilities.h"
  
  typedef CCRSACryptorRef PlatformRSAKey;
+diff --git a/Source/WebCore/platform/graphics/skia/ImageBufferSkiaAcceleratedBackend.cpp b/Source/WebCore/platform/graphics/skia/ImageBufferSkiaAcceleratedBackend.cpp
+index 212c981a6..0ede8b30e 100644
+--- a/Source/WebCore/platform/graphics/skia/ImageBufferSkiaAcceleratedBackend.cpp
++++ b/Source/WebCore/platform/graphics/skia/ImageBufferSkiaAcceleratedBackend.cpp
+@@ -100,6 +100,10 @@ static inline bool shouldEnableDynamicMSAA()
+ 
+ std::unique_ptr<ImageBufferSkiaAcceleratedBackend> ImageBufferSkiaAcceleratedBackend::create(const Parameters& parameters, const ImageBufferCreationContext& creationContext)
+ {
++    static const bool florenceAllowAccelerated = !!getenv("FLORENCE_ACCELERATED_IMAGEBUFFERS"); // Florence: see webkit_fixes.sh
++    if (!florenceAllowAccelerated)
++        return nullptr;
++
+     IntSize backendSize = calculateSafeBackendSize(parameters);
+     if (backendSize.isEmpty())
+         return nullptr;
 diff --git a/Source/WebCore/platform/graphics/skia/SkiaReplayCanvas.cpp b/Source/WebCore/platform/graphics/skia/SkiaReplayCanvas.cpp
 index 6fe72852f..dfc7bd9c2 100644
 --- a/Source/WebCore/platform/graphics/skia/SkiaReplayCanvas.cpp

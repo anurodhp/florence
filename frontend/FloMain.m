@@ -98,7 +98,12 @@ static void fillStoreMenu(NSMenu *m, FloStore *st, NSUInteger fixed, NSUInteger 
 	if (list != nil)
 		flo_engine_set_blocklist([list UTF8String]);
 	[FloBrowser openWindowWithAddress:startURL];
+	/* FLORENCE_AUTOTAB=<seconds>: open a new tab after that long, for watching the redraw (tests/pi: screenshots at short intervals) */
+	if (getenv("FLORENCE_AUTOTAB") != NULL)
+		[self performSelector:@selector(autoTab:) withObject:nil afterDelay:atof(getenv("FLORENCE_AUTOTAB"))];
 }
+
+- (void)autoTab:(id)s { [[FloBrowser key] newTab]; }
 
 /* GNUstep offers every command-line argument that is not an option to the delegate as a file to open, and shows an alert when
  * there is no such method. The address on the command line is opened by applicationDidFinishLaunching; this only accepts it. */

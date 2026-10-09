@@ -309,4 +309,12 @@ edit("Source/WebCore/platform/graphics/skia/SkiaReplayCanvas.cpp",
      "        for (const auto& gpuAtlas : gpuAtlases)\n            m_atlases.append(SkiaReplayAtlas::create(gpuAtlas));\n",
      "        for (const auto& gpuAtlas : gpuAtlases) {\n            if (auto atlas = SkiaReplayAtlas::create(gpuAtlas)) // Florence: create() can fail, and the draw loops need non-null atlases\n                m_atlases.append(WTF::move(atlas));\n        }\n",
      "Florence: create() can fail")
+# GPU image buffers (CSS filters, masks, canvas) crash Mesa's VC4 driver: a page with a CSS filter (arstechnica.com) drew a filtered ImageBuffer through Skia's GL
+# (RenderLayerFilters::applyFilterEffect -> GraphicsContextSkia::drawNativeImage -> flushAndSubmitImageWithFence -> GrGLOpsRenderPass::onDraw -> glDrawArrays)
+# and the driver dereferenced a null pointer in vc4_emit_gl_shader_state (fault address 0x70): the web process died, the tab went black. ImageBuffer falls back to
+# its CPU backend when the accelerated one declines; decoded images and tile painting keep the GPU. FLORENCE_ACCELERATED_IMAGEBUFFERS=1 turns them back on.
+edit("Source/WebCore/platform/graphics/skia/ImageBufferSkiaAcceleratedBackend.cpp",
+     "    IntSize backendSize = calculateSafeBackendSize(parameters);\n    if (backendSize.isEmpty())\n        return nullptr;\n\n    // We always want to accelerate the canvas",
+     "    static const bool florenceAllowAccelerated = !!getenv(\"FLORENCE_ACCELERATED_IMAGEBUFFERS\"); // Florence: see webkit_fixes.sh\n    if (!florenceAllowAccelerated)\n        return nullptr;\n\n    IntSize backendSize = calculateSafeBackendSize(parameters);\n    if (backendSize.isEmpty())\n        return nullptr;\n\n    // We always want to accelerate the canvas",
+     "florenceAllowAccelerated")
 PY
