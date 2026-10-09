@@ -149,6 +149,43 @@ static void test_timingsafe(void)
 			}
 }
 
+
+/* strstr, memmem (two-way), strncpy, stpncpy */
+static void test_search(void)
+{
+	size_t hl, nl, so, k;
+	for (hl = 0; hl <= 90; hl++)
+		for (nl = 0; nl <= 26; nl += (nl < 8 ? 1 : 3))
+			for (so = 0; so < 16; so += 5) {
+				char *h = A + so, *n = B + (so + 3) % 16;
+				size_t i, j, want = (size_t)-1;
+				/* a two-letter alphabet makes near-matches and periodic needles ("abab", "aaaa") common: the hard cases for two-way */
+				for (i = 0; i < hl; i++) h[i] = "ab"[rnd() & 1];
+				h[hl] = 0;
+				for (i = 0; i < nl; i++) n[i] = "ab"[rnd() % 3 == 0];
+				n[nl] = 0;
+				if (nl && hl >= nl && (rnd() & 1)) memcpy(h + rnd() % (hl - nl + 1), n, nl);   /* plant it */
+				for (i = 0; i + nl <= hl && want == (size_t)-1; i++) { for (j = 0; j < nl && h[i + j] == n[j]; j++) ; if (j == nl) want = i; }
+				{ char *r = strstr(h, n), *w = want == (size_t)-1 ? NULL : h + want;
+				  if (r != w) FAIL("strstr hl %zu nl %zu +%zu: got %ld want %ld", hl, nl, so, r ? (long)(r - h) : -1L, w ? (long)(w - h) : -1L); }
+				{ void *r = memmem(h, hl, n, nl), *w = want == (size_t)-1 ? NULL : (void *)(h + want);
+				  if (r != w) FAIL("memmem hl %zu nl %zu +%zu", hl, nl, so); }
+				/* embedded NUL: memmem looks past it, strstr stops */
+				if (hl > 4) { char save = h[hl / 2]; h[hl / 2] = 0; { void *r = memmem(h, hl, n, nl); size_t w2 = (size_t)-1; for (i = 0; i + nl <= hl && w2 == (size_t)-1; i++) { for (j = 0; j < nl && h[i + j] == n[j]; j++) ; if (j == nl) w2 = i; }
+				  if (r != (w2 == (size_t)-1 ? NULL : (void *)(h + w2))) FAIL("memmem with NUL hl %zu nl %zu", hl, nl); } h[hl / 2] = save; }
+			}
+	for (k = 0; k < 4000; k++) {   /* strncpy / stpncpy */
+		size_t len = rnd() % 60, n = rnd() % 70, so = rnd() % 16, dofs = rnd() % 16, i;
+		char *src = A + so, *d = C + dofs;
+		mkstr(src, len);
+		memset(d, '#', 200); memset(R, '#', 200);
+		for (i = 0; i < n; i++) R[i] = i < len ? src[i] : 0;
+		if (strncpy(d, src, n) != d || memcmp(d, R, 200) != 0) FAIL("strncpy len %zu n %zu +%zu/%zu", len, n, so, dofs);
+		memset(d, '#', 200);
+		if (stpncpy(d, src, n) != d + (len < n ? len : n) || memcmp(d, R, 200) != 0) FAIL("stpncpy len %zu n %zu", len, n);
+	}
+}
+
 /* ---- guard pages ---- */
 static const char *cur = "(none)";
 static void on_segv(int sig) { char b[160]; int n = snprintf(b, sizeof b, "GUARD FAIL: %s read past the end of its string (signal %d)\n", cur, sig); write(1, b, n); _exit(2); }
@@ -184,6 +221,11 @@ static void test_guard(void)
 		cur = "strlcpy"; if (strlcpy(dst, s, sizeof dst) != len) FAIL("guard strlcpy %zu", len);
 		cur = "strspn"; (void)strspn(s, "abc");
 		cur = "strcspn"; (void)strcspn(s, set);
+		cur = "strstr (haystack at page end)"; (void)strstr(s, "fed"); (void)strstr(s, "abcdefabcdefq");
+		cur = "strstr (needle at page end)"; (void)strstr("abcdefabcdef", s);
+		cur = "memmem (haystack at page end)"; (void)memmem(s, len + 1, "fed", 3);
+		cur = "strncpy"; (void)strncpy(dst, s, 200);
+		cur = "stpncpy"; (void)stpncpy(dst, s, 200);
 		cur = "strpbrk"; (void)strpbrk(s, set);
 		cur = "strcat"; dst[0] = 0; strcat(dst, s);
 		cur = "strncat"; dst[0] = 0; strncat(dst, s, 1000);
@@ -219,6 +261,7 @@ int main(void)
 	p_tsmemcmp = (tsmemcmp_fn)dlsym(RTLD_DEFAULT, "timingsafe_memcmp");
 	printf("memccpy %s, timingsafe_memcmp %s\n", p_memccpy ? "present" : "absent (skipped)", p_tsmemcmp ? "present" : "absent (skipped)");
 	test_basic();
+	test_search();
 	test_timingsafe();
 	printf("correctness (lengths 0-140 x alignments): %s\n", fails ? "FAILED" : "all ok");
 	test_guard();
