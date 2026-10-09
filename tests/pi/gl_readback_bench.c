@@ -155,5 +155,27 @@ int main(int argc, char **argv)
 	run("upload 960x602 RGBA + 100x100 read", 7, w, h, buf);
 	run("upload 960x602 BGRA + 100x100 read", 8, w, h, buf);
 	run("upload 256x256 + 100x100 read", 9, w, h, buf);
+
+	/* the same with a BGRA render target, which is what WebKit's Skia surface is (kBGRA_8888) */
+	{
+		GLuint tex2, fbo2;
+		glGenTextures(1, &tex2);
+		glBindTexture(GL_TEXTURE_2D, tex2);
+		glGetError();
+		glTexImage2D(GL_TEXTURE_2D, 0, 0x80E1 /* GL_BGRA_EXT */, w, h, 0, 0x80E1, GL_UNSIGNED_BYTE, NULL);
+		printf("BGRA texture: glTexImage2D error 0x%x\n", glGetError());
+		glGenFramebuffers(1, &fbo2);
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo2);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex2, 0);
+		printf("BGRA framebuffer status 0x%x (complete = 0x%x)\n", glCheckFramebufferStatus(GL_FRAMEBUFFER), GL_FRAMEBUFFER_COMPLETE);
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
+			glClear(GL_COLOR_BUFFER_BIT);
+			run("BGRA target: draw+finish", 1, w, h, buf);
+			run("BGRA target: draw + read 100x100 RGBA", 4, w, h, buf);
+			run("BGRA target: draw + read all BGRA", 3, w, h, buf);
+			run("BGRA target: draw + read all RGBA", 2, w, h, buf);
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	}
 	return 0;
 }
